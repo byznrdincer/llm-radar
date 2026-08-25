@@ -1,0 +1,75 @@
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+from llm_radar.api.intel import router as intel_router
+from llm_radar.api.routes import router
+from llm_radar.config import get_settings
+from llm_radar.observability import API_REQUESTS, metrics_response
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    try:
+        from llm_radar.bootstrap import seed
+
+        seed()
+    except Exception:
+        logger.warning("source catalog seed skipped", exc_info=True)
+    yield
+
+
+app = FastAPI(
+    title="LLM Radar API",
+    description="LLM model, price, benchmark and technology change intelligence API",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+app.include_router(router)
+app.include_router(intel_router)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=[host.strip() for host in settings.api_allowed_hosts.split(",")],
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[origin.strip() for origin in settings.api_allowed_origins.split(",")],
+    allow_methods=["GET", "POST", "PATCH"],
+    allow_headers=["*"],
+)
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):  # type: ignore[no-untyped-def]
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    API_REQUESTS.labels(
+        path=request.url.path, method=request.method, status=str(response.status_code)
+    ).inc()
+    return response
+
+
+@app.get("/health", tags=["system"])
+async def health() -> dict[str, str]:
+    return {"status": "ok", "service": "llm-radar-api"}
+
+
+@app.get("/metrics", tags=["system"], include_in_schema=False)
+async def metrics() -> Response:
+    payload, content_type = metrics_response()
+    return Response(content=payload, media_type=content_type)
+
+
+@app.get("/", include_in_schema=False)
+async def root() -> dict[str, str]:
+    return {"name": "LLM Radar", "docs": "/docs"}

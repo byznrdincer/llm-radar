@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+backups/
+*.dump
+*.sql.gz
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.DS_Store

@@ -1,0 +1,66 @@
+[project]
+name = "llm-radar"
+version = "0.1.0"
+description = "Event-driven LLM intelligence and change tracking platform"
+requires-python = ">=3.11"
+dependencies = [
+  "alembic>=1.13,<2",
+  "confluent-kafka>=2.6,<3",
+  "fastapi>=0.115,<1",
+  "httpx>=0.27,<1",
+  "minio>=7.2,<8",
+  "prometheus-client>=0.21,<1",
+  "pydantic>=2.9,<3",
+  "pydantic-settings>=2.5,<3",
+  "psycopg[binary]>=3.2,<4",
+  "redis>=5,<6",
+  "selectolax>=0.3,<0.4",
+  "sqlalchemy>=2.0,<3",
+  "tenacity>=9,<10",
+  "uvicorn[standard]>=0.30,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.11,<2",
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.24,<1",
+  "respx>=0.21,<1",
+  "ruff>=0.6,<1",
+]
+
+[project.scripts]
+llm-radar-create-topics = "llm_radar.events.admin:create_topics"
+llm-radar-collect-openrouter = "llm_radar.collectors.run_openrouter:run"
+llm-radar-collect-arena = "llm_radar.collectors.run_arena:run"
+llm-radar-collect-swebench = "llm_radar.collectors.run_swebench:run"
+llm-radar-collect-artificial-analysis = "llm_radar.collectors.run_artificial_analysis:run"
+llm-radar-scheduler = "llm_radar.collectors.scheduler:run"
+llm-radar-collect-community-benchmarks = "llm_radar.collectors.run_community_benchmarks:run"
+llm-radar-collect-huggingface = "llm_radar.collectors.run_huggingface:run"
+llm-radar-collect-github = "llm_radar.collectors.run_github:run"
+llm-radar-collect-arxiv = "llm_radar.collectors.run_arxiv:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/llm_radar"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
