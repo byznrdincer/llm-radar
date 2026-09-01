@@ -3,7 +3,12 @@ from typing import Any, cast
 from sqlalchemy.orm import Session
 
 from llm_radar.database.models import Model, ModelProfile
-from llm_radar.model_selection import multimodal_profile_matches
+from llm_radar.model_selection import (
+    ADVANCEDNESS_TIERS,
+    advancedness_tier_for_score,
+    matches_advancedness_filter,
+    multimodal_profile_matches,
+)
 
 
 class FakeResult:
@@ -43,3 +48,16 @@ def test_multimodal_selection_uses_asserted_profile_modalities() -> None:
     assert set(matches) == {"omni"}
     assert matches["omni"].score == 100
     assert matches["omni"].basis == "profile"
+
+
+def test_advancedness_tier_mapping_and_filter() -> None:
+    assert advancedness_tier_for_score(25) == "entry"
+    assert advancedness_tier_for_score(55) == "mid"
+    assert advancedness_tier_for_score(78) == "advanced"
+    assert advancedness_tier_for_score(92) == "frontier"
+    assert advancedness_tier_for_score(None) is None
+
+    assert matches_advancedness_filter(92, {"frontier"})
+    assert not matches_advancedness_filter(55, {"frontier"})
+    assert matches_advancedness_filter(None, {"unscored"})
+    assert not matches_advancedness_filter(None, {"frontier"})

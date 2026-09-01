@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Any, Literal
@@ -9,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from llm_radar.company_domains import company_website_url
 from llm_radar.composite import canonical_model_name
 from llm_radar.config import get_settings, source_is_configured
 from llm_radar.database.models import (
@@ -24,7 +26,13 @@ from llm_radar.database.models import (
 )
 from llm_radar.database.session import get_db
 from llm_radar.event_intelligence import EVENT_CATEGORIES
-from llm_radar.model_selection import BENCHMARK_FOCUSES, selection_matches
+from llm_radar.model_selection import (
+    ADVANCEDNESS_TIERS,
+    BENCHMARK_FOCUSES,
+    advancedness_tier_for_score,
+    matches_advancedness_filter,
+    selection_matches,
+)
 
 router = APIRouter(prefix="/api/v1")
 DatabaseSession = Annotated[Session, Depends(get_db)]
@@ -152,6 +160,10 @@ def _meaningful_license(value: str | None) -> str | None:
     return value.strip()
 
 
+def _resolved_company_website(company: Company) -> str | None:
+    return company.website_url or company_website_url(company.slug)
+
+
 def _license_category(value: str | None) -> str:
     normalized = (value or "").strip().lower().replace("_", "-")
     if not normalized or normalized in _UNKNOWN_LICENSES:
@@ -165,6 +177,101 @@ def _license_category(value: str | None) -> str:
     if any(token in normalized for token in ("model-specific", "custom", "research")):
         return "model_specific"
     return "other"
+
+
+def _search_term_variants(term: str) -> list[str]:
+    normalized = " ".join(term.strip().split())
+    if not normalized:
+        return []
+    variants = [normalized]
+    compact = re.sub(r"[\s_.-]+", "", normalized)
+    if compact and compact.lower() != normalized.lower():
+        variants.append(compact)
+    for separator in ("-", "_"):
+        spaced = normalized.replace(" ", separator)
+        if spaced not in variants:
+            variants.append(spaced)
+    return variants
+
+
+def _model_field_search(pattern: str) -> Any:
+    like_pattern = f"%{pattern}%"
+    return or_(
+        Model.name.ilike(like_pattern),
+        Model.slug.ilike(like_pattern),
+        Model.family.ilike(like_pattern),
+        Company.name.ilike(like_pattern),
+        Company.slug.ilike(like_pattern),
+    )
+
+
+def _model_search_filter(search: str) -> Any | None:
+    term = " ".join(search.strip().split())
+    if not term:
+        return None
+    clauses = [_model_field_search(variant) for variant in _search_term_variants(term)]
+    tokens = term.split()
+    if len(tokens) > 1:
+        clauses.append(and_(*[_model_field_search(token) for token in tokens]))
+    return or_(*clauses)
+
+
+SORT_FIELD_PATTERN = (
+    "^(name|provider|input_price|output_price|context|release_date|"
+    "benchmark_score|parameter_count|active_parameter_count|backend|updated_at|best_match)$"
+)
+
+
+def _normalize_sort_specs(
+    sort_by: list[str] | None,
+    sort_order: list[str] | None,
+) -> list[tuple[str, str]]:
+    fields = [field for field in (sort_by or ["name"]) if field]
+    if not fields:
+        fields = ["name"]
+    orders = [order for order in (sort_order or []) if order in {"asc", "desc"}]
+    default_order = orders[0] if orders else "asc"
+    specs: list[tuple[str, str]] = []
+    for index, field in enumerate(fields):
+        order = orders[index] if index < len(orders) else default_order
+        specs.append((field, order))
+    return specs
+
+
+def _build_sql_order_by(sort_specs: list[tuple[str, str]], sort_columns: dict[str, Any]) -> list[Any]:
+    ordering: list[Any] = []
+    for field, order in sort_specs:
+        if field in {"benchmark_score", "best_match"}:
+            continue
+        column = sort_columns.get(field, Model.name)
+        ordering.append(column.asc().nullslast() if order == "asc" else column.desc().nullslast())
+    if not ordering:
+        ordering.append(Model.name.asc().nullslast())
+    if not any(field == "name" for field, _ in sort_specs):
+        ordering.append(Model.name.asc())
+    ordering.append(Model.id.asc())
+    return ordering
+
+
+def _capability_filter_clause(item: str) -> Any:
+    normalized_capability = item.lower().replace("-", "_").strip()
+    if normalized_capability in {"tool_calling", "function_calling"}:
+        return ModelProfile.supports_tool_calling.is_(True)
+    if normalized_capability == "reasoning":
+        return ModelProfile.supports_reasoning.is_(True)
+    if normalized_capability == "vision":
+        return ModelProfile.modalities.contains(["image"])
+    if normalized_capability == "multimodal":
+        return func.jsonb_array_length(ModelProfile.modalities) >= 2
+    if normalized_capability == "long_context":
+        return ModelProfile.context_window >= 131072
+    if normalized_capability == "agents":
+        return or_(
+            ModelProfile.capabilities.contains(["agents"]),
+            ModelProfile.capabilities.contains(["agent"]),
+            ModelProfile.capabilities.contains(["agentic"]),
+        )
+    return ModelProfile.capabilities.contains([normalized_capability])
 
 
 def _license_filter(categories: list[str]) -> Any:
@@ -322,6 +429,71 @@ def _leaderboard_license_index(
     return index
 
 
+def _scoped_catalog_candidates(
+    model_name: str,
+    organization: str,
+    catalog_index: dict[str, list[tuple[Model, ModelProfile | None, str]]],
+) -> list[tuple[Model, ModelProfile | None, str]]:
+    candidates = list(catalog_index.get(canonical_model_name(model_name), []))
+    if not organization:
+        return candidates
+    organization_key = canonical_model_name(organization)
+    scoped = [
+        candidate
+        for candidate in candidates
+        if canonical_model_name(candidate[2]) == organization_key
+    ]
+    return scoped or candidates
+
+
+def _resolve_catalog_model(
+    session: DatabaseSession,
+    model_name: str,
+    organization: str,
+    catalog_index: dict[str, list[tuple[Model, ModelProfile | None, str]]],
+) -> Model | None:
+    candidates = _scoped_catalog_candidates(model_name, organization, catalog_index)
+    if candidates:
+        return candidates[0][0]
+
+    normalized_name = model_name.strip().lower().replace("_", "-")
+    slug_match = session.scalar(
+        select(Model)
+        .join(Company, Company.id == Model.company_id)
+        .where(
+            or_(
+                func.lower(Model.slug) == normalized_name,
+                func.lower(Model.slug).like(f"%/{normalized_name}"),
+            )
+        )
+    )
+    if slug_match is not None:
+        return slug_match
+
+    search_rows = list(
+        session.execute(
+            select(Model, Company)
+            .join(Company, Company.id == Model.company_id)
+            .where(
+                Model.slug.ilike(f"%{normalized_name}%")
+                | Model.name.ilike(f"%{model_name.replace('-', '%')}%")
+            )
+            .limit(25)
+        ).all()
+    )
+    if not search_rows:
+        return None
+
+    organization_key = canonical_model_name(organization) if organization else ""
+    organization_slug = organization.strip().lower()
+    for model, company in search_rows:
+        if organization_key and canonical_model_name(company.name) == organization_key:
+            return model
+        if organization_slug and company.slug.lower() == organization_slug:
+            return model
+    return search_rows[0][0]
+
+
 def _resolve_leaderboard_license(
     *,
     raw_license: str | None,
@@ -333,7 +505,7 @@ def _resolve_leaderboard_license(
     if explicit:
         return explicit, "benchmark"
 
-    candidates = catalog_index.get(canonical_model_name(model_name), [])
+    candidates = _scoped_catalog_candidates(model_name, organization, catalog_index)
     organization_key = canonical_model_name(organization)
     same_company = [
         candidate
@@ -400,6 +572,12 @@ def _leaderboard_response(
             organization=row.organization,
             catalog_index=catalog_index,
         )
+        catalog_model = _resolve_catalog_model(
+            session,
+            row.model_external_id,
+            row.organization,
+            catalog_index,
+        )
         details = dict(row.raw_data or {})
         details["license_resolution"] = {
             "method": license_method,
@@ -417,6 +595,7 @@ def _leaderboard_response(
                 "rank": display_rank,
                 "category": row.category,
                 "leaderboard_publish_date": row.published_at,
+                "catalog_model_id": str(catalog_model.id) if catalog_model is not None else None,
                 "details": details,
             }
         )
@@ -795,7 +974,13 @@ def model_facets(session: DatabaseSession) -> dict[str, Any]:
     commercial_use: dict[str, int] = {}
     for model, company, profile in rows:
         item = developers.setdefault(
-            company.slug, {"slug": company.slug, "name": company.name, "count": 0}
+            company.slug,
+            {
+                "slug": company.slug,
+                "name": company.name,
+                "count": 0,
+                "website_url": _resolved_company_website(company),
+            },
         )
         item["count"] += 1
         if model.family:
@@ -854,26 +1039,32 @@ def search_models(
     commercial_use: bool | None = None,
     commercial_use_status: Annotated[list[str] | None, Query()] = None,
     benchmark_focus: str | None = None,
-    sort_by: Annotated[
-        str,
-        Query(
-            pattern="^(name|provider|input_price|output_price|context|release_date|"
-            "benchmark_score|parameter_count|active_parameter_count|backend|updated_at|best_match)$"
-        ),
-    ] = "name",
-    sort_order: Literal["asc", "desc"] = "asc",
+    advancedness: Annotated[list[str] | None, Query()] = None,
+    sort_by: Annotated[list[str] | None, Query()] = None,
+    sort_order: Annotated[list[Literal["asc", "desc"]] | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> dict[str, Any]:
     """Apply simultaneous hard filters and optional evidence-based benchmark ranking."""
     if benchmark_focus and benchmark_focus not in BENCHMARK_FOCUSES:
         raise HTTPException(status_code=422, detail="Unknown benchmark focus")
+    normalized_advancedness = {item.lower() for item in advancedness} if advancedness else set()
+    if normalized_advancedness:
+        allowed = set(ADVANCEDNESS_TIERS) | {"unscored"}
+        unknown = normalized_advancedness - allowed
+        if unknown:
+            raise HTTPException(status_code=422, detail=f"Unknown advancedness tier: {sorted(unknown)[0]}")
+    sort_specs = _normalize_sort_specs(sort_by, sort_order)
+    for field, _ in sort_specs:
+        if not re.fullmatch(SORT_FIELD_PATTERN, field):
+            raise HTTPException(status_code=422, detail=f"Unknown sort field: {field}")
+    primary_sort_by = sort_specs[0][0]
+    primary_sort_order = sort_specs[0][1]
     filters: list[Any] = []
     if search:
-        pattern = f"%{search.strip()}%"
-        filters.append(
-            Model.name.ilike(pattern) | Model.slug.ilike(pattern) | Company.name.ilike(pattern)
-        )
+        search_filter = _model_search_filter(search)
+        if search_filter is not None:
+            filters.append(search_filter)
     if developer:
         filters.append(Company.slug.in_([item.lower() for item in developer]))
     if provider:
@@ -919,30 +1110,14 @@ def search_models(
         if "unknown" in normalized_commercial:
             commercial_clauses.append(ModelProfile.commercial_use_status.is_(None))
         filters.append(or_(*commercial_clauses))
-    for item in capability or []:
-        normalized_capability = item.lower().replace("-", "_").strip()
-        if normalized_capability in {"tool_calling", "function_calling"}:
-            filters.append(ModelProfile.supports_tool_calling.is_(True))
-        elif normalized_capability == "reasoning":
-            filters.append(ModelProfile.supports_reasoning.is_(True))
-        elif normalized_capability == "vision":
-            filters.append(ModelProfile.modalities.contains(["image"]))
-        elif normalized_capability == "multimodal":
-            filters.append(func.jsonb_array_length(ModelProfile.modalities) >= 2)
-        elif normalized_capability == "long_context":
-            filters.append(ModelProfile.context_window >= 131072)
-        elif normalized_capability == "agents":
-            filters.append(
-                or_(
-                    ModelProfile.capabilities.contains(["agents"]),
-                    ModelProfile.capabilities.contains(["agent"]),
-                    ModelProfile.capabilities.contains(["agentic"]),
-                )
-            )
-        else:
-            filters.append(ModelProfile.capabilities.contains([normalized_capability]))
-    for item in modality or []:
-        filters.append(ModelProfile.modalities.contains([item.lower()]))
+    if capability:
+        capability_clauses = [_capability_filter_clause(item) for item in capability]
+        if capability_clauses:
+            filters.append(or_(*capability_clauses))
+    if modality:
+        modality_clauses = [ModelProfile.modalities.contains([item.lower()]) for item in modality]
+        if modality_clauses:
+            filters.append(or_(*modality_clauses))
 
     backend_name = (
         select(func.min(PriceObservation.provider))
@@ -963,24 +1138,38 @@ def search_models(
         "updated_at": ModelProfile.updated_at,
         "best_match": Model.name,
     }
-    sort_column = sort_columns.get(sort_by, Model.name)
-    ordering = sort_column.asc() if sort_order == "asc" else sort_column.desc()
+    ordering = _build_sql_order_by(sort_specs, sort_columns)
     query = (
         select(Model, Company, ModelProfile)
         .join(ModelProfile, ModelProfile.model_id == Model.id)
         .join(Company, Company.id == Model.company_id)
         .where(*filters)
-        .order_by(ordering.nullslast(), Model.name.asc(), Model.id.asc())
+        .order_by(*ordering)
     )
-    match_focus = benchmark_focus or ("general" if sort_by == "benchmark_score" else None)
-    matches = selection_matches(session, match_focus) if match_focus else {}
-    requires_python_ranking = bool(benchmark_focus or sort_by == "benchmark_score")
+    match_focus = benchmark_focus or "general"
+    matches = selection_matches(session, match_focus)
+    requires_python_ranking = bool(
+        normalized_advancedness
+        or benchmark_focus
+        or primary_sort_by in {"benchmark_score", "best_match"}
+    )
     if requires_python_ranking:
         rows = list(session.execute(query).all())
         if benchmark_focus:
             rows = [row for row in rows if canonical_model_name(row[0].name) in matches]
-        if sort_by in {"benchmark_score", "best_match"}:
-            score_direction = 1 if sort_by == "benchmark_score" and sort_order == "asc" else -1
+        if normalized_advancedness:
+            rows = [
+                row
+                for row in rows
+                if matches_advancedness_filter(
+                    matches[canonical_model_name(row[0].name)].score
+                    if canonical_model_name(row[0].name) in matches
+                    else None,
+                    normalized_advancedness,
+                )
+            ]
+        if primary_sort_by in {"benchmark_score", "best_match"}:
+            score_direction = 1 if primary_sort_by == "benchmark_score" and primary_sort_order == "asc" else -1
             rows.sort(
                 key=lambda row: (
                     canonical_model_name(row[0].name) not in matches,
@@ -1021,7 +1210,11 @@ def search_models(
             "id": str(model.id),
             "slug": model.slug,
             "name": model.name,
-            "developer": {"slug": company.slug, "name": company.name},
+            "developer": {
+                "slug": company.slug,
+                "name": company.name,
+                "website_url": _resolved_company_website(company),
+            },
             "provider": (
                 {"slug": model_providers[0], "name": model_providers[0]}
                 if model_providers
@@ -1061,6 +1254,7 @@ def search_models(
                 "benchmarks": match.benchmarks,
                 "evidence_count": match.evidence_count,
                 "basis": match.basis,
+                "advancedness_tier": advancedness_tier_for_score(match.score),
                 "explanation": (
                     "Zorunlu filtreler uygulandı; doğrulanmış profil modalitelerine göre sıralandı."
                     if match.basis == "profile"
@@ -1074,8 +1268,9 @@ def search_models(
         "limit": limit,
         "offset": offset,
         "benchmark_focus": benchmark_focus,
-        "sort_by": sort_by,
-        "sort_order": sort_order,
+        "advancedness": sorted(normalized_advancedness),
+        "sort_by": [field for field, _ in sort_specs],
+        "sort_order": [order for _, order in sort_specs],
         "items": [serialize(model, company, profile) for model, company, profile in paged_rows],
     }
 
@@ -1102,8 +1297,8 @@ def select_models(request: ModelSelectionRequest, session: DatabaseSession) -> d
         commercial_use=request.commercial_use,
         commercial_use_status=request.commercial_use_statuses or None,
         benchmark_focus=request.use_case,
-        sort_by="best_match",
-        sort_order="asc",
+        sort_by=["best_match"],
+        sort_order=["asc"],
         limit=request.limit,
         offset=0,
     )
@@ -1115,6 +1310,66 @@ def select_models(request: ModelSelectionRequest, session: DatabaseSession) -> d
         "total": result["total"],
         "items": items,
     }
+
+
+def _resolved_availability(model: Model, profile: ModelProfile | None) -> str | None:
+    if profile is not None:
+        if profile.availability:
+            return profile.availability
+        if profile.openness and profile.openness != "unknown":
+            return profile.openness
+    if model.is_open_weight is True:
+        return "open_weight"
+    if model.is_open_weight is False:
+        return "proprietary"
+    return None
+
+
+def _compare_modalities(model: Model, profile: ModelProfile | None) -> list[str]:
+    if profile is not None and profile.modalities:
+        return list(profile.modalities)
+    capabilities = model.capabilities if isinstance(model.capabilities, dict) else {}
+    merged: list[str] = []
+    for key in ("input_modalities", "output_modalities"):
+        for item in capabilities.get(key) or []:
+            if item and item not in merged:
+                merged.append(str(item))
+    return merged
+
+
+def _resolved_compare_license(
+    model: Model,
+    company: Company,
+    profile: ModelProfile | None,
+) -> str | None:
+    license_name = _catalog_model_license(model, profile)
+    if license_name and license_name.strip().lower() not in {"", "unknown"}:
+        return license_name
+    family_license = _known_family_license(model.name, company.name)
+    if family_license:
+        return family_license
+    return license_name
+
+
+def _resolved_compare_openness(
+    model: Model,
+    company: Company,
+    profile: ModelProfile | None,
+) -> str | None:
+    if profile is not None and profile.openness and profile.openness != "unknown":
+        return profile.openness
+    availability = _resolved_availability(model, profile)
+    if availability:
+        return availability
+    license_name = _resolved_compare_license(model, company, profile)
+    if license_name is None:
+        return None
+    normalized = license_name.strip().lower()
+    if normalized in {"proprietary", "not applicable"}:
+        return "proprietary"
+    if normalized in {"open", "mit", "apache-2.0"} or "apache" in normalized:
+        return "open_weight" if normalized == "open" else "open_source"
+    return None
 
 
 @router.get("/models/compare", tags=["models"])
@@ -1130,12 +1385,21 @@ def compare_model_features(
     ).all()
     if len(rows) != len(set(ids)):
         raise HTTPException(status_code=404, detail="One or more models were not found")
+    benchmark_index = selection_matches(session, "general")
     return {
         "items": [
             {
                 "id": str(model.id),
                 "name": model.name,
                 "provider": {"slug": company.slug, "name": company.name},
+                "selection": None
+                if (match := benchmark_index.get(canonical_model_name(model.name))) is None
+                else {
+                    "benchmark_score": match.score,
+                    "best_rank": match.best_rank,
+                    "benchmarks": list(match.benchmarks),
+                    "evidence_count": match.evidence_count,
+                },
                 "features": {
                     "family": model.family,
                     "context_window": profile.context_window if profile else model.context_window,
@@ -1149,12 +1413,16 @@ def compare_model_features(
                     "cache_read_price": str(profile.cache_read_price)
                     if profile and profile.cache_read_price is not None
                     else None,
-                    "modalities": profile.modalities if profile else [],
+                    "modalities": _compare_modalities(model, profile),
                     "capabilities": profile.capabilities if profile else [],
                     "tool_calling": profile.supports_tool_calling if profile else None,
                     "reasoning": profile.supports_reasoning if profile else None,
-                    "availability": profile.availability if profile else None,
-                    "license": profile.license if profile else model.license,
+                    "availability": _resolved_availability(model, profile)
+                    or _resolved_compare_openness(model, company, profile),
+                    "openness": _resolved_compare_openness(model, company, profile),
+                    "license": _resolved_compare_license(model, company, profile),
+                    "license_raw": (profile.license if profile else None) or model.license,
+                    "commercial_use_status": profile.commercial_use_status if profile else None,
                 },
                 "source_id": str(profile.source_id) if profile else None,
                 "observed_at": profile.observed_at if profile else None,
@@ -1200,6 +1468,25 @@ def model_history(
             if getattr(row, metric) is not None
         ]
     return {"model_id": str(model_id), "metric": metric, "items": points}
+
+
+@router.get("/models/resolve", tags=["models"])
+def resolve_model(
+    session: DatabaseSession,
+    name: Annotated[str, Query(min_length=1, max_length=200)],
+    organization: Annotated[str | None, Query(max_length=200)] = None,
+) -> dict[str, Any]:
+    catalog_index = _leaderboard_license_index(session)
+    model = _resolve_catalog_model(session, name, organization or "", catalog_index)
+    if model is None:
+        raise HTTPException(status_code=404, detail="Model not found in catalog")
+    company = session.get(Company, model.company_id)
+    return {
+        "id": str(model.id),
+        "slug": model.slug,
+        "name": model.name,
+        "company": company.name if company is not None else None,
+    }
 
 
 @router.get("/models/{model_id}", tags=["models"])

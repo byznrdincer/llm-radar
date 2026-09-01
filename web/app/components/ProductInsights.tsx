@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -15,8 +15,6 @@ import {
   YAxis,
 } from "recharts";
 
-import { getSessionId, trackEvent } from "../lib/analytics";
-
 type RankedModel = { model_id: string; name: string; company: string; count: number };
 type PopularData = {
   window_days: number;
@@ -25,6 +23,13 @@ type PopularData = {
   most_compared: RankedModel[];
   rising: RankedModel[];
   most_requested: { name: string; count: number }[];
+};
+type SpotlightData = {
+  period: "week" | "month" | "year";
+  window_days: number;
+  label: string;
+  metric_note: string;
+  items: RankedModel[];
 };
 type FrontierData = {
   benchmark: string;
@@ -52,6 +57,7 @@ type TurkishModel = {
   license: string | null;
   downloads: number | null;
   likes: number | null;
+  benchmark_score: number | null;
   last_updated: string;
 };
 type TurkishData = { selection_note: string; items: TurkishModel[] };
@@ -64,14 +70,8 @@ const emptyPopular: PopularData = {
   rising: [],
   most_requested: [],
 };
-const demandOptions = ["Qwen", "DeepSeek", "Kimi", "GLM", "Mistral"];
-const feedbackOptions = [
-  ["missing_model", "Eksik model"],
-  ["filter_suggestion", "Filtre önerisi"],
-  ["bug_report", "Hata bildirimi"],
-  ["feature_request", "Özellik isteği"],
-  ["general", "Genel yorum"],
-];
+
+const TURKISH_PAGE_SIZE = 10;
 
 function compact(value: number | null): string {
   if (value == null) return "—";
@@ -100,21 +100,34 @@ function InterestList({ title, items }: { title: string; items: { name: string; 
   );
 }
 
-export default function ProductInsights({ api }: { api: string }) {
+export type InsightsView = "popularity" | "insights" | "turkish";
+
+export default function ProductInsights({ api, view }: { api: string; view: InsightsView }) {
   const [popular, setPopular] = useState<PopularData>(emptyPopular);
+  const [spotlightPeriod, setSpotlightPeriod] = useState<"week" | "month" | "year">("week");
+  const [spotlight, setSpotlight] = useState<SpotlightData | null>(null);
   const [frontier, setFrontier] = useState<FrontierData | null>(null);
   const [openness, setOpenness] = useState<OpennessData | null>(null);
   const [turkish, setTurkish] = useState<TurkishData>({ selection_note: "", items: [] });
-  const [feedbackType, setFeedbackType] = useState("general");
-  const [message, setMessage] = useState("");
-  const [feedbackState, setFeedbackState] = useState<"idle" | "sending" | "success" | "error">(
-    "idle",
+  const [turkishPage, setTurkishPage] = useState(1);
+
+  useEffect(() => {
+    setTurkishPage(1);
+  }, [turkish.items.length]);
+
+  const turkishPages = Math.max(1, Math.ceil(turkish.items.length / TURKISH_PAGE_SIZE));
+  const visibleTurkish = useMemo(
+    () =>
+      turkish.items.slice(
+        (turkishPage - 1) * TURKISH_PAGE_SIZE,
+        turkishPage * TURKISH_PAGE_SIZE,
+      ),
+    [turkish.items, turkishPage],
   );
-  const [demand, setDemand] = useState<string[]>([]);
-  const [otherModel, setOtherModel] = useState("");
-  const [demandState, setDemandState] = useState<"idle" | "sending" | "success" | "error">(
-    "idle",
-  );
+
+  useEffect(() => {
+    if (turkishPage > turkishPages) setTurkishPage(turkishPages);
+  }, [turkishPage, turkishPages]);
 
   useEffect(() => {
     const optional = (url: string) => fetch(url)
@@ -122,16 +135,18 @@ export default function ProductInsights({ api }: { api: string }) {
       .catch(() => null);
     void Promise.all([
       optional(`${api}/api/v1/analytics/popular?days=30&limit=8`),
+      optional(`${api}/api/v1/analytics/spotlight?period=${spotlightPeriod}&limit=5`),
       optional(`${api}/api/v1/insights/country-frontier?limit=6`),
       optional(`${api}/api/v1/insights/openness-trend`),
       optional(`${api}/api/v1/models/turkish?limit=100`),
-    ]).then(([popularData, frontierData, opennessData, turkishData]) => {
+    ]).then(([popularData, spotlightData, frontierData, opennessData, turkishData]) => {
       if (popularData) setPopular(popularData);
+      if (spotlightData) setSpotlight(spotlightData);
       if (frontierData) setFrontier(frontierData);
       if (opennessData) setOpenness(opennessData);
       if (turkishData) setTurkish(turkishData);
     });
-  }, [api]);
+  }, [api, spotlightPeriod]);
 
   const frontierRows = useMemo(
     () =>
@@ -142,58 +157,10 @@ export default function ProductInsights({ api }: { api: string }) {
     [frontier],
   );
 
-  async function submitFeedback(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (message.trim().length < 3 || feedbackState === "sending") return;
-    setFeedbackState("sending");
-    try {
-      const response = await fetch(`${api}/api/v1/feedback`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          submission_id: window.crypto.randomUUID(),
-          session_id: getSessionId(),
-          feedback_type: feedbackType,
-          message,
-        }),
-      });
-      if (!response.ok) throw new Error("Feedback gönderilemedi");
-      trackEvent(api, "feedback_submitted", { metadata: { feedback_type: feedbackType } });
-      setMessage("");
-      setFeedbackState("success");
-    } catch {
-      setFeedbackState("error");
-    }
-  }
-
-  async function submitDemand(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if ((!demand.length && !otherModel.trim()) || demandState === "sending") return;
-    setDemandState("sending");
-    try {
-      const response = await fetch(`${api}/api/v1/model-demands`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          submission_id: window.crypto.randomUUID(),
-          session_id: getSessionId(),
-          requested_models: demand,
-          other_model: otherModel,
-        }),
-      });
-      if (!response.ok) throw new Error("Talep gönderilemedi");
-      trackEvent(api, "model_requested", { metadata: { requested_models: demand } });
-      setDemand([]);
-      setOtherModel("");
-      setDemandState("success");
-    } catch {
-      setDemandState("error");
-    }
-  }
-
   return (
     <>
-      <section className="catalog-section interest-section" id="popularity">
+      {view === "popularity" && (
+      <section className="catalog-section interest-section app-page" id="popularity">
         <div className="section-title">
           <div>
             <p className="kicker">KULLANICI İLGİSİ</p>
@@ -201,15 +168,37 @@ export default function ProductInsights({ api }: { api: string }) {
           </div>
           <p>{popular.metric_note}</p>
         </div>
+        <div className="spotlight-toolbar">
+          <label>
+            <span>ÖNE ÇIKAN DÖNEM</span>
+            <select
+              value={spotlightPeriod}
+              onChange={(event) =>
+                setSpotlightPeriod(event.target.value as "week" | "month" | "year")
+              }
+            >
+              <option value="week">Haftanın modeli</option>
+              <option value="month">Ayın modeli</option>
+              <option value="year">Yılın modeli</option>
+            </select>
+          </label>
+          <p>{spotlight?.metric_note ?? "Etkileşim verisi geldikçe güncellenir."}</p>
+        </div>
         <div className="interest-grid">
+          <InterestList
+            title={spotlight?.label ?? "Öne çıkan modeller"}
+            items={spotlight?.items ?? []}
+          />
           <InterestList title="En çok incelenen" items={popular.most_viewed} />
           <InterestList title="En çok karşılaştırılan" items={popular.most_compared} />
           <InterestList title="Son 7 günde yükselen" items={popular.rising} />
           <InterestList title="En çok talep edilen" items={popular.most_requested} />
         </div>
       </section>
+      )}
 
-      <section className="compare-section analysis-section" id="insights">
+      {view === "insights" && (
+      <section className="compare-section analysis-section app-page" id="insights">
         <div className="section-title">
           <div>
             <p className="kicker">PAZAR ANALİZİ</p>
@@ -277,54 +266,88 @@ export default function ProductInsights({ api }: { api: string }) {
           </article>
         </div>
       </section>
+      )}
 
-      <section className="catalog-section" id="turkish">
+      {view === "turkish" && (
+      <section className="catalog-section app-page" id="turkish">
         <div className="section-title">
           <div>
             <p className="kicker">TÜRKİYE LLM EKOSİSTEMİ</p>
             <h2>Türkçe odaklı modeller.</h2>
           </div>
-          <p>{turkish.selection_note || "Kaynak etiketleriyle doğrulanan modeller."}</p>
+          <p>
+            {turkish.selection_note || "Kaynak etiketleriyle doğrulanan modeller."}
+            {turkish.items.length > 0 && (
+              <> · <strong>{turkish.items.length}</strong> model</>
+            )}
+          </p>
         </div>
         {turkish.items.length ? (
-          <div className="panel table-wrap rich-table">
-            <table>
-              <thead><tr><th>MODEL</th><th>KURULUŞ</th><th>TEMEL MODEL</th><th>PARAMETRE</th><th>LİSANS</th><th>İNDİRME</th><th>BEĞENİ</th><th>GÜNCELLEME</th></tr></thead>
-              <tbody>{turkish.items.map((model) => <tr key={model.id}><td><strong>{model.name}</strong></td><td>{model.organization}</td><td>{model.base_model ?? "—"}</td><td className="mono">{compact(model.parameter_count)}</td><td>{model.license ?? "—"}</td><td className="mono">{compact(model.downloads)}</td><td className="mono">{compact(model.likes)}</td><td>{new Date(model.last_updated).toLocaleDateString("tr-TR")}</td></tr>)}</tbody>
-            </table>
-          </div>
+          <>
+            <div className="panel table-wrap rich-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>MODEL</th>
+                    <th>KURULUŞ</th>
+                    <th>TEMEL MODEL</th>
+                    <th>PARAMETRE</th>
+                    <th>LİSANS</th>
+                    <th>İNDİRME</th>
+                    <th>BEĞENİ</th>
+                    <th>BENCHMARK</th>
+                    <th>GÜNCELLEME</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleTurkish.map((model) => (
+                    <tr key={model.id}>
+                      <td><strong>{model.name}</strong></td>
+                      <td>{model.organization}</td>
+                      <td>{model.base_model ?? "—"}</td>
+                      <td className="mono">{compact(model.parameter_count)}</td>
+                      <td>{model.license ?? "—"}</td>
+                      <td className="mono">{compact(model.downloads)}</td>
+                      <td className="mono">{compact(model.likes)}</td>
+                      <td className="mono">
+                        {model.benchmark_score != null ? `%${model.benchmark_score}` : "—"}
+                      </td>
+                      <td>{new Date(model.last_updated).toLocaleDateString("tr-TR")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {turkishPages > 1 && (
+              <div className="pagination turkish-pagination">
+                <button
+                  type="button"
+                  disabled={turkishPage === 1}
+                  onClick={() => setTurkishPage((current) => current - 1)}
+                >
+                  ← Önceki
+                </button>
+                <span>
+                  Sayfa {turkishPage} / {turkishPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={turkishPage === turkishPages}
+                  onClick={() => setTurkishPage((current) => current + 1)}
+                >
+                  Sonraki →
+                </button>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="empty-light">Doğrulanmış Türkçe/Türkiye modeli henüz katalogda bulunmuyor. Hugging Face collector’ı bu bölümü otomatik dolduracak.</div>
+          <div className="empty-light">
+            Doğrulanmış Türkçe/Türkiye modeli henüz katalogda bulunmuyor. Hugging Face collector’ı
+            bu bölümü otomatik dolduracak.
+          </div>
         )}
       </section>
-
-      <section className="feedback-section" id="feedback">
-        <div className="section-title">
-          <div>
-            <p className="kicker">GERİ BİLDİRİM VE LLMaaS</p>
-            <h2>Eksik olanı birlikte tamamlayalım.</h2>
-          </div>
-          <p>Kişisel bilgi istemiyoruz; gönderimler yalnızca anonim session kimliğiyle ilişkilendirilir.</p>
-        </div>
-        <div className="feedback-grid">
-          <form onSubmit={submitFeedback}>
-            <h3>Geri bildirim gönder</h3>
-            <label><span>Tür</span><select value={feedbackType} onChange={(event) => setFeedbackType(event.target.value)}>{feedbackOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
-            <label><span>Mesaj</span><textarea value={message} minLength={3} maxLength={4000} required onChange={(event) => { setMessage(event.target.value); setFeedbackState("idle"); }} placeholder="Eksik model, hatalı fiyat veya istediğin özelliği anlat." /></label>
-            <button type="submit" disabled={message.trim().length < 3 || feedbackState === "sending"}>{feedbackState === "sending" ? "Gönderiliyor…" : "Gönder"}</button>
-            {feedbackState === "success" && <p className="form-success" role="status">Geri bildirimin kaydedildi.</p>}
-            {feedbackState === "error" && <p className="form-error" role="alert">Gönderilemedi; lütfen tekrar dene.</p>}
-          </form>
-          <form onSubmit={submitDemand}>
-            <h3>Hangi modeli LLMaaS olarak istersin?</h3>
-            <fieldset><legend>Birden fazla seçebilirsin</legend>{demandOptions.map((model) => <label className="check-row" key={model}><input type="checkbox" checked={demand.includes(model)} onChange={() => { setDemand((current) => current.includes(model) ? current.filter((item) => item !== model) : [...current, model]); setDemandState("idle"); }} /><span>{model}</span></label>)}</fieldset>
-            <label><span>Diğer</span><input value={otherModel} maxLength={200} onChange={(event) => { setOtherModel(event.target.value); setDemandState("idle"); }} placeholder="Başka bir model adı" /></label>
-            <button type="submit" disabled={(!demand.length && !otherModel.trim()) || demandState === "sending"}>{demandState === "sending" ? "Kaydediliyor…" : "Talebi kaydet"}</button>
-            {demandState === "success" && <p className="form-success" role="status">Model talebin kaydedildi.</p>}
-            {demandState === "error" && <p className="form-error" role="alert">Talep kaydedilemedi; tekrar dene.</p>}
-          </form>
-        </div>
-      </section>
+      )}
     </>
   );
 }

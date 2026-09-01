@@ -23,6 +23,13 @@ BENCHMARK_FOCUSES: dict[str, tuple[str, ...]] = {
     "multimodal": ("multimodal", "vision", "image"),
 }
 
+ADVANCEDNESS_TIERS: dict[str, tuple[float, float]] = {
+    "entry": (0.0, 39.9),
+    "mid": (40.0, 69.9),
+    "advanced": (70.0, 84.9),
+    "frontier": (85.0, 100.0),
+}
+
 
 @dataclass(frozen=True, slots=True)
 class BenchmarkMatch:
@@ -124,3 +131,21 @@ def selection_matches(session: Session, focus: str) -> dict[str, BenchmarkMatch]
     if matches or focus != "multimodal":
         return matches
     return multimodal_profile_matches(session)
+
+
+def advancedness_tier_for_score(score: float | None) -> str | None:
+    if score is None:
+        return None
+    for tier, (lower, upper) in ADVANCEDNESS_TIERS.items():
+        if lower <= score <= upper:
+            return tier
+    return None
+
+
+def matches_advancedness_filter(score: float | None, selected_tiers: set[str]) -> bool:
+    if not selected_tiers:
+        return True
+    if score is None:
+        return "unscored" in selected_tiers
+    tier = advancedness_tier_for_score(score)
+    return tier in selected_tiers if tier is not None else False

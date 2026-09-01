@@ -90,6 +90,19 @@ def normalize_model_features(payload: dict[str, Any]) -> NormalizedModelFeatures
     capabilities = sorted(
         set(capabilities) | {name for name, enabled in inferred.items() if enabled}
     )
+    runtime_flags = (
+        "local_runnable",
+        "ollama_compatible",
+        "lm_studio_compatible",
+        "vision",
+        "tool_calling",
+        "reasoning",
+        "embedding",
+    )
+    for flag in runtime_flags:
+        if payload.get(flag) is True and flag not in capabilities:
+            capabilities.append(flag)
+    capabilities = sorted(set(capabilities))
 
     is_open_weight = _optional_bool(payload.get("is_open_weight"))
     is_open_source = _optional_bool(payload.get("is_open_source"))

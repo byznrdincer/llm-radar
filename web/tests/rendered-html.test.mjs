@@ -57,7 +57,8 @@ test("renders the sidebar, comparison chart entry point and benchmark help", asy
   assert.match(html, /aria-label="Ana navigasyon"/);
   assert.match(html, /Model kataloğu/);
   assert.match(html, /Benchmarklar/);
-  assert.match(html, /Grafikle karşılaştır/);
+  assert.match(html, /Akıllı model karşılaştırması/);
+  assert.match(html, /Model kataloğundan seç/);
   assert.match(html, /aria-haspopup="dialog"/);
   assert.match(html, /Chatbot Arena hakkında bilgi/);
 });

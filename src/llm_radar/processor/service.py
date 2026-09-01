@@ -32,9 +32,15 @@ from llm_radar.event_intelligence import classify_event, score_importance
 from llm_radar.events.schemas import EventEnvelope, EventType
 from llm_radar.events.topics import PROCESSED_EVENTS, TOPIC_BY_EVENT_TYPE
 from llm_radar.model_family import infer_model_family
+from llm_radar.company_domains import company_website_url
 from llm_radar.normalize import company_display_name, normalize_company_name
 from llm_radar.notifications import dispatch_notifications
 from llm_radar.pipeline import canonical_hash, duplicate_reasons, remember_fingerprint
+from llm_radar.canonical_pipeline import (
+    link_cross_source_models,
+    merge_runtime_capabilities,
+    observation_fingerprints,
+)
 from llm_radar.processor.change_detector import detect_changes
 from llm_radar.profile_service import (
     propagate_availability_evidence,
@@ -546,9 +552,15 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
     company_slug = _company_slug(event.entity_key)
     company = session.scalar(select(Company).where(Company.slug == company_slug))
     if company is None:
-        company = Company(name=company_display_name(company_slug), slug=company_slug)
+        company = Company(
+            name=company_display_name(company_slug),
+            slug=company_slug,
+            website_url=company_website_url(company_slug),
+        )
         session.add(company)
         session.flush()
+    elif not company.website_url:
+        company.website_url = company_website_url(company_slug)
 
     model = session.scalar(select(Model).where(Model.slug == event.entity_key)) or session.scalar(
         select(Model).where(Model.slug == resolution.canonical_key)
@@ -577,6 +589,13 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
         )
         session.add(model)
         session.flush()
+        link_cross_source_models(
+            session,
+            model,
+            entity_key=event.entity_key,
+            display_name=str(payload.get("name") or event.entity_key),
+            is_new=True,
+        )
     elif model.company_id != company.id:
         # Provider aliases such as OpenRouter's ``~openai`` belong to the
         # canonical company and must never create a separate filter option.
@@ -666,6 +685,9 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
             "output_modalities": payload.get(
                 "output_modalities", model.capabilities.get("output_modalities", [])
             ),
+            "runtime": merge_runtime_capabilities(
+                model.capabilities.get("runtime"), payload
+            ),
         }
         _record_observation(
             session,
@@ -723,7 +745,6 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
 def process_event(session: Session, event: EventEnvelope) -> list[ChangeEvent]:
     fingerprints = {
         "event_id": str(event.event_id),
-        "content_hash": event.metadata.content_hash or canonical_hash(event.payload),
         "entity_type_date": canonical_hash(
             {
                 "entity": event.entity_key,
@@ -731,6 +752,7 @@ def process_event(session: Session, event: EventEnvelope) -> list[ChangeEvent]:
                 "day": event.occurred_at.date().isoformat(),
             }
         ),
+        **observation_fingerprints(event.event_id, event.payload),
     }
     reasons = duplicate_reasons(session, event.event_id, fingerprints)
     if "event_id" in reasons or (

@@ -54,7 +54,13 @@ def _field_is_asserted(payload: dict[str, Any], field: str) -> bool:
             "license",
         ),
         "modalities": ("input_modalities", "output_modalities"),
-        "capabilities": ("capabilities", "supported_parameters"),
+        "capabilities": (
+            "capabilities",
+            "supported_parameters",
+            "local_runnable",
+            "ollama_compatible",
+            "lm_studio_compatible",
+        ),
     }
     return any(key in payload for key in aliases.get(field, (field,)))
 

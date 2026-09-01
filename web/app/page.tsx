@@ -1,7 +1,11 @@
 "use client";
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Legend, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, } from "recharts";
 import ProductInsights from "./components/ProductInsights";
+import type { InsightsView } from "./components/ProductInsights";
+import LeaderboardPage, { LIVEBENCH_VIEW_CATEGORY, type Leaderboard, type LeaderboardItem, type LeaderboardView } from "./components/LeaderboardPage";
+import ModelCatalogPage, { ADVANCEDNESS_LABELS, DEFAULT_SORT_STACK, type CatalogSortSpec } from "./components/ModelCatalogPage";
+import SmartModelComparison from "./components/SmartModelComparison";
+import FeedbackPage from "./components/FeedbackPage";
 import { trackEvent } from "./lib/analytics";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const PAGE_SIZE = 20;
@@ -84,6 +88,12 @@ type SearchModelItem = {
 };
 type ComparedModel = {
     id: string;
+    selection?: {
+        benchmark_score: number;
+        best_rank: number;
+        benchmarks?: string[];
+        evidence_count?: number;
+    } | null;
     features: {
         context_window: number | null;
         input_price: string | null;
@@ -138,29 +148,7 @@ type EventItem = {
     importance_score: number;
     detected_at: string;
 };
-type LeaderboardItem = {
-    model_name: string;
-    organization: string;
-    license: string;
-    rating: number;
-    rating_lower: number | null;
-    rating_upper: number | null;
-    vote_count: number | null;
-    rank: number;
-    category: string;
-    leaderboard_publish_date: string;
-    details: Record<string, unknown>;
-};
-type Leaderboard = {
-    source: {
-        name: string;
-        url: string;
-        benchmark: string;
-    };
-    category: string;
-    published_at: string | null;
-    items: LeaderboardItem[];
-};
+type LeaderboardItem = import("./components/LeaderboardPage").LeaderboardItem;
 type SourceCatalogItem = {
     slug: string;
     name: string;
@@ -203,6 +191,7 @@ type Facets = {
         slug: string;
         name: string;
         count: number;
+        website_url?: string | null;
     }[];
     providers: {
         slug: string;
@@ -233,14 +222,13 @@ type Facets = {
 };
 type SortBy = "name" | "provider" | "context" | "input_price" | "output_price" | "release_date" | "benchmark_score" | "parameter_count" | "active_parameter_count" | "backend" | "updated_at" | "best_match";
 type SortOrder = "asc" | "desc";
-type LeaderboardView = "general" | "coding" | "swe-live" | "tau-bench" | "intelligence" | "aa-coding" | "agentic" | "livebench" | "mmlu-pro" | "livecodebench";
 const emptyStats: Stats = { companies: 0, models: 0, snapshots: 0, price_observations: 0, change_events: 0 };
-const capabilityLabels: Record<string, string> = { reasoning: "Reasoning", coding: "Coding", vision: "Vision", multimodal: "Multimodal", tool_calling: "Tool calling", function_calling: "Function calling", computer_use: "Computer use", agents: "Agents", long_context: "Long context", web_search: "Web arama", prompt_caching: "Prompt önbellek", audio_input: "Ses girdisi" };
+const capabilityLabels: Record<string, string> = { reasoning: "Reasoning", coding: "Coding", vision: "Vision", multimodal: "Multimodal", tool_calling: "Tool calling", function_calling: "Function calling", computer_use: "Computer use", agents: "Agents", long_context: "Long context", web_search: "Web arama", prompt_caching: "Prompt önbellek", audio_input: "Ses girdisi", local_runnable: "Yerel çalıştırılabilir", ollama_compatible: "Ollama uyumlu", lm_studio_compatible: "LM Studio uyumlu" };
+const opennessLabels: Record<string, string> = { open_source: "Açık kaynak", open_weight: "Açık ağırlık", proprietary: "Kapalı kaynak", unknown: "Bilinmiyor" };
+const runtimeCapabilityOptions = ["local_runnable", "ollama_compatible", "lm_studio_compatible"];
 const sortLabels: Record<SortBy, string> = { name: "Model adı", provider: "Geliştirici", context: "Context", input_price: "Girdi fiyatı", output_price: "Çıktı fiyatı", release_date: "Yayın tarihi", benchmark_score: "Benchmark puanı", parameter_count: "Parametre sayısı", active_parameter_count: "Aktif parametre", backend: "Backend", updated_at: "En güncel", best_match: "Benchmark uyumu" };
 function money(value: string | null | undefined) { if (value == null)
     return "—"; return `$${Number(value).toLocaleString("tr-TR", { maximumFractionDigits: 4 })}`; }
-function numeric(value: string | null | undefined) { if (value == null || value === "")
-    return null; const parsed = Number(value); return Number.isFinite(parsed) ? parsed : null; }
 function compact(value: number) { if (value >= 1000000)
     return `${(value / 1000000).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}M`; if (value >= 1000)
     return `${(value / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}K`; return value.toLocaleString("tr-TR"); }
@@ -248,7 +236,21 @@ function trModality(tag: string) {
     const map: Record<string, string> = { text: "metin", image: "gorsel", audio: "ses", video: "video" };
     return map[tag.toLowerCase()] ?? tag;
 }
-function trCapability(tag: string) { return capabilityLabels[tag.toLowerCase()] ?? tag; }
+function normalizeModelKey(value: string) {
+    return value.toLowerCase().trim().replace(/_/g, "-");
+}
+function findLocalModel(modelName: string, organization: string, catalog: ModelItem[]) {
+    const key = normalizeModelKey(modelName);
+    const orgKey = organization.toLowerCase().trim();
+    const candidates = catalog.filter(model => {
+        const slug = normalizeModelKey(model.slug);
+        const name = normalizeModelKey(model.name);
+        return slug === key || name === key || slug.includes(key) || key.includes(slug);
+    });
+    if (!candidates.length)
+        return null;
+    return candidates.find(model => model.company.name.toLowerCase() === orgKey || model.company.slug === orgKey) ?? candidates[0];
+}
 function daysAgoIso(days: number) { const d = new Date(); d.setDate(d.getDate() - days); return d.toISOString(); }
 function canOpenSourceUrl(url: string | null | undefined) {
     if (!url)
@@ -286,23 +288,28 @@ const eventMeta: Record<string, {
     "price.changed": { label: "Fiyat hareketi", icon: "$", className: "price" },
 };
 function eventInfo(type: string) { return eventMeta[type] ?? { label: type.replaceAll(".", " "), icon: "•", className: "other" }; }
-function sourceBadge(license: string | null | undefined) {
-    const normalized = (license ?? "").trim().toLowerCase();
-    if (normalized === "not applicable" || normalized === "n/a")
-        return { label: "N/A", description: "Tek bir modele ait olmayan benchmark girdisi", kind: "na" };
-    if (!normalized || normalized === "unknown")
-        return { label: "?", description: "Ağırlık erişimi henüz doğrulanmadı", kind: "unknown" };
-    if (normalized.includes("proprietary") || normalized.includes("closed source") || normalized.includes("closed-source"))
-        return { label: "Closed", description: "Kapalı ağırlık / yalnızca servis", kind: "closed" };
-    return { label: "Open", description: "İndirilebilir açık ağırlık", kind: "open" };
-}
 const eventCategories = [["model_release", "Model Release"], ["model_update", "Model Update"], ["ai_agent", "AI Agent"], ["benchmark", "Benchmark"], ["research", "Research"], ["product_launch", "Product Launch"], ["funding", "Funding"], ["acquisition", "Acquisition"], ["partnership", "Partnership"], ["infrastructure", "Infrastructure"], ["regulation", "Regulation"], ["security", "Security"], ["pricing_change", "Pricing Change"], ["api_update", "API Update"]];
 const sidebarGroups = [
-    { label: "Keşfet", items: [{ href: "#overview", label: "Genel bakış", icon: "⌂" }, { href: "#leaderboard", label: "Benchmarklar", icon: "▥" }, { href: "#models", label: "Model kataloğu", icon: "◫" }, { href: "#compare", label: "Karşılaştır", icon: "⇄" }] },
-    { label: "Analiz", items: [{ href: "#popularity", label: "Popüler modeller", icon: "↗" }, { href: "#insights", label: "Pazar grafikleri", icon: "▤" }, { href: "#turkish", label: "Türkiye LLM", icon: "TR" }] },
-    { label: "İstihbarat", items: [{ href: "#events", label: "Gelişmeler", icon: "◉" }, { href: "#research", label: "Araştırma", icon: "⌁" }, { href: "#radar", label: "Teknoloji radarı", icon: "◎" }, { href: "#sources", label: "Kaynaklar", icon: "↗" }] },
-    { label: "Katkı", items: [{ href: "#feedback", label: "Geri bildirim", icon: "+" }] },
+    { label: "Keşfet", items: [{ id: "overview", label: "Genel bakış", icon: "⌂" }, { id: "leaderboard", label: "Benchmarklar", icon: "▥" }, { id: "models", label: "Model kataloğu", icon: "◫" }, { id: "compare", label: "Karşılaştır", icon: "⇄" }] },
+    { label: "Analiz", items: [{ id: "popularity", label: "Popüler modeller", icon: "↗" }, { id: "insights", label: "Pazar grafikleri", icon: "▤" }, { id: "turkish", label: "Türkiye LLM", icon: "TR" }] },
+    { label: "İstihbarat", items: [{ id: "events", label: "Gelişmeler", icon: "◉" }, { id: "research", label: "Araştırma", icon: "⌁" }, { id: "radar", label: "Teknoloji radarı", icon: "◎" }, { id: "sources", label: "Kaynaklar", icon: "↗" }] },
+    { label: "İletişim", items: [{ id: "feedback", label: "Geri bildirim", icon: "✉" }] },
 ];
+const sectionMeta: Record<string, { group: string; title: string }> = {
+    overview: { group: "Keşfet", title: "Genel bakış" },
+    leaderboard: { group: "Keşfet", title: "Benchmark sıralamaları" },
+    models: { group: "Keşfet", title: "Model kataloğu" },
+    compare: { group: "Keşfet", title: "Model karşılaştırma" },
+    popularity: { group: "Analiz", title: "Popüler modeller" },
+    insights: { group: "Analiz", title: "Pazar grafikleri" },
+    turkish: { group: "Analiz", title: "Türkiye LLM ekosistemi" },
+    events: { group: "İstihbarat", title: "Teknoloji gelişmeleri" },
+    research: { group: "İstihbarat", title: "Araştırma ve bildirimler" },
+    radar: { group: "İstihbarat", title: "Teknoloji radarı" },
+    sources: { group: "İstihbarat", title: "Kaynak kataloğu" },
+    feedback: { group: "İletişim", title: "Geri bildirim" },
+};
+const insightViews = new Set<InsightsView>(["popularity", "insights", "turkish"]);
 const benchmarkInfo: Record<LeaderboardView, {
     name: string;
     summary: string;
@@ -318,10 +325,11 @@ const benchmarkInfo: Record<LeaderboardView, {
     "aa-coding": { name: "Artificial Analysis Coding Index", summary: "Birden fazla kodlama değerlendirmesini ortak bir bağımsız skor altında toplar.", measure: "Bileşik kodlama endeksi", reading: "Yüksek skor kod üretme ve yazılım görevlerinde daha güçlü performansı gösterir." },
     agentic: { name: "Artificial Analysis Agentic Index", summary: "Modelin çok adımlı, araç kullanan ve hedef odaklı görevlerdeki başarısını ölçer.", measure: "Bileşik agentic görev skoru", reading: "Yüksek skor daha tutarlı planlama ve görev tamamlama performansı anlamına gelir." },
     livebench: { name: "LiveBench", summary: "Soruları düzenli yenilenen, kontaminasyonu azaltılmış akademik ve pratik değerlendirme setidir.", measure: "Kategori ve genel başarı skoru", reading: "Yüksek skor daha iyidir; genel skorun yanında alan bazlı sonuçlara da bakılmalıdır." },
+    "livebench-math": { name: "LiveBench — Matematik", summary: "LiveBench içindeki matematik alt kategorisinde model başarısını ölçer.", measure: "Doğru cevap yüzdesi", reading: "Yüksek skor matematik akıl yürütmede daha güçlü performans gösterir." },
+    "livebench-reasoning": { name: "LiveBench — Reasoning", summary: "LiveBench reasoning alt kategorisinde çok adımlı akıl yürütme becerisini ölçer.", measure: "Doğru cevap yüzdesi", reading: "Yüksek skor karmaşık mantık görevlerinde daha iyi sonuç verir." },
+    "livebench-coding": { name: "LiveBench — Kodlama", summary: "LiveBench kodlama alt kategorisinde program üretme ve çözme başarısını ölçer.", measure: "Doğru cevap yüzdesi", reading: "Yüksek skor kod üretiminde daha güçlü performans anlamına gelir." },
     "mmlu-pro": { name: "MMLU-Pro", summary: "14 alanda daha zor seçenekler ve daha fazla akıl yürütme gerektiren akademik bilgi testidir.", measure: "Doğru cevap yüzdesi", reading: "Yüksek doğruluk daha iyidir; alan seçimi modelin uzmanlığını anlamayı kolaylaştırır." },
 };
-const chartColors = ["#80a91f", "#267f72", "#8066bd"];
-function chartName(name: string) { return name.length > 24 ? `${name.slice(0, 22)}…` : name; }
 function MultiSelectFilter({ title, values, options, onToggle, renderLabel = value => value }: {
     title: string;
     values: string[];
@@ -329,7 +337,46 @@ function MultiSelectFilter({ title, values, options, onToggle, renderLabel = val
     onToggle: (value: string) => void;
     renderLabel?: (value: string) => string;
 }) {
-    return <fieldset className="multi-filter"><legend>{title}</legend><details><summary>{values.length ? values.map(renderLabel).join(" + ") : "Farketmez"}</summary><div>{options.map(item => <label key={item.value}><input type="checkbox" checked={values.includes(item.value)} onChange={() => onToggle(item.value)}/><span>{renderLabel(item.value)}{item.count ? ` (${item.count})` : ""}</span></label>)}</div></details></fieldset>;
+    const summary =
+        values.length === 0
+            ? "Farketmez"
+            : values.length <= 2
+              ? values.map(renderLabel).join(" + ")
+              : `${values.length} seçili`;
+    return (
+        <fieldset className="multi-filter">
+            <legend>{title}</legend>
+            <details>
+                <summary>{summary}</summary>
+                <div className="multi-filter-panel">
+                    {values.length > 0 && (
+                        <button
+                            type="button"
+                            className="multi-filter-clear"
+                            onClick={() => values.forEach((value) => onToggle(value))}
+                        >
+                            Seçimi temizle
+                        </button>
+                    )}
+                    <div className="multi-filter-options">
+                        {options.map((item) => (
+                            <label key={item.value}>
+                                <input
+                                    type="checkbox"
+                                    checked={values.includes(item.value)}
+                                    onChange={() => onToggle(item.value)}
+                                />
+                                <span>
+                                    {renderLabel(item.value)}
+                                    {item.count ? ` (${item.count})` : ""}
+                                </span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+            </details>
+        </fieldset>
+    );
 }
 function SortableHeader({ field, label, active, order, onSort }: {
     field: SortBy;
@@ -340,68 +387,6 @@ function SortableHeader({ field, label, active, order, onSort }: {
 }) {
     const indicator = active === field ? (order === "asc" ? "↑" : "↓") : "↕";
     return <th aria-sort={active === field ? (order === "asc" ? "ascending" : "descending") : "none"}><button type="button" className="sort-header" onClick={() => onSort(field)}>{label} <span>{indicator}</span></button></th>;
-}
-function ModelComparisonCharts({ models, profiles }: {
-    models: ModelItem[];
-    profiles: Record<string, ComparedModel>;
-}) {
-    const entries = models.map(model => {
-        const features = profiles[model.id]?.features;
-        const modalities = features?.modalities?.length ? features.modalities : (model.capabilities.input_modalities ?? []);
-        return {
-            id: model.id,
-            name: chartName(model.name),
-            context: features?.context_window ?? model.context_window,
-            input: numeric(features?.input_price ?? model.pricing?.input),
-            output: numeric(features?.output_price ?? model.pricing?.output),
-            cached: numeric(features?.cache_read_price ?? model.pricing?.cache_read),
-            modalityCount: new Set(modalities.map(item => item.toLowerCase())).size,
-            toolCalling: features?.tool_calling ?? model.profile?.tool_calling ?? null,
-            reasoning: features?.reasoning ?? model.profile?.reasoning ?? null,
-        };
-    });
-    const maxContext = Math.max(1, ...entries.map(entry => entry.context ?? 0));
-    const priceAdvantage = (value: number | null, kind: "input" | "output") => {
-        if (value == null)
-            return 0;
-        const values = entries.map(entry => entry[kind]).filter((item): item is number => item != null);
-        if (values.length <= 1)
-            return 100;
-        const min = Math.min(...values);
-        const max = Math.max(...values);
-        if (max === min)
-            return 100;
-        return Math.round(20 + ((max - value) / (max - min)) * 80);
-    };
-    const metrics = [
-        { metric: "Context", score: (entry: typeof entries[number]) => Math.round(((entry.context ?? 0) / maxContext) * 100) },
-        { metric: "Girdi ekonomisi", score: (entry: typeof entries[number]) => priceAdvantage(entry.input, "input") },
-        { metric: "Çıktı ekonomisi", score: (entry: typeof entries[number]) => priceAdvantage(entry.output, "output") },
-        { metric: "Modalite", score: (entry: typeof entries[number]) => Math.min(100, entry.modalityCount * 25) },
-        { metric: "Tool calling", score: (entry: typeof entries[number]) => entry.toolCalling === true ? 100 : 0 },
-        { metric: "Reasoning", score: (entry: typeof entries[number]) => entry.reasoning === true ? 100 : 0 },
-    ];
-    const radarData: Array<Record<string, string | number>> = metrics.map(item => {
-        const row: Record<string, string | number> = { metric: item.metric };
-        entries.forEach(entry => { row[entry.id] = item.score(entry); });
-        return row;
-    });
-    const priceData = entries.map(entry => ({ name: entry.name, Girdi: entry.input, "Çıktı": entry.output, "Cached input": entry.cached }));
-    const contextData = entries.map(entry => ({ name: entry.name, "Context (K)": entry.context == null ? null : Math.round((entry.context / 1024) * 10) / 10 }));
-    return <div className="real-chart-grid">
-    <article className="chart-panel radar-panel" role="img" aria-label="Seçilen modellerin çok boyutlu radar grafiği">
-      <header><div><p>Model profili</p><small>Farklı ölçüler 0–100 aralığına normalize edildi. Fiyat ekonomisinde yüksek skor daha ucuz demektir.</small></div><span>RADAR</span></header>
-      <div className="chart-canvas radar-canvas"><ResponsiveContainer width="100%" height="100%"><RadarChart data={radarData} outerRadius="67%"><PolarGrid stroke="#b9c2bc"/><PolarAngleAxis dataKey="metric" tick={{ fill: "#36413c", fontSize: 10, fontWeight: 700 }}/><PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: "#68736d", fontSize: 9 }} axisLine={false}/><Tooltip /><Legend />{entries.map((entry, index) => <Radar key={entry.id} name={entry.name} dataKey={entry.id} stroke={chartColors[index]} fill={chartColors[index]} fillOpacity={0.1} strokeWidth={2.5} isAnimationActive={false}/>)}</RadarChart></ResponsiveContainer></div>
-    </article>
-    <article className="chart-panel" role="img" aria-label="Seçilen modellerin giriş ve çıkış fiyatı sütun grafiği">
-      <header><div><p>Token fiyatı</p><small>Gerçek USD / 1 milyon token değerleri. Daha kısa sütun daha ucuzdur.</small></div><span>USD / 1M</span></header>
-      <div className="chart-canvas"><ResponsiveContainer width="100%" height="100%"><BarChart data={priceData} margin={{ top: 12, right: 8, left: -18, bottom: 18 }}><CartesianGrid stroke="#d1d8d3" strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" tick={{ fill: "#4d5852", fontSize: 9 }} interval={0} angle={-12} textAnchor="end"/><YAxis tick={{ fill: "#68736d", fontSize: 9 }}/><Tooltip /><Legend /><Bar dataKey="Girdi" fill="#267f72" radius={[3, 3, 0, 0]} isAnimationActive={false}/><Bar dataKey="Çıktı" fill="#8066bd" radius={[3, 3, 0, 0]} isAnimationActive={false}/><Bar dataKey="Cached input" fill="#80a91f" radius={[3, 3, 0, 0]} isAnimationActive={false}/></BarChart></ResponsiveContainer></div>
-    </article>
-    <article className="chart-panel" role="img" aria-label="Seçilen modellerin context kapasitesi sütun grafiği">
-      <header><div><p>Context kapasitesi</p><small>Bin token cinsinden gerçek context penceresi. Yüksek sütun daha geniş bağlam demektir.</small></div><span>K TOKEN</span></header>
-      <div className="chart-canvas"><ResponsiveContainer width="100%" height="100%"><BarChart data={contextData} margin={{ top: 12, right: 8, left: -18, bottom: 18 }}><CartesianGrid stroke="#d1d8d3" strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" tick={{ fill: "#4d5852", fontSize: 9 }} interval={0} angle={-12} textAnchor="end"/><YAxis tick={{ fill: "#68736d", fontSize: 9 }}/><Tooltip /><Bar dataKey="Context (K)" fill="#80a91f" radius={[3, 3, 0, 0]} isAnimationActive={false}/></BarChart></ResponsiveContainer></div>
-    </article>
-  </div>;
 }
 function cleanEventTitle(event: EventItem) { return event.title.replace(" discovered", " yayınlandı").replace(": context_window changed", " — context penceresi değişti").replace(/: (input|output|cache_read)_per_1m_tokens changed/, " — token fiyatı değişti").replace(": Arena rank changed", " — sıralaması değişti"); }
 function eventDetail(event: EventItem) {
@@ -441,7 +426,7 @@ export default function Home() {
     const [livecodebench, setLivecodebench] = useState<Leaderboard | null>(null);
     const [leaderboardView, setLeaderboardView] = useState<LeaderboardView>("general");
     const [query, setQuery] = useState("");
-    const [company, setCompany] = useState("all");
+    const [developers, setDevelopers] = useState<string[]>([]);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -457,20 +442,20 @@ export default function Home() {
     const [commercialStatuses, setCommercialStatuses] = useState<string[]>([]);
     const [modalities, setModalities] = useState<string[]>([]);
     const [capabilities, setCapabilities] = useState<string[]>([]);
-    const [provider, setProvider] = useState("any");
+    const [providers, setProviders] = useState<string[]>([]);
     const [families, setFamilies] = useState<string[]>([]);
-    const [sortBy, setSortBy] = useState<SortBy>("name");
-    const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+    const [advancedness, setAdvancedness] = useState<string[]>([]);
+    const [sortStack, setSortStack] = useState<CatalogSortSpec[]>(DEFAULT_SORT_STACK);
     const [benchmarkFocus, setBenchmarkFocus] = useState("any");
     const [selected, setSelected] = useState<ModelItem[]>([]);
     const [detail, setDetail] = useState<ModelDetail | null>(null);
+    const [detailMissing, setDetailMissing] = useState<string | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [compareProfiles, setCompareProfiles] = useState<Record<string, ComparedModel>>({});
     const [sourceCatalog, setSourceCatalog] = useState<SourceCatalogItem[]>([]);
     const [research, setResearch] = useState<ResearchItem[]>([]);
     const [technology, setTechnology] = useState<TechnologyItem[]>([]);
     const [notices, setNotices] = useState<NoticeItem[]>([]);
-    const [catalogOpen, setCatalogOpen] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activeSection, setActiveSection] = useState("overview");
     const [benchmarkInfoOpen, setBenchmarkInfoOpen] = useState(false);
@@ -482,7 +467,7 @@ export default function Home() {
     const [mmluCategory, setMmluCategory] = useState("overall");
     const [sweLiveCategory, setSweLiveCategory] = useState("lite");
     const [tauCategory, setTauCategory] = useState("airline");
-    useEffect(() => { const optional = (url: string) => fetch(url).then(r => r.ok ? r.json() : null); Promise.all([fetch(`${API}/api/v1/stats`).then(r => r.json()), fetch(`${API}/api/v1/models?limit=1000`).then(r => r.json()), fetch(`${API}/api/v1/events?limit=120&sort_by=importance`).then(r => r.json()), fetch(`${API}/api/v1/leaderboards/arena?limit=20`).then(r => r.json()), fetch(`${API}/api/v1/leaderboards/swe-bench?limit=20`).then(r => r.json()), optional(`${API}/api/v1/leaderboards/artificial-analysis/intelligence?limit=20`), optional(`${API}/api/v1/leaderboards/artificial-analysis/coding?limit=20`), optional(`${API}/api/v1/leaderboards/artificial-analysis/agentic?limit=20`), optional(`${API}/api/v1/leaderboards/livebench?limit=20`), optional(`${API}/api/v1/leaderboards/mmlu-pro?limit=20`), optional(`${API}/api/v1/leaderboards/livecodebench?limit=20`)]).then(([s, m, e, a, sw, aai, aac, aaa, lb, mp, lcb]) => { setStats(s); setModels(m.items); setEvents(e.items); setArena(a); setSwebench(sw); setAaIntelligence(aai); setAaCoding(aac); setAaAgentic(aaa); setLivebench(lb); setMmluPro(mp); setLivecodebench(lcb); }).catch(() => setError(true)).finally(() => setLoading(false)); }, []);
+    useEffect(() => { const optional = (url: string) => fetch(url).then(r => r.ok ? r.json() : null); Promise.all([fetch(`${API}/api/v1/stats`).then(r => r.json()), fetch(`${API}/api/v1/models?limit=1000`).then(r => r.json()), fetch(`${API}/api/v1/events?limit=120&sort_by=importance`).then(r => r.json()), fetch(`${API}/api/v1/leaderboards/arena?limit=50`).then(r => r.json()), fetch(`${API}/api/v1/leaderboards/swe-bench?limit=50`).then(r => r.json()), optional(`${API}/api/v1/leaderboards/artificial-analysis/intelligence?limit=50`), optional(`${API}/api/v1/leaderboards/artificial-analysis/coding?limit=50`), optional(`${API}/api/v1/leaderboards/artificial-analysis/agentic?limit=50`), optional(`${API}/api/v1/leaderboards/livebench?limit=50`), optional(`${API}/api/v1/leaderboards/mmlu-pro?limit=50`), optional(`${API}/api/v1/leaderboards/livecodebench?limit=50`)]).then(([s, m, e, a, sw, aai, aac, aaa, lb, mp, lcb]) => { setStats(s); setModels(m.items); setEvents(e.items); setArena(a); setSwebench(sw); setAaIntelligence(aai); setAaCoding(aac); setAaAgentic(aaa); setLivebench(lb); setMmluPro(mp); setLivecodebench(lcb); }).catch(() => setError(true)).finally(() => setLoading(false)); }, []);
     useEffect(() => { fetch(`${API}/api/v1/catalog/sources`).then(r => r.ok ? r.json() : null).then(data => setSourceCatalog(data?.items ?? [])).catch(() => { }); fetch(`${API}/api/v1/models/facets`).then(r => r.ok ? r.json() : null).then(data => { if (data)
         setFacets(data); }).catch(() => { }); fetch(`${API}/api/v1/research?limit=8`).then(r => r.ok ? r.json() : null).then(data => setResearch(data?.items ?? [])).catch(() => { }); fetch(`${API}/api/v1/technology`).then(r => r.ok ? r.json() : null).then(data => setTechnology(data?.items ?? [])).catch(() => { }); fetch(`${API}/api/v1/notifications?limit=8`).then(r => r.ok ? r.json() : null).then(data => setNotices(data?.items ?? [])).catch(() => { }); }, []);
     useEffect(() => { const stream = new EventSource(`${API}/api/v1/stream/events`); stream.addEventListener("change", ev => { try {
@@ -506,45 +491,62 @@ export default function Home() {
         params.set("importance", eventImportance); if (eventDays !== "any")
         params.set("since", daysAgoIso(Number(eventDays))); fetch(`${API}/api/v1/events?${params}`).then(r => r.ok ? r.json() : null).then(data => { if (data)
         setEvents(data.items); }).catch(() => setError(true)); }, [eventCategory, eventImportance, eventDays]);
-    useEffect(() => { const refreshAcademic = () => Promise.all([fetch(`${API}/api/v1/leaderboards/livebench?category=${livebenchCategory}&limit=20`).then(r => r.ok ? r.json() : null), fetch(`${API}/api/v1/leaderboards/mmlu-pro?category=${mmluCategory}&limit=20`).then(r => r.ok ? r.json() : null)]).then(([lb, mp]) => { if (lb)
+    useEffect(() => { const refreshAcademic = () => Promise.all([fetch(`${API}/api/v1/leaderboards/livebench?category=${livebenchCategory}&limit=50`).then(r => r.ok ? r.json() : null), fetch(`${API}/api/v1/leaderboards/mmlu-pro?category=${mmluCategory}&limit=50`).then(r => r.ok ? r.json() : null)]).then(([lb, mp]) => { if (lb)
         setLivebench(lb); if (mp)
         setMmluPro(mp); }).catch(() => { }); const timer = window.setInterval(refreshAcademic, 30000); const onVisible = () => { if (document.visibilityState === "visible")
         void refreshAcademic(); }; document.addEventListener("visibilitychange", onVisible); return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); }; }, [livebenchCategory, mmluCategory]);
-    useEffect(() => { fetch(`${API}/api/v1/leaderboards/livebench?category=${livebenchCategory}&limit=20`).then(r => r.ok ? r.json() : null).then(data => { if (data)
+    useEffect(() => { fetch(`${API}/api/v1/leaderboards/livebench?category=${livebenchCategory}&limit=50`).then(r => r.ok ? r.json() : null).then(data => { if (data)
         setLivebench(data); }).catch(() => { }); }, [livebenchCategory]);
-    useEffect(() => { fetch(`${API}/api/v1/leaderboards/mmlu-pro?category=${mmluCategory}&limit=20`).then(r => r.ok ? r.json() : null).then(data => { if (data)
+    useEffect(() => { fetch(`${API}/api/v1/leaderboards/mmlu-pro?category=${mmluCategory}&limit=50`).then(r => r.ok ? r.json() : null).then(data => { if (data)
         setMmluPro(data); }).catch(() => { }); }, [mmluCategory]);
-    useEffect(() => { fetch(`${API}/api/v1/leaderboards/swe-bench-live?category=${sweLiveCategory}&limit=20`).then(r => r.ok ? r.json() : null).then(data => { if (data)
+    useEffect(() => { fetch(`${API}/api/v1/leaderboards/swe-bench-live?category=${sweLiveCategory}&limit=50`).then(r => r.ok ? r.json() : null).then(data => { if (data)
         setSwebenchLive(data); }).catch(() => { }); }, [sweLiveCategory]);
-    useEffect(() => { fetch(`${API}/api/v1/leaderboards/tau-bench?category=${tauCategory}&limit=20`).then(r => r.ok ? r.json() : null).then(data => { if (data)
+    useEffect(() => { fetch(`${API}/api/v1/leaderboards/tau-bench?category=${tauCategory}&limit=50`).then(r => r.ok ? r.json() : null).then(data => { if (data)
         setTauBench(data); }).catch(() => { }); }, [tauCategory]);
     useEffect(() => { if (!benchmarkInfoOpen)
         return; const close = (event: KeyboardEvent) => { if (event.key === "Escape")
         setBenchmarkInfoOpen(false); }; window.addEventListener("keydown", close); return () => window.removeEventListener("keydown", close); }, [benchmarkInfoOpen]);
-    useEffect(() => {
-        const ids = sidebarGroups.flatMap(group => group.items.map(item => item.href.slice(1)));
-        const observer = new IntersectionObserver(entries => {
-            const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-            if (visible?.target.id)
-                setActiveSection(visible.target.id);
-        }, { rootMargin: "-18% 0px -68% 0px", threshold: [0, 0.1, 0.4] });
-        ids.forEach(id => { const element = document.getElementById(id); if (element)
-            observer.observe(element); });
-        return () => observer.disconnect();
-    }, []);
-    const filterActive = minContext !== "" || maxInputPrice !== "" || maxOutputPrice !== "" || openness.length > 0 || licenses.length > 0 || commercialStatuses.length > 0 || modalities.length > 0 || capabilities.length > 0 || provider !== "any" || families.length > 0 || benchmarkFocus !== "any";
-    const advancedActive = filterActive || sortBy !== "name" || sortOrder !== "asc";
-    const serverFiltering = catalogOpen;
+    function navigateToSection(id: string) {
+        setActiveSection(id);
+        setSidebarOpen(false);
+        window.scrollTo({ top: 0, behavior: "auto" });
+    }
+    function selectLeaderboardView(view: LeaderboardView) {
+        setLeaderboardView(view);
+        const category = LIVEBENCH_VIEW_CATEGORY[view];
+        if (category)
+            setLivebenchCategory(category);
+    }
+    const leaderboardBoards = useMemo(() => ({
+        general: arena,
+        coding: swebench,
+        "swe-live": swebenchLive,
+        "tau-bench": tauBench,
+        intelligence: aaIntelligence,
+        "aa-coding": aaCoding,
+        agentic: aaAgentic,
+        livebench,
+        "mmlu-pro": mmluPro,
+        livecodebench,
+    }), [arena, swebench, swebenchLive, tauBench, aaIntelligence, aaCoding, aaAgentic, livebench, mmluPro, livecodebench]);
+    const filterActive = minContext !== "" || maxInputPrice !== "" || maxOutputPrice !== "" || openness.length > 0 || licenses.length > 0 || commercialStatuses.length > 0 || modalities.length > 0 || capabilities.length > 0 || developers.length > 0 || providers.length > 0 || families.length > 0 || advancedness.length > 0 || benchmarkFocus !== "any";
+    const isDefaultSort = (stack: CatalogSortSpec[]) => stack.length === 1 && stack[0].field === "name" && stack[0].order === "asc";
+    const advancedActive = filterActive || !isDefaultSort(sortStack);
+    const serverFiltering = activeSection === "models";
     useEffect(() => {
         if (!serverFiltering)
             return;
-        const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String((page - 1) * PAGE_SIZE), sort_by: sortBy, sort_order: sortOrder });
+        const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String((page - 1) * PAGE_SIZE) });
+        sortStack.forEach(spec => {
+            params.append("sort_by", spec.field);
+            params.append("sort_order", spec.order);
+        });
         if (query.trim())
             params.set("search", query.trim());
-        if (company !== "all")
-            params.append("developer", company);
-        if (provider !== "any")
-            params.append("provider", provider);
+        if (developers.length)
+            developers.forEach(item => params.append("developer", item));
+        if (providers.length)
+            providers.forEach(item => params.append("provider", item));
         families.forEach(item => params.append("family", item));
         if (minContext)
             params.set("min_context", minContext);
@@ -557,6 +559,7 @@ export default function Home() {
         commercialStatuses.forEach(item => params.append("commercial_use_status", item));
         if (benchmarkFocus !== "any")
             params.set("benchmark_focus", benchmarkFocus);
+        advancedness.forEach(item => params.append("advancedness", item));
         modalities.forEach(item => params.append("modality", item));
         capabilities.forEach(item => params.append("capability", item));
         const controller = new AbortController();
@@ -592,12 +595,13 @@ export default function Home() {
                 .finally(() => setProfileLoading(false));
         }, 250);
         return () => { window.clearTimeout(timer); controller.abort(); };
-    }, [serverFiltering, page, query, company, provider, families, minContext, maxInputPrice, maxOutputPrice, openness, licenses, commercialStatuses, modalities, capabilities, benchmarkFocus, sortBy, sortOrder]);
+    }, [serverFiltering, page, query, developers, providers, families, minContext, maxInputPrice, maxOutputPrice, openness, licenses, commercialStatuses, modalities, capabilities, advancedness, benchmarkFocus, sortStack]);
     useEffect(() => { if (selected.length < 2) {
         return;
     } const params = new URLSearchParams(); selected.forEach(model => params.append("ids", model.id)); fetch(`${API}/api/v1/models/compare?${params}`).then(r => r.ok ? r.json() : null).then(data => { if (data)
         setCompareProfiles(Object.fromEntries((data.items as ComparedModel[]).map(item => [item.id, item]))); }).catch(() => setError(true)); }, [selected]);
     const companies = useMemo(() => facets.developers.length ? facets.developers : Array.from(new Map(models.map(m => [m.company.slug, m.company])).values()).sort((a, b) => a.name.localeCompare(b.name)), [models, facets.developers]);
+    const developerSites = useMemo(() => Object.fromEntries(companies.map(company => [company.slug, "website_url" in company ? company.website_url : null])), [companies]);
     const filtered = serverFiltering ? (profileResults ?? []) : models;
     const visibleEvents = useMemo(() => events.slice(0, 12), [events]);
     const resultTotal = serverFiltering ? profileTotal : stats.models;
@@ -611,114 +615,287 @@ export default function Home() {
             return removing ? current.filter(item => item.id !== model.id) : current.length < 3 ? [...current, model] : current;
         });
     }
-    function resetAdvanced() { setMinContext(""); setMaxInputPrice(""); setMaxOutputPrice(""); setOpenness([]); setLicenses([]); setCommercialStatuses([]); setModalities([]); setCapabilities([]); setProvider("any"); setFamilies([]); setBenchmarkFocus("any"); setSortBy("name"); setSortOrder("asc"); setPage(1); }
+    function resetAdvanced() { setMinContext(""); setMaxInputPrice(""); setMaxOutputPrice(""); setOpenness([]); setLicenses([]); setCommercialStatuses([]); setModalities([]); setCapabilities([]); setProviders([]); setDevelopers([]); setFamilies([]); setAdvancedness([]); setBenchmarkFocus("any"); setSortStack(DEFAULT_SORT_STACK); setPage(1); }
+    function toggleAdvancedness(value: string) { setAdvancedness(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]); setPage(1); }
+    function toggleDeveloper(value: string) { setDevelopers(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]); setPage(1); }
+    function toggleProvider(value: string) { setProviders(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]); setPage(1); }
     function toggleModality(value: string) { setModalities(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]); setPage(1); }
     function toggleCapability(value: string) { setCapabilities(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]); setPage(1); }
     function toggleList(value: string, setter: Dispatch<SetStateAction<string[]>>) { setter(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]); setPage(1); }
     function changeSort(field: SortBy) {
-        const nextOrder: SortOrder = sortBy === field ? (sortOrder === "asc" ? "desc" : "asc") : "asc";
-        setSortBy(field);
-        setSortOrder(nextOrder);
+        const catalogField = field as CatalogSortSpec["field"];
+        setSortStack(current => {
+            const index = current.findIndex(item => item.field === catalogField);
+            if (index >= 0) {
+                if (current[index].order === "asc")
+                    return current.map((item, i) => i === index ? { ...item, order: "desc" as const } : item);
+                const next = current.filter((_, i) => i !== index);
+                return next.length ? next : DEFAULT_SORT_STACK;
+            }
+            if (isDefaultSort(current))
+                return [{ field: catalogField, order: "asc" as const }];
+            if (current.length >= 3)
+                return [...current.slice(1), { field: catalogField, order: "asc" as const }];
+            return [...current, { field: catalogField, order: "asc" as const }];
+        });
         setPage(1);
-        trackEvent(API, "sort_changed", { sort: { sort_by: field, sort_order: nextOrder } });
+        trackEvent(API, "sort_changed", { sort: { field } });
     }
     const activeModelFilters = useMemo(() => { const chips: {
         key: string;
         label: string;
         clear: () => void;
     }[] = []; if (query.trim())
-        chips.push({ key: "q", label: `"${query.trim()}"`, clear: () => { setQuery(""); setPage(1); } }); if (company !== "all")
-        chips.push({ key: "dev", label: companies.find(c => c.slug === company)?.name ?? company, clear: () => { setCompany("all"); setPage(1); } }); if (sortBy !== "name")
-        chips.push({ key: "sort", label: `${sortLabels[sortBy]} ${sortOrder === "asc" ? "↑" : "↓"}`, clear: () => { setSortBy("name"); setSortOrder("asc"); setPage(1); } }); if (provider !== "any")
-        chips.push({ key: "provider", label: provider, clear: () => { setProvider("any"); setPage(1); } }); if (minContext)
+        chips.push({ key: "q", label: `"${query.trim()}"`, clear: () => { setQuery(""); setPage(1); } }); developers.forEach(slug => chips.push({ key: `dev-${slug}`, label: companies.find(c => c.slug === slug)?.name ?? slug, clear: () => toggleDeveloper(slug) })); if (!isDefaultSort(sortStack))
+        sortStack.forEach((spec, index) => chips.push({ key: `sort-${spec.field}-${index}`, label: `${sortStack.length > 1 ? `${index + 1}. ` : ""}${sortLabels[spec.field]} ${spec.order === "asc" ? "↑" : "↓"}`, clear: () => { setSortStack(current => { const next = current.filter((_, i) => i !== index); return next.length ? next : DEFAULT_SORT_STACK; }); setPage(1); } })); providers.forEach(slug => chips.push({ key: `provider-${slug}`, label: facets.providers.find(p => p.slug === slug)?.name ?? slug, clear: () => toggleProvider(slug) })); if (minContext)
         chips.push({ key: "ctx", label: `${Number(minContext).toLocaleString("tr-TR")}+ ctx`, clear: () => { setMinContext(""); setPage(1); } }); if (maxInputPrice)
         chips.push({ key: "in", label: `Girdi ≤ $${maxInputPrice}`, clear: () => { setMaxInputPrice(""); setPage(1); } }); if (maxOutputPrice)
         chips.push({ key: "out", label: `Çıktı ≤ $${maxOutputPrice}`, clear: () => { setMaxOutputPrice(""); setPage(1); } }); if (benchmarkFocus !== "any")
-        chips.push({ key: "bench", label: `Odağı: ${benchmarkFocus}`, clear: () => { setBenchmarkFocus("any"); setPage(1); } }); families.forEach(item => chips.push({ key: `family-${item}`, label: item, clear: () => toggleList(item, setFamilies) })); openness.forEach(item => chips.push({ key: `open-${item}`, label: item.replaceAll("_", " "), clear: () => toggleList(item, setOpenness) })); licenses.forEach(item => chips.push({ key: `license-${item}`, label: item.replaceAll("_", " "), clear: () => toggleList(item, setLicenses) })); commercialStatuses.forEach(item => chips.push({ key: `commercial-${item}`, label: `Ticari: ${item.replaceAll("_", " ")}`, clear: () => toggleList(item, setCommercialStatuses) })); modalities.forEach(item => chips.push({ key: `mod-${item}`, label: trModality(item), clear: () => toggleModality(item) })); capabilities.forEach(item => chips.push({ key: `cap-${item}`, label: trCapability(item), clear: () => toggleCapability(item) })); return chips; }, [query, company, sortBy, sortOrder, provider, minContext, maxInputPrice, maxOutputPrice, benchmarkFocus, families, openness, licenses, commercialStatuses, modalities, capabilities, companies]);
+        chips.push({ key: "bench", label: `Odağı: ${benchmarkFocus}`, clear: () => { setBenchmarkFocus("any"); setPage(1); } }); advancedness.forEach(item => chips.push({ key: `adv-${item}`, label: ADVANCEDNESS_LABELS[item] ?? item, clear: () => toggleAdvancedness(item) })); families.forEach(item => chips.push({ key: `family-${item}`, label: item, clear: () => toggleList(item, setFamilies) })); openness.forEach(item => chips.push({ key: `open-${item}`, label: opennessLabels[item] ?? item, clear: () => toggleList(item, setOpenness) })); licenses.forEach(item => chips.push({ key: `license-${item}`, label: item.replaceAll("_", " "), clear: () => toggleList(item, setLicenses) })); commercialStatuses.forEach(item => chips.push({ key: `commercial-${item}`, label: `Ticari: ${item.replaceAll("_", " ")}`, clear: () => toggleList(item, setCommercialStatuses) })); modalities.forEach(item => chips.push({ key: `mod-${item}`, label: trModality(item), clear: () => toggleModality(item) })); capabilities.forEach(item => chips.push({ key: `cap-${item}`, label: trCapability(item), clear: () => toggleCapability(item) })); return chips; }, [query, developers, sortStack, providers, minContext, maxInputPrice, maxOutputPrice, benchmarkFocus, families, openness, licenses, commercialStatuses, modalities, capabilities, companies, facets.providers]);
     useEffect(() => {
-        if (!catalogOpen || query.trim().length < 2)
+        if (activeSection !== "models" || query.trim().length < 2)
             return;
         const timer = window.setTimeout(() => trackEvent(API, "search_performed", { filters: { query: query.trim() } }), 700);
         return () => window.clearTimeout(timer);
-    }, [catalogOpen, query]);
+    }, [activeSection, query]);
     useEffect(() => {
-        if (!catalogOpen || !filterActive)
+        if (activeSection !== "models" || !filterActive)
             return;
-        const timer = window.setTimeout(() => trackEvent(API, "filter_applied", { filters: { company, provider, families, min_context: minContext || null, max_input_price: maxInputPrice || null, max_output_price: maxOutputPrice || null, openness, licenses, commercial_use: commercialStatuses, modalities, capabilities, benchmark_focus: benchmarkFocus } }), 700);
+        const timer = window.setTimeout(() => trackEvent(API, "filter_applied", { filters: { developers, providers, families, min_context: minContext || null, max_input_price: maxInputPrice || null, max_output_price: maxOutputPrice || null, openness, licenses, commercial_use: commercialStatuses, modalities, capabilities, benchmark_focus: benchmarkFocus } }), 700);
         return () => window.clearTimeout(timer);
-    }, [catalogOpen, filterActive, company, provider, families, minContext, maxInputPrice, maxOutputPrice, openness, licenses, commercialStatuses, modalities, capabilities, benchmarkFocus]);
-    async function openDetail(model: ModelItem) { setDetailLoading(true); setDetail(null); try {
-        const response = await fetch(`${API}/api/v1/models/${model.id}`);
-        if (!response.ok)
-            throw new Error("Model ayrıntıları alınamadı");
-        setDetail(await response.json());
-        trackEvent(API, "model_viewed", { model_id: model.id });
+    }, [activeSection, filterActive, developers, providers, families, minContext, maxInputPrice, maxOutputPrice, openness, licenses, commercialStatuses, modalities, capabilities, benchmarkFocus]);
+    async function openDetailById(modelId: string) {
+        setDetailLoading(true);
+        setDetail(null);
+        setDetailMissing(null);
+        try {
+            const response = await fetch(`${API}/api/v1/models/${modelId}`);
+            if (!response.ok)
+                throw new Error("Model ayrıntıları alınamadı");
+            setDetail(await response.json());
+            trackEvent(API, "model_viewed", { model_id: modelId });
+        }
+        catch {
+            setDetailMissing("Model ayrıntıları yüklenemedi.");
+        }
+        finally {
+            setDetailLoading(false);
+        }
     }
-    catch {
-        setError(true);
+    async function openDetail(model: ModelItem) {
+        await openDetailById(model.id);
     }
-    finally {
-        setDetailLoading(false);
-    } }
+    async function inspectLeaderboardModel(item: LeaderboardItem) {
+        if (item.catalog_model_id) {
+            await openDetailById(item.catalog_model_id);
+            return;
+        }
+        const local = findLocalModel(item.model_name, item.organization, models);
+        if (local) {
+            await openDetailById(local.id);
+            return;
+        }
+        setDetailLoading(true);
+        setDetail(null);
+        setDetailMissing(null);
+        try {
+            const params = new URLSearchParams({ name: item.model_name });
+            if (item.organization)
+                params.set("organization", item.organization);
+            const resolved = await fetch(`${API}/api/v1/models/resolve?${params}`);
+            if (resolved.ok) {
+                const data = await resolved.json() as { id: string };
+                await openDetailById(data.id);
+                return;
+            }
+            const search = new URLSearchParams({ search: item.model_name, limit: "8", sort_by: "name" });
+            const response = await fetch(`${API}/api/v1/models/search?${search}`);
+            if (!response.ok)
+                throw new Error("Arama başarısız");
+            const data = await response.json() as { items?: SearchModelItem[] };
+            const items = data.items ?? [];
+            const orgKey = item.organization.toLowerCase().trim();
+            const key = normalizeModelKey(item.model_name);
+            const match = items.find(entry => entry.developer.name.toLowerCase() === orgKey || entry.developer.slug === orgKey)
+                ?? items.find(entry => normalizeModelKey(entry.slug) === key || normalizeModelKey(entry.name) === key)
+                ?? items[0];
+            if (match) {
+                await openDetailById(match.id);
+                return;
+            }
+            setDetailMissing(`${item.model_name} henüz model kataloğunda eşleşmedi. Collector güncellemesi sonrası tekrar deneyin.`);
+        }
+        catch {
+            setDetailMissing(`${item.model_name} için katalog bilgisi alınamadı.`);
+        }
+        finally {
+            setDetailLoading(false);
+        }
+    }
+    function closeDetail() {
+        setDetail(null);
+        setDetailMissing(null);
+    }
     return <div className="app-shell">
-    <aside className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Ana navigasyon"><a className="sidebar-brand" href="#top" onClick={() => setSidebarOpen(false)}><span className="brand-mark">LR</span><span><strong>LLM RADAR</strong><small>MODEL INTELLIGENCE</small></span></a><nav className="sidebar-nav">{sidebarGroups.map(group => <div className="sidebar-group" key={group.label}><p>{group.label}</p>{group.items.map(item => <a key={item.href} className={activeSection === item.href.slice(1) ? "active" : ""} aria-current={activeSection === item.href.slice(1) ? "location" : undefined} href={item.href} onClick={() => { setActiveSection(item.href.slice(1)); setSidebarOpen(false); }}><i aria-hidden="true">{item.icon}</i><span>{item.label}</span></a>)}</div>)}</nav><div className="sidebar-status"><span /><div><strong>Veri akışı aktif</strong><small>{stats.models || "—"} model izleniyor</small></div></div></aside>
+    <aside className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Ana navigasyon"><button type="button" className="sidebar-brand" onClick={() => navigateToSection("overview")}><span className="brand-mark">LR</span><span><strong>LLM RADAR</strong><small>MODEL INTELLIGENCE</small></span></button><nav className="sidebar-nav">{sidebarGroups.map(group => <div className="sidebar-group" key={group.label}><p>{group.label}</p>{group.items.map(item => <button type="button" key={item.id} className={activeSection === item.id ? "active" : ""} aria-current={activeSection === item.id ? "page" : undefined} onClick={() => navigateToSection(item.id)}><i aria-hidden="true">{item.icon}</i><span>{item.label}</span></button>)}</div>)}</nav><div className="sidebar-status"><span /><div><strong>Veri akışı aktif</strong><small>{stats.models || "—"} model izleniyor</small></div></div></aside>
     {sidebarOpen && <button className="sidebar-scrim" type="button" aria-label="Menüyü kapat" onClick={() => setSidebarOpen(false)}/>}
     {!sidebarOpen && <button className="sidebar-toast" type="button" aria-label="Menüyü aç" onClick={() => setSidebarOpen(true)}><span className="sidebar-toast-mark">LR</span><span className="sidebar-toast-label">Menü</span></button>}
-    <main className="main-content" id="top">
-    <header className="topbar"><div className="topbar-context"><span>LLM Radar</span><strong>Model ve benchmark görünümü</strong></div><div className="live-pill"><span /> CANLI</div></header>
+    <main className={`main-content${activeSection === "leaderboard" ? " leaderboard-layout" : activeSection === "models" ? " catalog-layout" : ""}`} id="top">
+    <header className="topbar"><div className="topbar-context"><span>{sectionMeta[activeSection]?.group ?? "LLM Radar"}</span><strong>{sectionMeta[activeSection]?.title ?? "Model ve benchmark görünümü"}</strong></div><div className="live-pill"><span /> CANLI</div></header>
+    <div className={`app-view${activeSection === "leaderboard" ? " app-view-leaderboard" : activeSection === "models" ? " app-view-catalog" : ""}`}>
+    {activeSection === "overview" && <>
     <section className="hero" id="overview"><div><p className="eyebrow">LLM INTELLIGENCE PLATFORM</p><h1>Yapay zekâ dünyasının<br /><em>nabzını tut.</em></h1><p className="hero-copy">Modelleri, fiyatları ve teknoloji değişimlerini tek merkezden, kaynaklarıyla birlikte takip et.</p></div><div className="radar"><span className="orbit orbit-one"/><span className="orbit orbit-two"/><span className="orbit orbit-three"/><span className="sweep"/><span className="dot dot-one"/><span className="dot dot-two"/><span className="dot dot-three"/><b>{stats.models || "—"}</b><small>İZLENEN MODEL</small></div></section>
     {error && <div className="error">API bağlantısı kurulamadı. Backend servisinin çalıştığını kontrol et.</div>}
     <section className="metric-grid">{[["İzlenen model", stats.models], ["Takip edilen firma", stats.companies], ["Fiyat gözlemi", stats.price_observations], ["Tespit edilen olay", stats.change_events]].map(([label, value]) => <article className="metric" key={String(label)}><p>{label}</p><strong>{loading ? "—" : compact(Number(value))}</strong><span>● Güncel veri</span></article>)}</section>
+    </>}
 
-    <section className="official-section" id="leaderboard">
-      {(() => {
-            const boards = { general: arena, coding: swebench, "swe-live": swebenchLive, "tau-bench": tauBench, intelligence: aaIntelligence, "aa-coding": aaCoding, agentic: aaAgentic, livebench, "mmlu-pro": mmluPro, livecodebench };
-            const board = boards[leaderboardView];
-            const isArena = leaderboardView === "general";
-            const isSwe = leaderboardView === "coding";
-            const isSweLive = leaderboardView === "swe-live";
-            const isTau = leaderboardView === "tau-bench";
-            const isLive = leaderboardView === "livebench";
-            const isMmlu = leaderboardView === "mmlu-pro";
-            const isLiveCode = leaderboardView === "livecodebench";
-            return <><div className="section-title"><div><p className="kicker">DOĞRUDAN KAYNAK VERİSİ</p><div className="benchmark-heading"><h2>{isArena ? "Genel / İnsan tercihi" : isSwe ? "Kodlama / Agent" : isSweLive ? "SWE-bench Live" : isTau ? "τ-bench Araç Kullanımı" : isLive ? "LiveBench Genel" : isMmlu ? "MMLU-Pro Bilgi" : isLiveCode ? "LiveCodeBench Kod Üretimi" : leaderboardView === "intelligence" ? "Zekâ Endeksi" : leaderboardView === "aa-coding" ? "Kodlama Endeksi" : "Agentic Endeksi"}</h2><button type="button" className="benchmark-info-button" aria-label={`${benchmarkInfo[leaderboardView].name} hakkında bilgi`} aria-haspopup="dialog" onClick={() => setBenchmarkInfoOpen(true)}>i</button></div></div><p>{board?.published_at ? `Kaynak snapshot tarihi: ${new Date(board.published_at).toLocaleDateString("tr-TR")}` : "Veri kaynağı yapılandırılıyor"}</p></div>
-      <div className="leaderboard-tabs"><button className={isArena ? "active" : ""} onClick={() => setLeaderboardView("general")}>Genel — Arena</button><button className={isSwe ? "active" : ""} onClick={() => setLeaderboardView("coding")}>Kodlama — SWE-bench</button><button disabled={!swebenchLive} className={isSweLive ? "active" : ""} onClick={() => setLeaderboardView("swe-live")}>SWE-bench Live</button><button disabled={!tauBench} className={isTau ? "active" : ""} onClick={() => setLeaderboardView("tau-bench")}>τ-bench</button><button disabled={!livecodebench} className={isLiveCode ? "active" : ""} onClick={() => setLeaderboardView("livecodebench")}>LiveCodeBench</button><button disabled={!aaIntelligence} className={leaderboardView === "intelligence" ? "active" : ""} onClick={() => setLeaderboardView("intelligence")}>Zekâ — AA</button><button disabled={!aaCoding} className={leaderboardView === "aa-coding" ? "active" : ""} onClick={() => setLeaderboardView("aa-coding")}>Kodlama — AA</button><button disabled={!aaAgentic} className={leaderboardView === "agentic" ? "active" : ""} onClick={() => setLeaderboardView("agentic")}>Agentic — AA</button><button disabled={!livebench} className={isLive ? "active" : ""} onClick={() => setLeaderboardView("livebench")}>LiveBench</button><button disabled={!mmluPro} className={isMmlu ? "active" : ""} onClick={() => setLeaderboardView("mmlu-pro")}>MMLU-Pro</button></div>
-      {isLive && <div className="benchmark-category"><label htmlFor="livebench-category">LiveBench kategorisi</label><select id="livebench-category" value={livebenchCategory} onChange={e => setLivebenchCategory(e.target.value)}><option value="overall">Genel</option><option value="reasoning">Reasoning</option><option value="math">Matematik</option><option value="coding">Kodlama</option><option value="data_analysis">Veri analizi</option><option value="writing">Yazma</option><option value="instruction_following">Talimat takibi</option><option value="agentic_coding">Agentic kodlama</option></select></div>}
-      {isMmlu && <div className="benchmark-category"><label htmlFor="mmlu-category">MMLU-Pro alanı</label><select id="mmlu-category" value={mmluCategory} onChange={e => setMmluCategory(e.target.value)}><option value="overall">Genel</option>{[["biology", "Biyoloji"], ["business", "İşletme"], ["chemistry", "Kimya"], ["computer_science", "Bilgisayar bilimi"], ["economics", "Ekonomi"], ["engineering", "Mühendislik"], ["health", "Sağlık"], ["history", "Tarih"], ["law", "Hukuk"], ["math", "Matematik"], ["philosophy", "Felsefe"], ["physics", "Fizik"], ["psychology", "Psikoloji"], ["other", "Diğer"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>}
-      {isSweLive && <div className="benchmark-category"><label htmlFor="swe-live-category">SWE-bench Live bölümü</label><select id="swe-live-category" value={sweLiveCategory} onChange={e => setSweLiveCategory(e.target.value)}>{[["lite", "Lite"], ["full", "Full"], ["verified", "Verified"], ["ccpp", "C / C++"], ["csharp", "C#"], ["go", "Go"], ["java", "Java"], ["rust", "Rust"], ["tsjs", "TypeScript / JavaScript"], ["windows", "Windows"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>}
-      {isTau && <div className="benchmark-category"><label htmlFor="tau-category">τ-bench alanı</label><select id="tau-category" value={tauCategory} onChange={e => setTauCategory(e.target.value)}>{[["airline", "Havayolu"], ["retail", "Perakende"], ["telecom", "Telekom"], ["banking_knowledge", "Bankacılık bilgisi"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>}
-      <div className="official-source"><span>{isArena ? "İnsan tercihleriyle ölçülen Text Arena / Overall" : isSwe ? "Gerçek GitHub sorunlarında çözülen görev oranı / SWE-bench Verified" : isSweLive ? "Güncel, çok dilli gerçek yazılım görevlerinde çözülen sorun oranı" : isTau ? "Gerçekçi araç kullanımı görevlerinde kaynağın doğrudan Pass@1 sonucu" : isLive ? "Güncellenen, kontaminasyon azaltılmış akademik değerlendirme" : isMmlu ? "14 alanda zorlaştırılmış akademik bilgi ve akıl yürütme ölçümü" : isLiveCode ? "Resmî tarih penceresi ve kontaminasyon filtresiyle Pass@1 kod üretimi" : "Artificial Analysis bağımsız ölçümü"}</span>{board && <a href={board.source.url} target="_blank" rel="noreferrer">Resmî kaynağı aç ↗</a>}</div>
-      {isArena && <p className="arena-note">Genel Arena sıralaması temel olarak <strong>Arena Rating</strong> puanına göre yapılır; oy sayısı ve güven aralığı bağlam bilgisidir.</p>}
-      <div className="panel table-wrap official-table"><table><thead><tr><th>SIRA</th><th>MODEL</th><th>KURULUŞ</th><th>TÜR</th><th>{isArena ? "ARENA RATING" : isSwe || isSweLive ? "ÇÖZÜM ORANI" : isTau ? "PASS@1" : "KAYNAK PUANI"}</th><th>{isArena ? "OY" : isSwe || isSweLive ? "DEĞERLENDİRME" : isTau ? "BENCHMARK" : isLive ? "SÜRÜM" : isMmlu ? "VERİ KAYNAĞI" : "SÜRÜM"}</th><th>{isArena ? "GÜVEN ARALIĞI" : isSwe || isSweLive ? "AGENT / HARNESS" : isTau ? "YAYIN TARİHİ" : "GÜNCELLİK"}</th></tr></thead><tbody>{board?.items.map(item => { const badge = sourceBadge(item.license); return <tr key={`${item.rank}-${item.model_name}`}><td><strong className="official-rank">#{item.rank}</strong></td><td><strong>{item.model_name}</strong><small>{item.license || "Lisans bilgisi yok"}</small></td><td><span className="company-chip">{item.organization}</span></td><td className="source-type-cell"><span className={`source-badge ${badge.kind}`} title={`${badge.description} · Lisans kanıtı: ${item.license || "bilinmiyor"}`} aria-label={badge.description}><i />{badge.label}</span></td><td><strong className="official-rating">{isArena ? Math.round(item.rating) : isSwe || isSweLive || isTau ? `${item.rating.toFixed(2)}%` : item.rating.toFixed(1)}</strong></td><td className="mono">{isArena ? (item.vote_count?.toLocaleString("tr-TR") ?? "—") : isSwe ? String(item.details.evaluation_date ?? "—") : isSweLive ? String(item.details.submission_date ?? "—") : isTau ? String(item.details.benchmark_version ?? "—") : isLive ? String(item.details.release ?? "—") : isMmlu ? String(item.details.evaluation_source ?? "—") : String(item.details.benchmark_version ?? "—")}</td><td className="mono">{isArena && item.rating_lower != null && item.rating_upper != null ? `${Math.round(item.rating_lower)}–${Math.round(item.rating_upper)}` : isSwe ? String(item.details.agent ?? "—") : isSweLive ? String(item.details.agent_harness ?? "—") : item.leaderboard_publish_date}</td></tr>; })}</tbody></table></div></>;
-        })()}
+    {activeSection === "leaderboard" && (
+    <LeaderboardPage
+        view={leaderboardView}
+        onViewChange={selectLeaderboardView}
+        boards={leaderboardBoards}
+        benchmarkInfo={benchmarkInfo}
+        onOpenInfo={() => setBenchmarkInfoOpen(true)}
+        livebenchCategory={livebenchCategory}
+        onLivebenchCategoryChange={value => { setLivebenchCategory(value); setLeaderboardView("livebench"); }}
+        mmluCategory={mmluCategory}
+        onMmluCategoryChange={setMmluCategory}
+        sweLiveCategory={sweLiveCategory}
+        onSweLiveCategoryChange={setSweLiveCategory}
+        tauCategory={tauCategory}
+        onTauCategoryChange={setTauCategory}
+        onInspectModel={inspectLeaderboardModel}
+    />
+    )}
+
+    {activeSection === "models" && (
+    <ModelCatalogPage
+        loading={loading}
+        modelCount={stats.models}
+        resultTotal={resultTotal}
+        profileLoading={profileLoading}
+        query={query}
+        onQueryChange={value => { setQuery(value); setPage(1); }}
+        developers={developers}
+        onToggleDeveloper={toggleDeveloper}
+        onClearDevelopers={() => { setDevelopers([]); setPage(1); }}
+        companies={companies}
+        advancedOpen={advancedOpen}
+        onAdvancedToggle={() => setAdvancedOpen(open => !open)}
+        advancedActive={advancedActive}
+        sortStack={sortStack}
+        onSort={changeSort}
+        sortLabels={sortLabels}
+        activeFilters={activeModelFilters}
+        onResetFilters={resetAdvanced}
+        facets={facets}
+        minContext={minContext}
+        onMinContextChange={value => { setMinContext(value); setPage(1); }}
+        maxInputPrice={maxInputPrice}
+        onMaxInputPriceChange={value => { setMaxInputPrice(value); setPage(1); }}
+        maxOutputPrice={maxOutputPrice}
+        onMaxOutputPriceChange={value => { setMaxOutputPrice(value); setPage(1); }}
+        providers={providers}
+        onToggleProvider={toggleProvider}
+        onClearProviders={() => { setProviders([]); setPage(1); }}
+        openness={openness}
+        licenses={licenses}
+        commercialStatuses={commercialStatuses}
+        modalities={modalities}
+        capabilities={capabilities}
+        families={families}
+        advancedness={advancedness}
+        onToggleAdvancedness={toggleAdvancedness}
+        onClearAdvancedness={() => { setAdvancedness([]); setPage(1); }}
+        benchmarkFocus={benchmarkFocus}
+        onBenchmarkFocusChange={value => { setBenchmarkFocus(value); setPage(1); }}
+        onToggleOpenness={value => toggleList(value, setOpenness)}
+        onToggleLicense={value => toggleList(value, setLicenses)}
+        onToggleCommercial={value => toggleList(value, setCommercialStatuses)}
+        onToggleModality={toggleModality}
+        onToggleCapability={toggleCapability}
+        onToggleFamily={value => toggleList(value, setFamilies)}
+        runtimeCapabilityOptions={runtimeCapabilityOptions}
+        trModality={trModality}
+        trCapability={value => capabilityLabels[value] ?? value}
+        models={visible}
+        selectedIds={selected.map(item => item.id)}
+        onToggleSelect={toggle}
+        onInspect={openDetail}
+        page={page}
+        pages={pages}
+        onPageChange={setPage}
+        money={money}
+        developerSites={developerSites}
+    />
+    )}
+
+    {activeSection === "compare" && (
+    <section className="compare-section app-page" id="compare">
+        <div className="section-title compare-title-row">
+            <div>
+                <p className="kicker">MODEL KARŞILAŞTIRMA</p>
+                <h2>Akıllı model karşılaştırması.</h2>
+            </div>
+            <p>Katalogdan en fazla 3 model seç; fiyat, context, benchmark, yetenekler ve kullanım senaryosuna göre öneri al.</p>
+            <button type="button" className="compare-catalog-btn" onClick={() => navigateToSection("models")}>◫ Model kataloğundan seç</button>
+        </div>
+        {selected.length === 0 ? (
+            <div className="compare-empty">
+                <p>Karşılaştırmak istediğin modelleri katalogdan seç.</p>
+                <p className="compare-empty-hint">Tablodaki <strong>+</strong> düğmesiyle model ekle; en az 2 model seçince akıllı özet ve senaryo önerileri açılır.</p>
+                <button type="button" className="compare-catalog-btn compare-catalog-btn-large" onClick={() => navigateToSection("models")}>Model kataloğuna git</button>
+            </div>
+        ) : (
+            <>
+                <div className="compare-toolbar">
+                    <p><strong>{selected.length}</strong> / 3 model seçildi</p>
+                    <button type="button" className="compare-catalog-btn" onClick={() => navigateToSection("models")}>+ Model ekle / değiştir</button>
+                </div>
+                {selected.length < 2 ? (
+                    <div className="compare-hint">Akıllı karşılaştırma için bir model daha seç. Katalogdaki <strong>+</strong> düğmesini kullanabilirsin.</div>
+                ) : (
+                    <SmartModelComparison models={selected} profiles={compareProfiles} developerSites={developerSites} onRemove={toggle} onInspect={openDetail} />
+                )}
+            </>
+        )}
     </section>
+    )}
 
-    <section className="catalog-section" id="models">
-      <button className="catalog-toggle" type="button" aria-expanded={catalogOpen} aria-controls="model-catalog-content" onClick={() => setCatalogOpen(open => !open)}><div className="section-title"><div><p className="kicker">MODEL KATALOĞU</p><h2>{loading ? "Modeller yükleniyor…" : `${stats.models} model, tek radar.`}</h2></div><div className="catalog-toggle-action"><span>{catalogOpen ? "Tabloyu kapat" : "Modelleri göster"}</span><b>{catalogOpen ? "−" : "+"}</b></div></div></button>
-      {catalogOpen && <div id="model-catalog-content"><p className="catalog-price-note">Fiyatlar USD / 1 milyon token cinsindedir.</p>
-      <div className="filters"><label className="search"><span>⌕</span><input value={query} onChange={e => { setQuery(e.target.value); setPage(1); }} placeholder="Model veya geliştirici ara"/></label><select value={company} onChange={e => { setCompany(e.target.value); setPage(1); }} aria-label="Geliştirici filtresi"><option value="all">Tüm geliştiriciler ({companies.length})</option>{companies.map(c => <option key={c.slug} value={c.slug}>{c.name}</option>)}</select><button type="button" className={`advanced-toggle ${advancedOpen || advancedActive ? "active" : ""}`} aria-expanded={advancedOpen} aria-controls="advanced-model-filters" onClick={() => setAdvancedOpen(open => !open)}>Gelişmiş filtreler {advancedOpen ? "−" : "+"}</button><span className="sort-summary">Sıralama: <strong>{sortLabels[sortBy]} {sortOrder === "asc" ? "↑" : "↓"}</strong></span><span className="result-count">{profileLoading ? "Filtreleniyor…" : `${resultTotal} sonuç`}</span></div>
-      {activeModelFilters.length > 0 && <div className="filter-chips" aria-label="Aktif filtreler">{activeModelFilters.map(chip => <button key={chip.key} type="button" className="filter-chip" onClick={chip.clear}>{chip.label} <span aria-hidden="true">×</span></button>)}<button type="button" className="filter-chip clear-all" onClick={resetAdvanced}>Tümünü temizle</button></div>}
-      {advancedOpen && <div className="advanced-filters" id="advanced-model-filters"><MultiSelectFilter title="Model ailesi" values={families} options={facets.families.map(item => ({ value: item.name, count: item.count }))} onToggle={value => toggleList(value, setFamilies)}/><label><span>Minimum context</span><select value={minContext} onChange={e => { setMinContext(e.target.value); setPage(1); }}><option value="">Farketmez</option><option value="32768">32K+</option><option value="65536">64K+</option><option value="131072">128K+</option><option value="262144">256K+</option><option value="1000000">1M+</option></select></label><label><span>Maks. girdi / 1M</span><input type="number" min="0" step="0.01" value={maxInputPrice} onChange={e => { setMaxInputPrice(e.target.value); setPage(1); }} placeholder="Örn. 2"/></label><label><span>Maks. çıktı / 1M</span><input type="number" min="0" step="0.01" value={maxOutputPrice} onChange={e => { setMaxOutputPrice(e.target.value); setPage(1); }} placeholder="Örn. 8"/></label><label><span>API sağlayıcısı</span><select value={provider} onChange={e => { setProvider(e.target.value); setPage(1); }}><option value="any">Farketmez</option>{facets.providers.map(item => <option key={item.slug} value={item.slug}>{item.name} ({item.count})</option>)}</select></label><MultiSelectFilter title="Açıklık sınıfı" values={openness} options={[{ value: "open_source" }, { value: "open_weight" }, { value: "proprietary" }]} renderLabel={value => ({ open_source: "Open Source", open_weight: "Open Weight", proprietary: "Proprietary" }[value] ?? value)} onToggle={value => toggleList(value, setOpenness)}/><MultiSelectFilter title="Lisans" values={licenses} options={[{ value: "mit" }, { value: "apache_2_0" }, { value: "llama_community" }, { value: "model_specific" }, { value: "other" }]} renderLabel={value => ({ mit: "MIT", apache_2_0: "Apache 2.0", llama_community: "Llama Community", model_specific: "Model-specific", other: "Other" }[value] ?? value)} onToggle={value => toggleList(value, setLicenses)}/><MultiSelectFilter title="Ticari kullanım" values={commercialStatuses} options={[{ value: "allowed" }, { value: "restricted" }, { value: "not_allowed" }, { value: "unknown" }]} renderLabel={value => ({ allowed: "Allowed", restricted: "Restricted", not_allowed: "Not allowed", unknown: "Unknown" }[value] ?? value)} onToggle={value => toggleList(value, setCommercialStatuses)}/><MultiSelectFilter title="Modaliteler (hepsi gerekli)" values={modalities} options={[{ value: "text" }, { value: "image" }, { value: "audio" }, { value: "video" }]} renderLabel={trModality} onToggle={toggleModality}/><MultiSelectFilter title="Yetenekler (hepsi gerekli)" values={capabilities} options={Array.from(new Map([["reasoning", 0], ["coding", 0], ["vision", 0], ["multimodal", 0], ["tool_calling", 0], ["function_calling", 0], ["computer_use", 0], ["agents", 0], ["long_context", 0], ...facets.capabilities.map(item => [item.name, item.count] as [string, number])]).entries()).map(([value, count]) => ({ value, count }))} renderLabel={trCapability} onToggle={toggleCapability}/><label><span>Benchmark odağı</span><select value={benchmarkFocus} onChange={e => { setBenchmarkFocus(e.target.value); setPage(1); }}><option value="any">Farketmez</option><option value="general">Genel</option><option value="coding">Coding</option><option value="reasoning">Reasoning</option><option value="agent">Agent</option><option value="multimodal">Multimodal</option></select></label><button type="button" className="reset-filters" onClick={resetAdvanced}>Filtreleri temizle</button></div>}
-      <div className="panel table-wrap rich-table"><table className="model-table"><thead><tr><th>SEÇ</th><SortableHeader field="name" label="MODEL" active={sortBy} order={sortOrder} onSort={changeSort}/><SortableHeader field="provider" label="GELİŞTİRİCİ" active={sortBy} order={sortOrder} onSort={changeSort}/><SortableHeader field="backend" label="BACKEND" active={sortBy} order={sortOrder} onSort={changeSort}/><SortableHeader field="context" label="CONTEXT" active={sortBy} order={sortOrder} onSort={changeSort}/><SortableHeader field="input_price" label="GİRDİ" active={sortBy} order={sortOrder} onSort={changeSort}/><SortableHeader field="output_price" label="ÇIKTI" active={sortBy} order={sortOrder} onSort={changeSort}/><SortableHeader field="release_date" label="YAYIN" active={sortBy} order={sortOrder} onSort={changeSort}/><SortableHeader field="parameter_count" label="PARAMETRE" active={sortBy} order={sortOrder} onSort={changeSort}/><SortableHeader field="active_parameter_count" label="AKTİF" active={sortBy} order={sortOrder} onSort={changeSort}/><th>MODALİTE</th><SortableHeader field="benchmark_score" label="BENCHMARK" active={sortBy} order={sortOrder} onSort={changeSort}/><th></th></tr></thead><tbody>{visible.map(model => <tr key={model.id}><td><button className={`select-btn ${selected.some(m => m.id === model.id) ? "selected" : ""}`} onClick={() => toggle(model)} aria-label={`${model.name} karşılaştırmaya ekle`}>{selected.some(m => m.id === model.id) ? "✓" : "+"}</button></td><td><strong>{model.name}</strong><small>{model.slug}</small></td><td><span className="company-chip">{model.company.name}</span></td><td>{model.backend ?? "—"}</td><td className="mono">{model.context_window?.toLocaleString("tr-TR") ?? "—"}</td><td className="price">{money(model.pricing?.input)}</td><td className="price">{money(model.pricing?.output)}</td><td>{model.release_date ? new Date(model.release_date).toLocaleDateString("tr-TR") : "—"}</td><td className="mono">{model.parameter_count == null ? "—" : compact(model.parameter_count)}</td><td className="mono">{model.active_parameter_count == null ? "—" : compact(model.active_parameter_count)}</td><td>{model.capabilities.input_modalities?.join(" + ") || "—"}</td><td>{model.selection ? <><strong>%{model.selection.benchmark_score}</strong><small>En iyi sıra #{model.selection.best_rank} · {model.selection.evidence_count} kanıt</small></> : "—"}</td><td><button className="detail-btn" onClick={() => openDetail(model)}>İncele →</button></td></tr>)}</tbody></table></div>
-      <div className="pagination"><button disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Önceki</button><span>Sayfa {page} / {pages}</span><button disabled={page === pages} onClick={() => setPage(p => p + 1)}>Sonraki →</button></div></div>}
-    </section>
+    {insightViews.has(activeSection as InsightsView) && (
+    <ProductInsights api={API} view={activeSection as InsightsView}/>
+    )}
 
-    <section className="compare-section" id="compare"><div className="section-title"><div><p className="kicker">MODEL KARŞILAŞTIRMA</p><h2>Grafikle karşılaştır.</h2></div><p>Tablodaki + düğmesiyle en fazla 3 model seç; sayısal farkları grafik ve ayrıntı kartlarında birlikte gör.</p></div>{selected.length === 0 ? <div className="empty-state">Karşılaştırmak istediğin modelleri katalogdan seç.</div> : <>{selected.length < 2 ? <div className="compare-hint">Grafik karşılaştırmasını açmak için bir model daha seç.</div> : <ModelComparisonCharts models={selected} profiles={compareProfiles}/>}<div className="compare-grid">{selected.map(model => { const profile = compareProfiles[model.id]?.features; return <article key={model.id}><button className="remove" onClick={() => toggle(model)} aria-label={`${model.name} modelini karşılaştırmadan çıkar`}>×</button><p>{model.company.name}</p><h3>{model.name}</h3><dl><div><dt>Context</dt><dd>{(profile?.context_window ?? model.context_window)?.toLocaleString("tr-TR") ?? "—"}</dd></div><div><dt>Girdi / 1M</dt><dd>{money(profile?.input_price ?? model.pricing?.input)}</dd></div><div><dt>Çıktı / 1M</dt><dd>{money(profile?.output_price ?? model.pricing?.output)}</dd></div><div><dt>Cached input / 1M</dt><dd>{money(profile?.cache_read_price ?? model.pricing?.cache_read)}</dd></div><div><dt>Modaliteler</dt><dd>{profile?.modalities.join(", ") || model.capabilities.input_modalities?.join(", ") || "—"}</dd></div><div><dt>Tool calling</dt><dd>{profile?.tool_calling == null ? "Bilinmiyor" : profile.tool_calling ? "Var" : "Yok"}</dd></div><div><dt>Reasoning</dt><dd>{profile?.reasoning == null ? "Bilinmiyor" : profile.reasoning ? "Var" : "Yok"}</dd></div><div><dt>Erişim</dt><dd>{profile?.availability ?? "Bilinmiyor"}</dd></div><div><dt>Lisans</dt><dd>{profile?.license ?? "—"}</dd></div></dl><button className="wide-btn" onClick={() => openDetail(model)}>Tüm ayrıntılar</button></article>; })}</div></>}</section>
+    {activeSection === "events" && (
+    <section className="events-section app-page" id="events"><div className="section-title"><div><p className="kicker">TEKNOLOJİ AKIŞI</p><h2>Önemli gelişmeler önce.</h2></div><p>Gelişmeler kaynak güvenilirliği, değişimin büyüklüğü, sektörel etki ve doğrulama durumuyla 0–100 puanlanır.</p></div><div className="event-toolbar"><label><span>EVENT KATEGORİSİ</span><select value={eventCategory} onChange={e => setEventCategory(e.target.value)}><option value="any">Tüm kategoriler</option>{eventCategories.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label><span>ÖNEM SEVİYESİ</span><select value={eventImportance} onChange={e => setEventImportance(e.target.value)}><option value="any">Tümü</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label><label><span>ZAMAN ARALIĞI</span><select value={eventDays} onChange={e => setEventDays(e.target.value)}><option value="any">Tüm zamanlar</option><option value="1">Son 24 saat</option><option value="7">Son 7 gün</option><option value="30">Son 30 gün</option><option value="90">Son 90 gün</option></select></label><p>Importance puanına göre sıralı</p></div><div className="event-grid">{visibleEvents.map(event => { const meta = eventInfo(event.event_type); return <article className={`event-card ${meta.className}`} key={event.id}><div className="event-card-head"><span className="event-icon">{meta.icon}</span><p>{eventCategories.find(item => item[0] === event.category)?.[1] ?? meta.label}</p><b className={`importance-score ${event.importance}`}>{event.importance_score}</b></div><strong>{cleanEventTitle(event)}</strong><small>{eventDetail(event)}</small><time>{new Date(event.detected_at).toLocaleString("tr-TR")} · {event.importance}</time></article>; })}</div></section>
+    )}
 
-    <ProductInsights api={API}/>
+    {activeSection === "research" && (
+    <section className="catalog-section app-page" id="research"><div className="section-title"><div><p className="kicker">ARAŞTIRMA VE BİLDİRİM</p><h2>Makaleler, uyarılar, kanıt.</h2></div><p>arXiv ve laboratuvar duyuruları kaynak URL’siyle; bildirimler önem seviyesine göre.</p></div><div className="intel-grid">{research.length ? research.map(paper => <article key={paper.id}><p>ARAŞTIRMA</p><h3>{paper.title}</h3><small>{(paper.authors || []).slice(0, 3).join(", ") || "Yazar yok"}</small>{canOpenSourceUrl(paper.url) && <a href={paper.url} target="_blank" rel="noreferrer">Kaynağı aç ↗</a>}</article>) : <article className="empty-card"><p>ARAŞTIRMA</p><h3>Henüz makale toplanmadı</h3><small>Scheduler arXiv collector’ını çalıştırınca burada görünür.</small></article>}{notices.map(notice => <article key={notice.id} className={`notice ${notice.importance}`}><p>{notice.importance}</p><h3>{notice.title}</h3><small>{notice.body}</small>{canOpenSourceUrl(notice.source_url) && <a href={notice.source_url ?? ""} target="_blank" rel="noreferrer">Kaynağı aç ↗</a>}<time>{new Date(notice.created_at).toLocaleString("tr-TR")}</time></article>)}</div></section>
+    )}
 
-    <section className="events-section" id="events"><div className="section-title"><div><p className="kicker">TEKNOLOJİ AKIŞI</p><h2>Önemli gelişmeler önce.</h2></div><p>Gelişmeler kaynak güvenilirliği, değişimin büyüklüğü, sektörel etki ve doğrulama durumuyla 0–100 puanlanır.</p></div><div className="event-toolbar"><label><span>EVENT KATEGORİSİ</span><select value={eventCategory} onChange={e => setEventCategory(e.target.value)}><option value="any">Tüm kategoriler</option>{eventCategories.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label><span>ÖNEM SEVİYESİ</span><select value={eventImportance} onChange={e => setEventImportance(e.target.value)}><option value="any">Tümü</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label><label><span>ZAMAN ARALIĞI</span><select value={eventDays} onChange={e => setEventDays(e.target.value)}><option value="any">Tüm zamanlar</option><option value="1">Son 24 saat</option><option value="7">Son 7 gün</option><option value="30">Son 30 gün</option><option value="90">Son 90 gün</option></select></label><p>Importance puanına göre sıralı</p></div><div className="event-grid">{visibleEvents.map(event => { const meta = eventInfo(event.event_type); return <article className={`event-card ${meta.className}`} key={event.id}><div className="event-card-head"><span className="event-icon">{meta.icon}</span><p>{eventCategories.find(item => item[0] === event.category)?.[1] ?? meta.label}</p><b className={`importance-score ${event.importance}`}>{event.importance_score}</b></div><strong>{cleanEventTitle(event)}</strong><small>{eventDetail(event)}</small><time>{new Date(event.detected_at).toLocaleString("tr-TR")} · {event.importance}</time></article>; })}</div></section>
-    <section className="catalog-section" id="research"><div className="section-title"><div><p className="kicker">ARAŞTIRMA VE BİLDİRİM</p><h2>Makaleler, uyarılar, kanıt.</h2></div><p>arXiv ve laboratuvar duyuruları kaynak URL’siyle; bildirimler önem seviyesine göre.</p></div><div className="intel-grid">{research.length ? research.map(paper => <article key={paper.id}><p>ARAŞTIRMA</p><h3>{paper.title}</h3><small>{(paper.authors || []).slice(0, 3).join(", ") || "Yazar yok"}</small>{canOpenSourceUrl(paper.url) && <a href={paper.url} target="_blank" rel="noreferrer">Kaynağı aç ↗</a>}</article>) : <article className="empty-card"><p>ARAŞTIRMA</p><h3>Henüz makale toplanmadı</h3><small>Scheduler arXiv collector’ını çalıştırınca burada görünür.</small></article>}{notices.map(notice => <article key={notice.id} className={`notice ${notice.importance}`}><p>{notice.importance}</p><h3>{notice.title}</h3><small>{notice.body}</small>{canOpenSourceUrl(notice.source_url) && <a href={notice.source_url ?? ""} target="_blank" rel="noreferrer">Kaynağı aç ↗</a>}<time>{new Date(notice.created_at).toLocaleString("tr-TR")}</time></article>)}</div></section>
-    <section className="compare-section" id="radar"><div className="section-title"><div><p className="kicker">TEKNOLOJİ RADARI</p><h2>Agent, MCP, computer use.</h2></div><p>GitHub sürümleri ve araştırma metinlerinden çıkan sinyaller; uydurulmaz, yalnızca görülen kanıt kaydedilir.</p></div>{technology.length ? <div className="compare-grid">{technology.map(signal => <article key={signal.slug}><p>{signal.category}</p><h3>{signal.name}</h3><dl><div><dt>Güç</dt><dd>{signal.strength}</dd></div><div><dt>Son görülme</dt><dd>{new Date(signal.last_seen_at).toLocaleDateString("tr-TR")}</dd></div></dl></article>)}</div> : <div className="empty-state">Teknoloji sinyali henüz yok. GitHub ve arXiv collector’ları dolduracak.</div>}</section>
-    <section className="catalog-section" id="sources"><div className="section-title"><div><p className="kicker">KAYNAK KATALOĞU</p><h2>Kim söyledi, nerede, ne zaman.</h2></div><p>Resmî, bağımsız ve akademik kaynaklar; sınıf, yöntem ve son başarılı kontrol ile.</p></div><div className="panel table-wrap rich-table"><table><thead><tr><th>KAYNAK</th><th>SINIF</th><th>YÖNTEM</th><th>GÜVEN</th><th>DURUM</th></tr></thead><tbody>{sourceCatalog.map(source => <tr key={source.slug}><td><strong>{source.name}</strong><small><a href={source.url} target="_blank" rel="noreferrer">{source.url}</a></small></td><td>{source.source_class}</td><td>{source.collection_method}</td><td>{source.reliability}</td><td>{source.status ?? (source.is_active ? "aktif" : "pasif")}</td></tr>)}</tbody></table></div></section>
-    <footer><span>LLM RADAR / 2026</span><span>OpenRouter kaynaklı • Yakın gerçek zamanlı takip</span></footer>
+    {activeSection === "radar" && (
 
+    <section className="compare-section app-page" id="radar"><div className="section-title"><div><p className="kicker">TEKNOLOJİ RADARI</p><h2>Agent, MCP, computer use.</h2></div><p>GitHub sürümleri ve araştırma metinlerinden çıkan sinyaller; uydurulmaz, yalnızca görülen kanıt kaydedilir.</p></div>{technology.length ? <div className="compare-grid">{technology.map(signal => <article key={signal.slug}><p>{signal.category}</p><h3>{signal.name}</h3><dl><div><dt>Güç</dt><dd>{signal.strength}</dd></div><div><dt>Son görülme</dt><dd>{new Date(signal.last_seen_at).toLocaleDateString("tr-TR")}</dd></div></dl></article>)}</div> : <div className="empty-state">Teknoloji sinyali henüz yok. GitHub ve arXiv collector’ları dolduracak.</div>}</section>
+    )}
+
+    {activeSection === "sources" && (
+    <section className="catalog-section app-page" id="sources"><div className="section-title"><div><p className="kicker">KAYNAK KATALOĞU</p><h2>Kim söyledi, nerede, ne zaman.</h2></div><p>Resmî, bağımsız ve akademik kaynaklar; sınıf, yöntem ve son başarılı kontrol ile.</p></div><div className="panel table-wrap rich-table"><table><thead><tr><th>KAYNAK</th><th>SINIF</th><th>YÖNTEM</th><th>GÜVEN</th><th>DURUM</th></tr></thead><tbody>{sourceCatalog.map(source => <tr key={source.slug}><td><strong>{source.name}</strong><small><a href={source.url} target="_blank" rel="noreferrer">{source.url}</a></small></td><td>{source.source_class}</td><td>{source.collection_method}</td><td>{source.reliability}</td><td>{source.status ?? (source.is_active ? "aktif" : "pasif")}</td></tr>)}</tbody></table></div></section>
+    )}
+
+    {activeSection === "feedback" && (
+    <FeedbackPage api={API}/>
+    )}
+
+    </div>
+
+    {activeSection !== "leaderboard" && activeSection !== "models" && <footer className="site-foot"><span>LLM RADAR / 2026</span><span>OpenRouter kaynaklı • Yakın gerçek zamanlı takip</span></footer>}
     {benchmarkInfoOpen && <div className="benchmark-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget)
         setBenchmarkInfoOpen(false); }}><section className="benchmark-info-modal" role="dialog" aria-modal="true" aria-labelledby="benchmark-info-title"><button type="button" className="benchmark-modal-close" aria-label="Benchmark açıklamasını kapat" onClick={() => setBenchmarkInfoOpen(false)}>×</button><p className="kicker">BENCHMARK REHBERİ</p><h2 id="benchmark-info-title">{benchmarkInfo[leaderboardView].name}</h2><p>{benchmarkInfo[leaderboardView].summary}</p><dl><div><dt>Ne ölçüyor?</dt><dd>{benchmarkInfo[leaderboardView].measure}</dd></div><div><dt>Nasıl okunmalı?</dt><dd>{benchmarkInfo[leaderboardView].reading}</dd></div></dl></section></div>}
 
-    {(detailLoading || detail) && <div className="modal-backdrop" role="button" tabIndex={0} aria-label="Model ayrıntılarını kapat" onClick={e => { if (e.target === e.currentTarget)
-        setDetail(null); }} onKeyDown={e => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ")
-        setDetail(null); }}><aside className="detail-drawer">{detailLoading ? <div className="drawer-loading">Model ayrıntıları yükleniyor…</div> : detail && <><button className="drawer-close" onClick={() => setDetail(null)}>×</button><p className="kicker">{detail.company.name}</p><h2>{detail.name}</h2><code>{detail.slug}</code><p className="description">{detail.description || "Bu model için açıklama bulunmuyor."}</p><div className="detail-stats"><div><span>Bağlam</span><strong>{detail.context_window?.toLocaleString("tr-TR") ?? "—"}</strong></div><div><span>Tokenlaştırıcı</span><strong>{detail.tokenizer || "—"}</strong></div><div><span>Girdi fiyatı</span><strong>{money(detail.price_history[0]?.input)}</strong></div><div><span>Çıktı fiyatı</span><strong>{money(detail.price_history[0]?.output)}</strong></div></div><h3>Benchmark karnesi</h3>{detail.benchmarks.length ? <div className="benchmark-list">{detail.benchmarks.map(score => <a key={score.benchmark_slug} href={score.source_url} target="_blank" rel="noreferrer"><span>{score.benchmark}</span><strong>#{score.rank} · {score.score.toFixed(1)}</strong></a>)}</div> : <p className="description">Bu model adıyla eşleşen resmî benchmark sonucu henüz yok.</p>}<h3>Modaliteler</h3><div className="tags">{[...(detail.capabilities.input_modalities || []), ...(detail.capabilities.output_modalities || [])].map((tag, i) => <span key={`${tag}-${i}`}>{trModality(tag)}</span>)}</div>{(() => { const srcs = detail.sources && detail.sources.length > 0 ? detail.sources : [{ name: "OpenRouter", url: `https://openrouter.ai/${detail.slug}`, reliability: "third_party", source_class: "independent" }]; return srcs.map((src, i) => { const rawUrl = src.url ?? ""; const isOpenRouterSource = src.name.toLowerCase().includes("openrouter") || rawUrl.includes("openrouter.ai/api/v1/models"); const href = isOpenRouterSource ? `https://openrouter.ai/${detail.slug}` : rawUrl; const canOpen = canOpenSourceUrl(href); const label = src.reliability === "official_api" ? "Resmî API verisi" : src.reliability === "official_document" ? "Resmî dokümantasyon" : src.reliability === "independent_measurement" ? "Bağımsız ölçüm" : src.reliability === "academic" ? "Akademik kaynak" : src.reliability === "third_party" ? "Üçüncü taraf sağlayıcı verisi" : "Topluluk verisi"; return <div className="source-card" key={i}><span>KAYNAK VE GÜVENİLİRLİK</span><strong>{src.name === "openrouter" ? "OpenRouter" : src.name}</strong><p>{label}</p>{canOpen ? <a href={href} target="_blank" rel="noreferrer">Kaynağı aç ↗</a> : <small className="source-link-disabled">Görüntülenebilir kaynak sayfası yok</small>}</div>; }); })()}</>}</aside></div>}
+    {(detailLoading || detail || detailMissing) && <div className="modal-backdrop" role="button" tabIndex={0} aria-label="Model ayrıntılarını kapat" onClick={e => { if (e.target === e.currentTarget)
+        closeDetail(); }} onKeyDown={e => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ")
+        closeDetail(); }}><aside className="detail-drawer">{detailLoading ? <div className="drawer-loading">Model ayrıntıları yükleniyor…</div> : detail ? <><button className="drawer-close" onClick={closeDetail}>×</button><p className="kicker">{detail.company.name}</p><h2>{detail.name}</h2><code>{detail.slug}</code><p className="description">{detail.description || "Bu model için açıklama bulunmuyor."}</p><div className="detail-stats"><div><span>Bağlam</span><strong>{detail.context_window?.toLocaleString("tr-TR") ?? "—"}</strong></div><div><span>Tokenlaştırıcı</span><strong>{detail.tokenizer || "—"}</strong></div><div><span>Girdi fiyatı</span><strong>{money(detail.price_history[0]?.input)}</strong></div><div><span>Çıktı fiyatı</span><strong>{money(detail.price_history[0]?.output)}</strong></div></div><h3>Benchmark karnesi</h3>{detail.benchmarks.length ? <div className="benchmark-list">{detail.benchmarks.map(score => <a key={score.benchmark_slug} href={score.source_url} target="_blank" rel="noreferrer"><span>{score.benchmark}</span><strong>#{score.rank} · {score.score.toFixed(1)}</strong></a>)}</div> : <p className="description">Bu model adıyla eşleşen resmî benchmark sonucu henüz yok.</p>}<h3>Modaliteler</h3><div className="tags">{[...(detail.capabilities.input_modalities || []), ...(detail.capabilities.output_modalities || [])].map((tag, i) => <span key={`${tag}-${i}`}>{trModality(tag)}</span>)}</div>{(() => { const srcs = detail.sources && detail.sources.length > 0 ? detail.sources : [{ name: "OpenRouter", url: `https://openrouter.ai/${detail.slug}`, reliability: "third_party", source_class: "independent" }]; return srcs.map((src, i) => { const rawUrl = src.url ?? ""; const isOpenRouterSource = src.name.toLowerCase().includes("openrouter") || rawUrl.includes("openrouter.ai/api/v1/models"); const href = isOpenRouterSource ? `https://openrouter.ai/${detail.slug}` : rawUrl; const canOpen = canOpenSourceUrl(href); const label = src.reliability === "official_api" ? "Resmî API verisi" : src.reliability === "official_document" ? "Resmî dokümantasyon" : src.reliability === "independent_measurement" ? "Bağımsız ölçüm" : src.reliability === "academic" ? "Akademik kaynak" : src.reliability === "third_party" ? "Üçüncü taraf sağlayıcı verisi" : "Topluluk verisi"; return <div className="source-card" key={i}><span>KAYNAK VE GÜVENİLİRLİK</span><strong>{src.name === "openrouter" ? "OpenRouter" : src.name}</strong><p>{label}</p>{canOpen ? <a href={href} target="_blank" rel="noreferrer">Kaynağı aç ↗</a> : <small className="source-link-disabled">Görüntülenebilir kaynak sayfası yok</small>}</div>; }); })()}</> : <><button className="drawer-close" onClick={closeDetail}>×</button><p className="kicker">MODEL KATALOĞU</p><h2>Model bulunamadı</h2><p className="description">{detailMissing}</p></>}</aside></div>}
     </main>
   </div>;
 }

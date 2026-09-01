@@ -190,6 +190,35 @@ def _demand_counts(session: Session, since: datetime) -> dict[str, int]:
     return counts
 
 
+@router.get("/analytics/spotlight", tags=["analytics"])
+def model_spotlight(
+    session: DatabaseSession,
+    period: Literal["week", "month", "year"] = "week",
+    limit: Annotated[int, Query(ge=1, le=10)] = 5,
+) -> dict[str, Any]:
+    days = {"week": 7, "month": 30, "year": 365}[period]
+    since = datetime.now(UTC) - timedelta(days=days)
+    viewed = _model_counts(session, "model_viewed", since)
+    compared = _model_counts(session, "model_compared", since)
+    combined: dict[UUID, int] = {}
+    for model_id, count in viewed.items():
+        combined[model_id] = combined.get(model_id, 0) + count * 2
+    for model_id, count in compared.items():
+        combined[model_id] = combined.get(model_id, 0) + count * 3
+    labels = {
+        "week": "Haftanın modeli",
+        "month": "Ayın modeli",
+        "year": "Yılın modeli",
+    }
+    return {
+        "period": period,
+        "window_days": days,
+        "label": labels[period],
+        "metric_note": "Görüntüleme ve karşılaştırma etkileşimlerinin ağırlıklı toplamıdır.",
+        "items": _serialize_ranked_models(session, combined, limit),
+    }
+
+
 @router.get("/analytics/popular", tags=["analytics"])
 def popular_models(
     session: DatabaseSession,

@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     nanogpt_api_key: str | None = None
     github_token: str | None = None
     huggingface_token: str | None = None
+    hf_org_limit: int = 50
+    hf_task_limit: int = 30
     admin_api_token: str | None = None
     smtp_url: str | None = None
     telegram_bot_token: str | None = None

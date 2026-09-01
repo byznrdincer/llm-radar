@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from llm_radar.composite import canonical_model_name
 from llm_radar.database.models import (
     BenchmarkDefinition,
     Company,
@@ -14,6 +15,7 @@ from llm_radar.database.models import (
     ModelSnapshot,
 )
 from llm_radar.database.session import get_db
+from llm_radar.model_selection import benchmark_matches
 
 router = APIRouter(prefix="/api/v1")
 DatabaseSession = Annotated[Session, Depends(get_db)]
@@ -52,9 +54,55 @@ TURKISH_SIGNALS = (
     "trendyol",
     "ytu",
     "yıldız teknik",
+    "yildiz teknik",
     "istanbul technical",
     "itü",
+    "turna",
+    "vngrs",
+    "vbt-llm",
+    "vbart",
+    "kartalbt",
+    "odmdata",
+    "turkiye",
+    "türkiye",
+    "turkey",
+    "mizan",
+    "wiroai",
+    "turkcell-llm",
 )
+
+
+def _turkish_haystack(
+    model: Model,
+    company: Company,
+    profile: ModelProfile | None,
+    snapshot: ModelSnapshot | None,
+) -> str:
+    parts = [
+        model.name,
+        model.slug,
+        company.name,
+        company.slug,
+        str(model.capabilities),
+    ]
+    if profile and profile.capabilities:
+        parts.append(str(profile.capabilities))
+    if snapshot and snapshot.data:
+        for key in ("tags", "tasks", "description", "model_card", "organization"):
+            value = snapshot.data.get(key)
+            if value not in (None, ""):
+                parts.append(str(value))
+    return " ".join(parts).lower()
+
+
+def _is_turkish_model(
+    model: Model,
+    company: Company,
+    profile: ModelProfile | None,
+    snapshot: ModelSnapshot | None,
+) -> bool:
+    haystack = _turkish_haystack(model, company, profile, snapshot)
+    return any(signal in haystack for signal in TURKISH_SIGNALS)
 
 
 def _organization_region(value: str) -> str | None:
@@ -115,6 +163,14 @@ def country_frontier(
     }
 
 
+@router.get("/models/turkish", tags=["models"])
+def turkish_models(
+    session: DatabaseSession,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> dict[str, Any]:
+    return list_turkish_models(session, limit)
+
+
 @router.get("/insights/openness-trend", tags=["insights"])
 def openness_trend(session: DatabaseSession) -> dict[str, Any]:
     rows = session.execute(
@@ -134,8 +190,7 @@ def openness_trend(session: DatabaseSession) -> dict[str, Any]:
     }
 
 
-@router.get("/models/turkish", tags=["models"])
-def turkish_models(
+def list_turkish_models(
     session: DatabaseSession,
     limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> dict[str, Any]:
@@ -144,27 +199,27 @@ def turkish_models(
         .join(Company, Company.id == Model.company_id)
         .outerjoin(ModelProfile, ModelProfile.model_id == Model.id)
     ).all()
-    candidates: list[tuple[Model, Company, ModelProfile | None]] = []
+    benchmark_index = benchmark_matches(session, "general")
+    candidates: list[tuple[Model, Company, ModelProfile | None, ModelSnapshot | None, int]] = []
     for model, company, profile in rows:
-        haystack = " ".join(
-            [model.name, model.slug, company.name, company.slug, str(model.capabilities)]
-        ).lower()
-        if any(signal in haystack for signal in TURKISH_SIGNALS):
-            candidates.append((model, company, profile))
-    model_ids = [model.id for model, _, _ in candidates[:limit]]
-    snapshots: dict[Any, ModelSnapshot] = {}
-    for model_id in model_ids:
         snapshot = session.scalar(
             select(ModelSnapshot)
-            .where(ModelSnapshot.model_id == model_id)
+            .where(ModelSnapshot.model_id == model.id)
             .order_by(ModelSnapshot.observed_at.desc())
             .limit(1)
         )
-        if snapshot is not None:
-            snapshots[model_id] = snapshot
+        if not _is_turkish_model(model, company, profile, snapshot):
+            continue
+        downloads = (
+            int(snapshot.data.get("downloads"))
+            if snapshot and isinstance(snapshot.data.get("downloads"), int)
+            else 0
+        )
+        candidates.append((model, company, profile, snapshot, downloads))
+    candidates.sort(key=lambda item: item[4], reverse=True)
     return {
         "selection_note": (
-            "Türkçe/Türkiye sinyali model adı, geliştirici veya kaynak etiketinden gelir."
+            "Türkçe/Türkiye sinyali model adı, geliştirici, HF etiketleri veya kaynak metadata'sından gelir."
         ),
         "items": [
             {
@@ -172,20 +227,29 @@ def turkish_models(
                 "name": model.name,
                 "organization": company.name,
                 "base_model": (
-                    snapshots.get(model.id).data.get("base_model")
-                    if model.id in snapshots
+                    snapshot.data.get("base_model")
+                    if snapshot and isinstance(snapshot.data, dict)
                     else None
                 ),
                 "parameter_count": model.parameter_count,
                 "license": profile.license if profile else model.license,
                 "downloads": (
-                    snapshots.get(model.id).data.get("downloads") if model.id in snapshots else None
+                    snapshot.data.get("downloads")
+                    if snapshot and isinstance(snapshot.data, dict)
+                    else None
                 ),
                 "likes": (
-                    snapshots.get(model.id).data.get("likes") if model.id in snapshots else None
+                    snapshot.data.get("likes")
+                    if snapshot and isinstance(snapshot.data, dict)
+                    else None
+                ),
+                "benchmark_score": (
+                    benchmark_index[canonical_model_name(model.name)].score
+                    if canonical_model_name(model.name) in benchmark_index
+                    else None
                 ),
                 "last_updated": profile.observed_at if profile else model.updated_at,
             }
-            for model, company, profile in candidates[:limit]
+            for model, company, profile, snapshot, _downloads in candidates[:limit]
         ],
     }

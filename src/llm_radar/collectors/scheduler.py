@@ -16,11 +16,13 @@ from llm_radar.collectors.github import GitHubCollector, GitHubOrganizationColle
 from llm_radar.collectors.groqcloud import GroqCloudCollector
 from llm_radar.collectors.huggingface import HuggingFaceCollector
 from llm_radar.collectors.litellm import LiteLLMCollector
+from llm_radar.collectors.lmstudio import LMStudioCollector
 from llm_radar.collectors.livecodebench import LiveCodeBenchCollector
 from llm_radar.collectors.nanogpt import NanoGPTCollector
 from llm_radar.collectors.news import HtmlNewsCollector, RssCollector, html_sources, rss_sources
 from llm_radar.collectors.openai_pricing import OpenAIPricingCollector
 from llm_radar.collectors.openrouter import OpenRouterCollector
+from llm_radar.collectors.ollama import OllamaCollector
 from llm_radar.collectors.replicate import ReplicateCollector
 from llm_radar.collectors.swebench import SweBenchCollector
 from llm_radar.collectors.swebench_live import SweBenchLiveCollector
@@ -54,6 +56,8 @@ async def main() -> None:
             35,
         ),
         (HuggingFaceCollector, settings.collector_interval_seconds, 20),
+        (OllamaCollector, settings.collector_interval_seconds * 2, 55),
+        (LMStudioCollector, settings.collector_interval_seconds * 2, 65),
         (GitHubCollector, settings.collector_interval_seconds, 40),
         (
             lambda client: GitHubOrganizationCollector(client, "deepseek", "deepseek-ai"),

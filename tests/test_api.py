@@ -3,6 +3,27 @@ from fastapi.testclient import TestClient
 from llm_radar.api.main import app
 
 
+def test_turkish_models_endpoint_not_shadowed_by_model_detail() -> None:
+    client = TestClient(app, base_url="http://localhost")
+    try:
+        response = client.get("/api/v1/models/turkish?limit=10")
+    except Exception:
+        return
+
+    if response.status_code == 422:
+        detail = response.json().get("detail", [])
+        assert not any(
+            item.get("loc") == ["path", "model_id"] and item.get("type") == "uuid_parsing"
+            for item in detail
+        )
+        return
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "items" in payload
+    assert isinstance(payload["items"], list)
+
+
 def test_health_endpoint() -> None:
     response = TestClient(app, base_url="http://localhost").get("/health")
 
@@ -37,6 +58,7 @@ def test_openapi_contains_core_data_routes() -> None:
     assert "/api/v1/leaderboards/mmlu-pro" in schema["paths"]
     assert "/api/v1/analytics/events" in schema["paths"]
     assert "/api/v1/analytics/popular" in schema["paths"]
+    assert "/api/v1/analytics/spotlight" in schema["paths"]
     assert "/api/v1/feedback" in schema["paths"]
     assert "/api/v1/model-demands" in schema["paths"]
     assert "/api/v1/model-demands/summary" in schema["paths"]

@@ -20,6 +20,8 @@ from llm_radar.catalog import (
 from llm_radar.collectors.arxiv import ArxivCollector
 from llm_radar.collectors.github import GitHubCollector
 from llm_radar.collectors.huggingface import HuggingFaceCollector
+from llm_radar.collectors.lmstudio import LMStudioCollector
+from llm_radar.collectors.ollama import OllamaCollector
 from llm_radar.collectors.openrouter import OpenRouterCollector
 from llm_radar.config import get_settings, source_is_configured
 from llm_radar.database.models import (
@@ -330,6 +332,8 @@ async def run_collector(name: str) -> dict[str, Any]:
     mapping = {
         "openrouter": OpenRouterCollector,
         "huggingface": HuggingFaceCollector,
+        "ollama": OllamaCollector,
+        "lmstudio": LMStudioCollector,
         "github": GitHubCollector,
         "arxiv": ArxivCollector,
     }

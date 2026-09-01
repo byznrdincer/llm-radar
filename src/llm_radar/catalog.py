@@ -236,6 +236,19 @@ WATCHED_HF_ORGS = (
     "moonshotai",
     "MiniMaxAI",
     "nvidia",
+    "tubitak",
+    "TURKCELL",
+    "vngrs-ai",
+    "YildizTechnicalUniversity",
+    "ODMDATA",
+    "KartalBT",
+)
+
+TURKISH_HF_SEARCH_QUERIES = (
+    "turkish llm",
+    "turkce",
+    "türkçe",
+    "turkish language",
 )
 
 # High-value repositories whose weight evidence must remain attached even when
@@ -244,6 +257,7 @@ PINNED_HF_MODELS = (
     "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16",
     "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8",
     "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4",
+    "TURKCELL/Turkcell-LLM-7b-v1",
 )
 
 SOURCE_CATALOG: tuple[SourceSpec, ...] = (
@@ -418,6 +432,32 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "optional_token",
         "official_api",
         "https://huggingface.co/terms-of-service",
+    ),
+    SourceSpec(
+        "ollama",
+        "Ollama Library",
+        "https://ollama.com/library",
+        SourceCategory.MODEL_CODE,
+        SourceClass.COMMUNITY,
+        CollectionMethod.HTML,
+        43_200,
+        20,
+        "none",
+        "third_party",
+        "https://ollama.com/terms",
+    ),
+    SourceSpec(
+        "lmstudio",
+        "LM Studio",
+        "https://lmstudio.ai/models",
+        SourceCategory.MODEL_CODE,
+        SourceClass.COMMUNITY,
+        CollectionMethod.HTML,
+        43_200,
+        20,
+        "none",
+        "third_party",
+        "https://lmstudio.ai/terms",
     ),
     SourceSpec(
         "github",

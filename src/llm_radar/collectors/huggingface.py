@@ -1,7 +1,12 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from llm_radar.catalog import PINNED_HF_MODELS, WATCHED_HF_ORGS, importance_for
+from llm_radar.catalog import (
+    PINNED_HF_MODELS,
+    TURKISH_HF_SEARCH_QUERIES,
+    WATCHED_HF_ORGS,
+    importance_for,
+)
 from llm_radar.collectors.base import BaseCollector, CollectorResult
 from llm_radar.collectors.model_catalog import as_dict
 from llm_radar.config import get_settings
@@ -14,6 +19,7 @@ from llm_radar.events.schemas import (
 )
 from llm_radar.normalize import normalize_license
 
+HF_HUB_TASKS = ("text-generation", "image-text-to-text", "text-to-image")
 WEIGHT_SUFFIXES = (".safetensors", ".gguf", ".bin", ".pt", ".pth")
 
 
@@ -54,6 +60,42 @@ def _active_parameter_count(card_data: dict[str, Any]) -> int | str | None:
     return None
 
 
+def _base_model(card_data: dict[str, Any]) -> str | None:
+    for key in ("base_model", "base", "base_model_name"):
+        value = card_data.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return None
+
+
+def _gated_status(item: dict[str, Any], card_data: dict[str, Any]) -> bool | None:
+    gated = item.get("gated")
+    if isinstance(gated, bool):
+        return gated
+    if gated not in (None, ""):
+        return str(gated).strip().lower() not in {"false", "manual", "auto", "none"}
+    card_gated = card_data.get("gated")
+    if isinstance(card_gated, bool):
+        return card_gated
+    if card_gated not in (None, ""):
+        return True
+    return None
+
+
+def _task_tags(item: dict[str, Any], card_data: dict[str, Any]) -> list[str]:
+    tags: list[str] = []
+    pipeline = item.get("pipeline_tag")
+    if pipeline:
+        tags.append(str(pipeline))
+    for key in ("tags", "task", "tasks"):
+        value = item.get(key) if key != "tasks" else card_data.get(key)
+        if isinstance(value, list):
+            tags.extend(str(entry) for entry in value if entry)
+        elif value not in (None, ""):
+            tags.append(str(value))
+    return sorted({tag.strip().lower() for tag in tags if tag and str(tag).strip()})
+
+
 class HuggingFaceCollector(BaseCollector):
     name = "huggingface"
 
@@ -71,11 +113,15 @@ class HuggingFaceCollector(BaseCollector):
             "name": model_id.split("/")[-1],
             "organization": model_id.split("/", 1)[0],
             "pipeline_tag": item.get("pipeline_tag"),
+            "tasks": _task_tags(item, card_data),
             "likes": item.get("likes"),
             "downloads": item.get("downloads"),
             "parameter_count": _parameter_count(item),
             "active_parameter_count": _active_parameter_count(card_data),
+            "base_model": _base_model(card_data),
+            "gated": _gated_status(item, card_data),
             "license": normalize_license(card_data.get("license")),
+            "model_card": card_data.get("model_summary") or card_data.get("summary"),
             "is_open_weight": True if weight_files else None,
             "open_weight_evidence": {
                 "kind": "downloadable_weight_files",
@@ -105,15 +151,28 @@ class HuggingFaceCollector(BaseCollector):
 
     async def collect(self) -> CollectorResult:
         collected_at = datetime.now(UTC)
+        settings = get_settings()
         events: list[EventEnvelope] = []
         raw: list[dict[str, Any]] = []
         seen: set[str] = set()
+
+        async def ingest(item: dict[str, Any]) -> None:
+            converted = self._to_event(item, collected_at)
+            if converted is None:
+                return
+            event, payload = converted
+            if event.entity_key in seen:
+                return
+            seen.add(event.entity_key)
+            raw.append(payload)
+            events.append(event)
+
         for org in WATCHED_HF_ORGS:
             response = await self.client.get(
                 "https://huggingface.co/api/models",
                 params={
                     "author": org,
-                    "limit": 12,
+                    "limit": settings.hf_org_limit,
                     "sort": "lastModified",
                     "direction": -1,
                     "full": "true",
@@ -123,15 +182,42 @@ class HuggingFaceCollector(BaseCollector):
             )
             response.raise_for_status()
             for item in response.json():
-                converted = self._to_event(item, collected_at)
-                if converted is None:
-                    continue
-                event, payload = converted
-                if event.entity_key in seen:
-                    continue
-                seen.add(event.entity_key)
-                raw.append(payload)
-                events.append(event)
+                await ingest(item)
+
+        for task in HF_HUB_TASKS:
+            response = await self.client.get(
+                "https://huggingface.co/api/models",
+                params={
+                    "pipeline_tag": task,
+                    "limit": settings.hf_task_limit,
+                    "sort": "downloads",
+                    "direction": -1,
+                    "full": "true",
+                    "cardData": "true",
+                },
+                headers=_headers(),
+            )
+            response.raise_for_status()
+            for item in response.json():
+                await ingest(item)
+
+        for query in TURKISH_HF_SEARCH_QUERIES:
+            response = await self.client.get(
+                "https://huggingface.co/api/models",
+                params={
+                    "search": query,
+                    "limit": settings.hf_task_limit,
+                    "sort": "downloads",
+                    "direction": -1,
+                    "full": "true",
+                    "cardData": "true",
+                },
+                headers=_headers(),
+            )
+            response.raise_for_status()
+            for item in response.json():
+                await ingest(item)
+
         for model_id in PINNED_HF_MODELS:
             entity_key = model_id.lower()
             if entity_key in seen:
@@ -141,12 +227,7 @@ class HuggingFaceCollector(BaseCollector):
                 params={"full": "true", "cardData": "true"},
                 headers=_headers(),
             )
-            response.raise_for_status()
-            converted = self._to_event(response.json(), collected_at)
-            if converted is None:
+            if response.status_code >= 400:
                 continue
-            event, payload = converted
-            seen.add(event.entity_key)
-            raw.append(payload)
-            events.append(event)
+            await ingest(response.json())
         return CollectorResult(events=events, raw_payload={"models": raw})

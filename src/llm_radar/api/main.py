@@ -35,10 +35,11 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
-app.include_router(router)
-app.include_router(intel_router)
-app.include_router(engagement_router)
+# insights_router must register before router so /models/turkish is not captured by /models/{model_id}.
 app.include_router(insights_router)
+app.include_router(engagement_router)
+app.include_router(intel_router)
+app.include_router(router)
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=[host.strip() for host in settings.api_allowed_hosts.split(",")],
