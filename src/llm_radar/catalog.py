@@ -181,6 +181,27 @@ EVENT_CATALOG: tuple[EventSpec, ...] = (
         Importance.LOW,
         "market",
     ),
+    EventSpec("agent.updated", "AI Agent", "Agent gelişmesi", Importance.HIGH, "technology"),
+    EventSpec(
+        "product.launched", "Ürün lansmanı", "Yeni ürün veya servis", Importance.HIGH, "product"
+    ),
+    EventSpec("funding.announced", "Yatırım", "Yeni yatırım turu", Importance.MEDIUM, "company"),
+    EventSpec(
+        "acquisition.announced", "Satın alma", "Şirket satın alması", Importance.HIGH, "company"
+    ),
+    EventSpec(
+        "partnership.announced", "İş ortaklığı", "Yeni iş ortaklığı", Importance.MEDIUM, "company"
+    ),
+    EventSpec(
+        "infrastructure.updated", "Altyapı", "AI altyapı gelişmesi", Importance.MEDIUM, "technology"
+    ),
+    EventSpec(
+        "regulation.updated", "Regülasyon", "AI düzenleme gelişmesi", Importance.HIGH, "regulation"
+    ),
+    EventSpec("security.advisory", "Güvenlik", "Güvenlik gelişmesi", Importance.HIGH, "security"),
+    EventSpec(
+        "api.updated", "API güncellemesi", "API veya SDK değişikliği", Importance.MEDIUM, "api"
+    ),
 )
 
 EVENT_BY_TYPE = {item.event_type: item for item in EVENT_CATALOG}
@@ -217,6 +238,14 @@ WATCHED_HF_ORGS = (
     "nvidia",
 )
 
+# High-value repositories whose weight evidence must remain attached even when
+# they are no longer among an organization's most recently updated models.
+PINNED_HF_MODELS = (
+    "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16",
+    "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8",
+    "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4",
+)
+
 SOURCE_CATALOG: tuple[SourceSpec, ...] = (
     SourceSpec(
         "openai",
@@ -234,10 +263,10 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
     SourceSpec(
         "openai-pricing",
         "OpenAI Pricing",
-        "https://openai.com/api/pricing/",
+        "https://developers.openai.com/api/docs/pricing.md",
         SourceCategory.COMPANY,
         SourceClass.OFFICIAL,
-        CollectionMethod.HTML,
+        CollectionMethod.REST,
         21_600,
         6,
         "none",
@@ -428,6 +457,82 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "none",
         "third_party",
         "https://openrouter.ai/terms",
+    ),
+    SourceSpec(
+        "vercel-ai-gateway",
+        "Vercel AI Gateway",
+        "https://ai-gateway.vercel.sh/v1/models",
+        SourceCategory.MARKET,
+        SourceClass.OFFICIAL,
+        CollectionMethod.REST,
+        21_600,
+        20,
+        "none",
+        "third_party",
+        "https://vercel.com/legal/terms",
+    ),
+    SourceSpec(
+        "aimlapi",
+        "AI/ML API",
+        "https://api.aimlapi.com/models",
+        SourceCategory.MARKET,
+        SourceClass.OFFICIAL,
+        CollectionMethod.REST,
+        21_600,
+        20,
+        "none",
+        "third_party",
+    ),
+    SourceSpec(
+        "litellm",
+        "LiteLLM Model Catalog",
+        "https://api.litellm.ai/model_catalog",
+        SourceCategory.MARKET,
+        SourceClass.COMMUNITY,
+        CollectionMethod.REST,
+        21_600,
+        10,
+        "none",
+        "community",
+        "https://github.com/BerriAI/litellm/blob/main/LICENSE",
+    ),
+    SourceSpec(
+        "nanogpt",
+        "NanoGPT",
+        "https://nano-gpt.com/api/v1/models?detailed=true",
+        SourceCategory.MARKET,
+        SourceClass.OFFICIAL,
+        CollectionMethod.REST,
+        21_600,
+        20,
+        "optional_token",
+        "third_party",
+    ),
+    SourceSpec(
+        "groqcloud",
+        "GroqCloud",
+        "https://api.groq.com/openai/v1/models",
+        SourceCategory.MARKET,
+        SourceClass.OFFICIAL,
+        CollectionMethod.REST,
+        21_600,
+        20,
+        "api_key",
+        "official_api",
+        "https://groq.com/terms-of-use/",
+    ),
+    SourceSpec(
+        "replicate",
+        "Replicate",
+        "https://api.replicate.com/v1/models",
+        SourceCategory.MARKET,
+        SourceClass.OFFICIAL,
+        CollectionMethod.REST,
+        21_600,
+        20,
+        "api_key",
+        "official_api",
+        "https://replicate.com/terms",
     ),
     SourceSpec(
         "arena",

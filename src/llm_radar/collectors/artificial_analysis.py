@@ -70,14 +70,18 @@ class ArtificialAnalysisCollector(BaseCollector):
         collected_at: datetime,
     ) -> EventEnvelope:
         creator = model.get("model_creator") or {}
+        open_weights = model.get("open_weights") if "open_weights" in model else None
         payload = {
             "benchmark_slug": f"artificial-analysis-{metric}",
             "benchmark_name": f"Artificial Analysis {metric.title()} Index v{version}",
             "benchmark_version": version,
             "model_name": model["name"],
             "model_slug": model.get("slug"),
+            "open_weights": open_weights,
             "organization": creator.get("name") or "Unknown",
-            "license": "Open" if model.get("open_weights") else "Proprietary",
+            "license": (
+                "Open" if open_weights is True else "Proprietary" if open_weights is False else None
+            ),
             "category": metric,
             "rating": (model.get("evaluations") or {})[field],
             "rating_lower": None,

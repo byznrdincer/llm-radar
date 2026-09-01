@@ -29,7 +29,8 @@ eksik veri uydurulmaz ve sonuçlar kaynak/yayın bilgisiyle saklanır.
 - Model, sağlayıcı, aile, sürüm, context, modalite ve fiyat takibi
 - Resmî/akademik/bağımsız benchmarkları ayrı kategorilerde gösterme
 - Yeni model, fiyat, context, yetenek, lisans ve sıralama değişikliği algılama
-- OpenRouter, Hugging Face, GitHub, arXiv, RSS ve laboratuvar sayfalarını toplama
+- OpenRouter, Vercel AI Gateway, AI/ML API, LiteLLM, NanoGPT, GroqCloud,
+  Replicate, Hugging Face, GitHub, arXiv, RSS ve laboratuvar sayfalarını toplama
 - Alias ve entity-resolution ile model adlarını kanonik kayıtlara bağlama
 - Ham cevapları MinIO üzerinde denetlenebilir biçimde arşivleme
 - Redpanda üzerinde olay tabanlı, idempotent ve tekrar işlenebilir veri akışı
@@ -125,10 +126,20 @@ Başlıca topic'ler: `llm.raw_updates`, `llm.model_releases`,
 ### Model, araştırma ve teknoloji
 
 - **OpenRouter:** model kataloğu, sağlayıcı, context, modalite ve fiyat
+- **Vercel AI Gateway:** model, context, modalite, yetenek ve gateway fiyatı
+- **AI/ML API:** model geliştiricisi, context, çıktı limiti ve API özellikleri
+- **LiteLLM:** doğrudan geliştirici katalogları için ikincil fiyat/yetenek doğrulaması
+- **NanoGPT:** model, context, yetenek ve sağlayıcı fiyatı
+- **GroqCloud:** Groq üzerinde aktif model, context ve çıktı limiti (anahtar gerekir)
+- **Replicate:** barındırılan model, sürüm ve açık ağırlık kanıtı (anahtar gerekir)
 - **Hugging Face:** model ve açık ağırlık sinyalleri
 - **GitHub:** sürümler ve teknoloji projeleri
 - **arXiv:** araştırma makaleleri
 - **Resmî RSS/HTML kaynakları:** şirket duyuruları ve yeni teknolojiler
+
+Gateway API'leri görsel, video, ses ve embedding modelleri de sunsa bile bu
+collector'lar yalnızca LLM/text-chat kayıtlarını kataloğa alır. Multimodal bir
+LLM'in görsel veya dosya girdisi ise model özelliği olarak korunur.
 
 ### Benchmarklar
 
@@ -302,6 +313,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8080 npm run dev -- --host 0.0.0.0
 | `REDIS_URL` | Redis bağlantısı | Docker'da `redis://redis:6379/0` |
 | `CLICKHOUSE_URL` | ClickHouse adresi | Docker'da `http://clickhouse:8123` |
 | `ARTIFICIAL_ANALYSIS_API_KEY` | AA collector anahtarı | İsteğe bağlı |
+| `GROQ_API_KEY` | GroqCloud model kataloğu | İsteğe bağlı; verilirse collector açılır |
+| `REPLICATE_API_TOKEN` | Replicate model kataloğu | İsteğe bağlı; verilirse collector açılır |
+| `NANOGPT_API_KEY` | Hesaba özel NanoGPT görünürlüğü/fiyatı | İsteğe bağlı |
 | `GITHUB_TOKEN` | GitHub rate limitini artırır | İsteğe bağlı |
 | `HUGGINGFACE_TOKEN` | Hugging Face erişimi | İsteğe bağlı |
 | `ADMIN_API_TOKEN` | Admin Bearer token'ı | Üretimde zorunlu |
@@ -333,6 +347,7 @@ python -m llm_radar.collectors.run_community_benchmarks
 python -m llm_radar.collectors.run_huggingface
 python -m llm_radar.collectors.run_github
 python -m llm_radar.collectors.run_arxiv
+python -m llm_radar.collectors.run_provider_catalogs
 ```
 
 Docker içinden:

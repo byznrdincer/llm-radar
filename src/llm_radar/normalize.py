@@ -15,20 +15,41 @@ _COMPANY_ALIASES = {
     "x.ai": "xai",
     "meta": "meta",
     "meta ai": "meta",
+    "meta-llama": "meta",
     "facebook": "meta",
     "deepseek": "deepseek",
+    "deepseek-ai": "deepseek",
     "qwen": "qwen",
     "alibaba": "qwen",
     "moonshot": "moonshot",
     "moonshot ai": "moonshot",
+    "moonshotai": "moonshot",
     "kimi": "moonshot",
     "mistral": "mistral",
     "mistral ai": "mistral",
+    "mistralai": "mistral",
     "z.ai": "zai",
     "zai": "zai",
+    "z-ai": "zai",
     "zhipu": "zai",
     "minimax": "minimax",
+    "minimaxai": "minimax",
+    "x-ai": "xai",
     "nvidia": "nvidia",
+}
+
+_COMPANY_DISPLAY_NAMES = {
+    "ai21": "AI21",
+    "deepseek": "DeepSeek",
+    "meta": "Meta",
+    "minimax": "MiniMax",
+    "mistral": "Mistral AI",
+    "moonshot": "Moonshot AI",
+    "nvidia": "NVIDIA",
+    "openai": "OpenAI",
+    "qwen": "Qwen",
+    "xai": "xAI",
+    "zai": "Z.ai",
 }
 
 _LICENSE_ALIASES = {
@@ -65,6 +86,10 @@ def slugify(value: str) -> str:
 def normalize_company_name(value: str) -> str:
     key = re.sub(r"\s+", " ", ascii_fold(value).lower()).strip()
     return _COMPANY_ALIASES.get(key, slugify(value))
+
+
+def company_display_name(slug: str) -> str:
+    return _COMPANY_DISPLAY_NAMES.get(slug, slug.replace("-", " ").title())
 
 
 def normalize_license(value: str | None) -> str | None:

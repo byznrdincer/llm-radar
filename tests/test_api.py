@@ -15,6 +15,11 @@ def test_openapi_contains_core_data_routes() -> None:
 
     assert "/api/v1/stats" in schema["paths"]
     assert "/api/v1/models" in schema["paths"]
+    assert "/api/v1/models/search" in schema["paths"]
+    assert "/api/v1/models/facets" in schema["paths"]
+    assert "/api/v1/models/compare" in schema["paths"]
+    assert "/api/v1/models/select" in schema["paths"]
+    assert "/api/v1/models/{model_id}/history" in schema["paths"]
     assert "/api/v1/events" in schema["paths"]
     assert "/api/v1/leaderboards/arena" in schema["paths"]
     assert "/api/v1/leaderboards/swe-bench" in schema["paths"]

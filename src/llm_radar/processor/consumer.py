@@ -8,8 +8,8 @@ from llm_radar.config import get_settings
 from llm_radar.database.models import DeadLetterEvent
 from llm_radar.database.session import SessionLocal
 from llm_radar.events.producer import EventProducer
-from llm_radar.events.schemas import EventEnvelope, EventType
-from llm_radar.events.topics import DEAD_LETTER, PROCESSED_EVENTS, RAW_UPDATES, TOPIC_BY_EVENT_TYPE
+from llm_radar.events.schemas import EventEnvelope
+from llm_radar.events.topics import DEAD_LETTER, RAW_UPDATES
 from llm_radar.observability import EVENTS_INGESTED, PROCESS_SECONDS
 from llm_radar.processor.service import process_event
 
@@ -62,28 +62,8 @@ def main() -> None:
                 event = EventEnvelope.model_validate_json(value)
                 with PROCESS_SECONDS.time():
                     with SessionLocal() as session:
-                        changes = process_event(session, event)
+                        process_event(session, event)
                 EVENTS_INGESTED.labels(event_type=event.event_type.value).inc()
-                for change in changes:
-                    output = event.model_copy(
-                        update={
-                            "event_type": EventType(change.event_type),
-                            "payload": {
-                                "change_id": str(change.id),
-                                "old_value": change.old_value,
-                                "new_value": change.new_value,
-                                "change_percentage": (
-                                    str(change.change_percentage)
-                                    if change.change_percentage is not None
-                                    else None
-                                ),
-                            },
-                        }
-                    )
-                    topic = TOPIC_BY_EVENT_TYPE.get(change.event_type, PROCESSED_EVENTS)
-                    producer.publish(topic, output)
-                producer.publish(PROCESSED_EVENTS, event)
-                producer.flush()
                 consumer.commit(message=message, asynchronous=False)
             except (ValidationError, ValueError, KeyError) as exc:
                 logger.exception("invalid event: %s", exc)

@@ -13,6 +13,55 @@ from llm_radar.events.schemas import (
 )
 
 
+class GitHubOrganizationCollector(BaseCollector):
+    """Track official organization repositories and update that source's health."""
+
+    def __init__(self, client: Any, source_slug: str, organization: str) -> None:
+        super().__init__(client)
+        self.name = source_slug
+        self.organization = organization
+
+    async def collect(self) -> CollectorResult:
+        collected_at = datetime.now(UTC)
+        response = await self.client.get(
+            f"https://api.github.com/orgs/{self.organization}/repos",
+            params={"sort": "updated", "direction": "desc", "per_page": 30},
+            headers=_headers(),
+        )
+        response.raise_for_status()
+        repositories = [item for item in response.json() if isinstance(item, dict)]
+        events = []
+        for repository in repositories:
+            full_name = str(repository.get("full_name") or "")
+            url = str(repository.get("html_url") or "")
+            if not full_name or not url:
+                continue
+            payload = {
+                "title": f"{full_name} repository updated",
+                "repository": full_name,
+                "description": repository.get("description"),
+                "updated_at": repository.get("updated_at"),
+                "url": url,
+            }
+            events.append(
+                EventEnvelope(
+                    event_type=EventType.COMPANY_ANNOUNCEMENT,
+                    source=self.name,
+                    entity_key=full_name,
+                    occurred_at=collected_at,
+                    collected_at=collected_at,
+                    payload=payload,
+                    importance=Importance.MEDIUM,
+                    metadata=EventMetadata(
+                        source_url=url,
+                        reliability=ReliabilityLevel.OFFICIAL_API,
+                        extraction_method="github_api",
+                    ),
+                )
+            )
+        return CollectorResult(events=events, raw_payload={"repositories": repositories})
+
+
 def _headers() -> dict[str, str]:
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "llm-radar"}
     token = get_settings().github_token

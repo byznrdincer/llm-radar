@@ -18,7 +18,8 @@ def _per_token_to_per_million(value: object) -> str | None:
     if value in (None, ""):
         return None
     try:
-        return str(Decimal(str(value)) * ONE_MILLION)
+        amount = Decimal(str(value))
+        return str(amount * ONE_MILLION) if amount >= 0 else None
     except InvalidOperation:
         return None
 
@@ -38,15 +39,30 @@ class OpenRouterCollector(BaseCollector):
         model_id = str(item["id"])
         pricing = item.get("pricing") or {}
         architecture = item.get("architecture") or {}
+        top_provider = item.get("top_provider") or {}
+        supported_parameters = [str(value) for value in item.get("supported_parameters") or []]
+        supports_tools = "tools" in supported_parameters
+        supports_reasoning = bool(item.get("reasoning")) or any(
+            value in supported_parameters for value in ("reasoning", "include_reasoning")
+        )
         payload = {
             "external_id": model_id,
             "name": item.get("name") or model_id,
             "description": item.get("description"),
             "created": item.get("created"),
             "context_window": item.get("context_length"),
+            "max_output_tokens": top_provider.get("max_completion_tokens"),
             "input_modalities": architecture.get("input_modalities", []),
             "output_modalities": architecture.get("output_modalities", []),
             "tokenizer": architecture.get("tokenizer"),
+            "supported_parameters": supported_parameters,
+            "supports_tool_calling": supports_tools,
+            "supports_structured_output": any(
+                value in supported_parameters for value in ("structured_outputs", "response_format")
+            ),
+            "supports_reasoning": supports_reasoning,
+            # The model catalog does not make a model-wide streaming guarantee.
+            "supports_streaming": None,
             "pricing": {
                 "input_per_1m_tokens": _per_token_to_per_million(pricing.get("prompt")),
                 "output_per_1m_tokens": _per_token_to_per_million(pricing.get("completion")),

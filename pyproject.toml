@@ -40,6 +40,9 @@ llm-radar-collect-community-benchmarks = "llm_radar.collectors.run_community_ben
 llm-radar-collect-huggingface = "llm_radar.collectors.run_huggingface:run"
 llm-radar-collect-github = "llm_radar.collectors.run_github:run"
 llm-radar-collect-arxiv = "llm_radar.collectors.run_arxiv:run"
+llm-radar-collect-provider-catalogs = "llm_radar.collectors.run_provider_catalogs:run"
+llm-radar-backfill-profiles = "llm_radar.backfill_profiles:main"
+llm-radar-backfill-events = "llm_radar.backfill_event_intelligence:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -51,6 +54,7 @@ packages = ["src/llm_radar"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = ["integration: requires the running Docker API"]
 
 [tool.ruff]
 line-length = 100

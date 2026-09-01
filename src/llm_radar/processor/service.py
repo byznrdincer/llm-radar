@@ -1,5 +1,8 @@
+import json
 import logging
-from datetime import date
+import re
+from dataclasses import asdict
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
@@ -7,7 +10,8 @@ from uuid import NAMESPACE_URL, uuid5
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from llm_radar.catalog import EVENT_BY_TYPE, importance_for
+from llm_radar.catalog import EVENT_BY_TYPE
+from llm_radar.composite import canonical_model_name
 from llm_radar.database.models import (
     BenchmarkDefinition,
     ChangeEvent,
@@ -17,27 +21,82 @@ from llm_radar.database.models import (
     LeaderboardSnapshot,
     Model,
     ModelSnapshot,
+    OutboxEvent,
     PriceObservation,
     ProcessedEvent,
     ResearchPaper,
     Source,
     TechnologySignal,
 )
+from llm_radar.event_intelligence import classify_event, score_importance
 from llm_radar.events.schemas import EventEnvelope, EventType
+from llm_radar.events.topics import PROCESSED_EVENTS, TOPIC_BY_EVENT_TYPE
+from llm_radar.model_family import infer_model_family
+from llm_radar.normalize import company_display_name, normalize_company_name
 from llm_radar.notifications import dispatch_notifications
 from llm_radar.pipeline import canonical_hash, duplicate_reasons, remember_fingerprint
 from llm_radar.processor.change_detector import detect_changes
+from llm_radar.profile_service import (
+    propagate_availability_evidence,
+    propagate_open_weight_evidence,
+    upsert_model_profile,
+)
 from llm_radar.resolution import resolve_entity_key
 
 logger = logging.getLogger(__name__)
+
+_ANNOUNCEMENT_EVENT_TYPES = {
+    EventType.COMPANY_ANNOUNCEMENT.value,
+    EventType.GITHUB_RELEASE_PUBLISHED.value,
+    EventType.AI_AGENT_UPDATED.value,
+    EventType.PRODUCT_LAUNCHED.value,
+    EventType.FUNDING_ANNOUNCED.value,
+    EventType.ACQUISITION_ANNOUNCED.value,
+    EventType.PARTNERSHIP_ANNOUNCED.value,
+    EventType.INFRASTRUCTURE_UPDATED.value,
+    EventType.REGULATION_UPDATED.value,
+    EventType.SECURITY_ADVISORY.value,
+    EventType.API_UPDATED.value,
+}
+_TITLE_STOPWORDS = {
+    "about",
+    "announces",
+    "from",
+    "into",
+    "launches",
+    "new",
+    "the",
+    "with",
+    "icin",
+    "için",
+    "ve",
+    "yeni",
+}
 
 
 def _decimal(value: Any) -> Decimal | None:
     return Decimal(str(value)) if value not in (None, "") else None
 
 
+def _price_decimal(value: Any) -> Decimal | None:
+    amount = _decimal(value)
+    return amount if amount is None or amount >= 0 else None
+
+
+def _match_profile_model(session: Session, model_name: str) -> Model | None:
+    canonical = canonical_model_name(model_name)
+    if not canonical:
+        return None
+    candidates = [
+        model
+        for model in session.scalars(select(Model))
+        if ":" not in model.slug and canonical_model_name(model.name) == canonical
+    ]
+    return candidates[0] if len(candidates) == 1 else None
+
+
 def _company_slug(entity_key: str) -> str:
-    return entity_key.split("/", 1)[0].lower()
+    return normalize_company_name(entity_key.split("/", 1)[0])
 
 
 def _upsert_source(session: Session, event: EventEnvelope) -> Source:
@@ -121,15 +180,25 @@ def _change_event(
         "new_value": new_value or {},
         "rank": (new_value or {}).get("rank"),
     }
+    importance = score_importance(
+        kind,
+        payload,
+        title=title,
+        reliability=event.metadata.reliability.value,
+        verification_status=event.metadata.verification_status.value,
+    )
     return ChangeEvent(
         event_type=kind,
+        category=classify_event(kind, title, event.payload),
         entity_type=entity_type,
         entity_id=entity_id,
         title=title[:240],
         old_value=old_value,
         new_value=new_value,
         change_percentage=change_percentage,
-        importance=importance_for(kind, payload).value,
+        importance=importance.level,
+        importance_score=importance.score,
+        importance_factors=importance.factors,
         confidence=event.metadata.verification_status.value,
         verification_status=event.metadata.verification_status.value,
         evidence={
@@ -138,10 +207,80 @@ def _change_event(
             "reliability": event.metadata.reliability.value,
             "collected_at": event.collected_at.isoformat(),
             "raw_object_key": event.metadata.raw_object_key,
+            "sources": [
+                {
+                    "source_id": str(source.id),
+                    "source": event.source,
+                    "source_url": str(event.metadata.source_url),
+                    "reliability": event.metadata.reliability.value,
+                    "collected_at": event.collected_at.isoformat(),
+                }
+            ],
         },
         source_id=source.id,
         detected_at=event.collected_at,
     )
+
+
+def event_title_similarity(left: str, right: str) -> float:
+    """Return a conservative token Jaccard score for cross-source headlines."""
+    def tokenize(value: str) -> set[str]:
+        return {
+            token
+            for token in re.findall(r"[a-z0-9çğıöşü]+", value.lower())
+            if len(token) >= 3 and token not in _TITLE_STOPWORDS
+        }
+
+    left_tokens = tokenize(left)
+    right_tokens = tokenize(right)
+    if not left_tokens or not right_tokens:
+        return 0.0
+    return len(left_tokens & right_tokens) / len(left_tokens | right_tokens)
+
+
+def _corroborate_change(
+    existing: ChangeEvent, event: EventEnvelope, source: Source
+) -> None:
+    evidence = dict(existing.evidence or {})
+    sources = list(evidence.get("sources") or [])
+    if not sources and evidence.get("source"):
+        sources.append(
+            {
+                "source_id": str(existing.source_id),
+                "source": evidence.get("source"),
+                "source_url": evidence.get("source_url"),
+                "reliability": evidence.get("reliability"),
+                "collected_at": evidence.get("collected_at"),
+            }
+        )
+    if all(item.get("source_id") != str(source.id) for item in sources):
+        sources.append(
+            {
+                "source_id": str(source.id),
+                "source": event.source,
+                "source_url": str(event.metadata.source_url),
+                "reliability": event.metadata.reliability.value,
+                "collected_at": event.collected_at.isoformat(),
+            }
+        )
+    evidence["sources"] = sources
+    evidence["corroboration_count"] = len({item.get("source_id") for item in sources})
+    existing.evidence = evidence
+    existing.verification_status = "corroborated"
+    existing.confidence = "corroborated"
+    result = score_importance(
+        existing.event_type,
+        {
+            "new_value": existing.new_value or {},
+            "change_percentage": existing.change_percentage,
+        },
+        title=existing.title,
+        reliability=str(evidence.get("reliability") or event.metadata.reliability.value),
+        verification_status="corroborated",
+    )
+    existing.importance = result.level
+    existing.importance_score = result.score
+    existing.importance_factors = result.factors
 
 
 def _handle_leaderboard(
@@ -174,6 +313,46 @@ def _handle_leaderboard(
     )
     published_at = date.fromisoformat(str(payload["leaderboard_publish_date"]))
     changes: list[ChangeEvent] = []
+    open_weights = payload.get("open_weights")
+    proprietary_claim = (
+        source.name != "artificial-analysis"
+        and str(payload.get("license") or "").lower() == "proprietary"
+    )
+    if isinstance(open_weights, bool) or proprietary_claim:
+        model_slug = payload.get("model_slug")
+        model = (
+            session.scalar(select(Model).where(Model.slug == str(model_slug).lower()))
+            if model_slug
+            else None
+        ) or _match_profile_model(session, str(payload.get("model_name") or ""))
+        if model is not None:
+            availability = "open_weight" if open_weights is True else "proprietary"
+            availability_payload = {
+                "availability": availability,
+                "is_open_weight": availability == "open_weight",
+                "availability_evidence": {
+                    "kind": "leaderboard_license_assertion",
+                    "source_url": str(event.metadata.source_url),
+                    "open_weights": open_weights,
+                    "license": payload.get("license"),
+                },
+            }
+            if payload.get("license"):
+                availability_payload["license"] = payload["license"]
+            upsert_model_profile(
+                session,
+                model=model,
+                source_id=source.id,
+                observed_at=event.collected_at,
+                payload=availability_payload,
+            )
+            propagate_availability_evidence(
+                session,
+                model=model,
+                source_id=source.id,
+                observed_at=event.collected_at,
+                payload=availability_payload,
+            )
     if previous_leaderboard is None or previous_leaderboard.published_at != published_at:
         snapshot = LeaderboardSnapshot(
             benchmark_id=benchmark.id,
@@ -289,16 +468,46 @@ def _handle_announcement(
         )
     )
     if existing is not None:
+        if existing.source_id != source.id:
+            _corroborate_change(existing, event, source)
         return []
+    category = classify_event(
+        event.event_type.value,
+        str(event.payload.get("title") or ""),
+        event.payload,
+    )
+    cutoff = event.collected_at - timedelta(days=7)
+    candidates = session.scalars(
+        select(ChangeEvent)
+        .where(
+            ChangeEvent.event_type.in_(_ANNOUNCEMENT_EVENT_TYPES),
+            ChangeEvent.category == category,
+            ChangeEvent.detected_at >= cutoff,
+        )
+        .order_by(ChangeEvent.detected_at.desc())
+        .limit(200)
+    ).all()
+    title = str(event.payload.get("title") or event.payload.get("name") or event.entity_key)
+    corroborating = next(
+        (
+            candidate
+            for candidate in candidates
+            if candidate.source_id != source.id
+            and event_title_similarity(candidate.title, title) >= 0.6
+        ),
+        None,
+    )
+    if corroborating is not None:
+        _corroborate_change(corroborating, event, source)
+        return []
+    event_spec = EVENT_BY_TYPE.get(event.event_type.value)
     return [
         _change_event(
             event=event,
             source=source,
-            entity_type=EVENT_BY_TYPE.get(event.event_type.value).entity_type
-            if event.event_type.value in EVENT_BY_TYPE
-            else "company",
+            entity_type=event_spec.entity_type if event_spec is not None else "company",
             entity_id=entity_id,
-            title=str(event.payload.get("title") or event.payload.get("name") or event.entity_key),
+            title=title,
             new_value=event.payload,
         )
     ]
@@ -311,7 +520,7 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
     company_slug = _company_slug(event.entity_key)
     company = session.scalar(select(Company).where(Company.slug == company_slug))
     if company is None:
-        company = Company(name=company_slug.replace("-", " ").title(), slug=company_slug)
+        company = Company(name=company_display_name(company_slug), slug=company_slug)
         session.add(company)
         session.flush()
 
@@ -325,6 +534,9 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
             company_id=company.id,
             name=str(payload.get("name") or event.entity_key),
             slug=event.entity_key,
+            family=infer_model_family(
+                str(payload.get("name") or event.entity_key), event.entity_key
+            ),
             context_window=payload.get("context_window"),
             license=payload.get("license"),
             is_open_weight=payload.get("is_open_weight"),
@@ -336,6 +548,12 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
         )
         session.add(model)
         session.flush()
+    elif model.company_id != company.id:
+        # Provider aliases such as OpenRouter's ``~openai`` belong to the
+        # canonical company and must never create a separate filter option.
+        model.company_id = company.id
+    if not model.family:
+        model.family = infer_model_family(model.name, model.slug)
 
     previous_model = session.scalar(
         select(ModelSnapshot)
@@ -347,6 +565,20 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
     changes: list[ChangeEvent] = []
 
     if previous_model is None or previous_model.content_hash != digest:
+        profile, normalized, profile_accepted = upsert_model_profile(
+            session,
+            model=model,
+            source_id=source.id,
+            observed_at=event.collected_at,
+            payload=payload,
+        )
+        propagate_open_weight_evidence(
+            session,
+            model=model,
+            source_id=source.id,
+            observed_at=event.collected_at,
+            payload=payload,
+        )
         if is_new:
             changes.append(
                 _change_event(
@@ -386,11 +618,7 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
                 )
 
         model.name = str(payload.get("name") or model.name)
-        if payload.get("context_window") is not None:
-            model.context_window = payload.get("context_window")
-        if payload.get("license"):
-            model.license = payload.get("license")
-        if payload.get("is_open_weight") is not None:
+        if profile_accepted and payload.get("is_open_weight") is not None:
             model.is_open_weight = payload.get("is_open_weight")
         if payload.get("status"):
             model.status = str(payload.get("status"))
@@ -402,6 +630,16 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
                 "output_modalities", model.capabilities.get("output_modalities", [])
             ),
         }
+        _record_observation(
+            session,
+            entity_type="model",
+            entity_id=model.id,
+            field_name="normalized_profile",
+            value=json.loads(json.dumps(asdict(normalized), default=str)),
+            previous=None,
+            source=source,
+            event=event,
+        )
         session.add(
             ModelSnapshot(
                 model_id=model.id,
@@ -418,10 +656,10 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
                     model_id=model.id,
                     source_id=source.id,
                     provider=event.source,
-                    input_price=_decimal(pricing.get("input_per_1m_tokens")),
-                    output_price=_decimal(pricing.get("output_per_1m_tokens")),
-                    cache_read_price=_decimal(pricing.get("cache_read_per_1m_tokens")),
-                    cache_write_price=_decimal(pricing.get("cache_write_per_1m_tokens")),
+                    input_price=_price_decimal(pricing.get("input_per_1m_tokens")),
+                    output_price=_price_decimal(pricing.get("output_per_1m_tokens")),
+                    cache_read_price=_price_decimal(pricing.get("cache_read_per_1m_tokens")),
+                    cache_write_price=_price_decimal(pricing.get("cache_write_per_1m_tokens")),
                     currency=pricing.get("currency", "USD"),
                     observed_at=event.collected_at,
                 )
@@ -457,7 +695,10 @@ def process_event(session: Session, event: EventEnvelope) -> list[ChangeEvent]:
             }
         ),
     }
-    if duplicate_reasons(session, event.event_id, fingerprints):
+    reasons = duplicate_reasons(session, event.event_id, fingerprints)
+    if "event_id" in reasons or (
+        "content_hash" in reasons and event.event_type.value not in _ANNOUNCEMENT_EVENT_TYPES
+    ):
         return []
 
     source = _upsert_source(session, event)
@@ -469,6 +710,15 @@ def process_event(session: Session, event: EventEnvelope) -> list[ChangeEvent]:
         EventType.GITHUB_RELEASE_PUBLISHED: _handle_announcement,
         EventType.BENCHMARK_UPDATED: _handle_announcement,
         EventType.MARKET_SHARE_CHANGED: _handle_announcement,
+        EventType.AI_AGENT_UPDATED: _handle_announcement,
+        EventType.PRODUCT_LAUNCHED: _handle_announcement,
+        EventType.FUNDING_ANNOUNCED: _handle_announcement,
+        EventType.ACQUISITION_ANNOUNCED: _handle_announcement,
+        EventType.PARTNERSHIP_ANNOUNCED: _handle_announcement,
+        EventType.INFRASTRUCTURE_UPDATED: _handle_announcement,
+        EventType.REGULATION_UPDATED: _handle_announcement,
+        EventType.SECURITY_ADVISORY: _handle_announcement,
+        EventType.API_UPDATED: _handle_announcement,
     }
     handler = handlers.get(event.event_type, _handle_model)
     if event.event_type == EventType.HUGGINGFACE_UPDATED:
@@ -478,7 +728,33 @@ def process_event(session: Session, event: EventEnvelope) -> list[ChangeEvent]:
         remember_fingerprint(session, kind, value, event.event_id)
     session.add(ProcessedEvent(event_id=event.event_id, source=event.source))
     if changes:
+        session.add_all(changes)
         session.flush()
         dispatch_notifications(session, changes)
+        for change in changes:
+            session.add(
+                OutboxEvent(
+                    topic=TOPIC_BY_EVENT_TYPE.get(change.event_type, PROCESSED_EVENTS),
+                    event_key=str(change.entity_id),
+                    payload={
+                        "event_id": str(change.id),
+                        "event_type": change.event_type,
+                        "entity_type": change.entity_type,
+                        "entity_id": str(change.entity_id),
+                        "old_value": change.old_value,
+                        "new_value": change.new_value,
+                        "importance": change.importance,
+                        "source_id": str(change.source_id),
+                        "detected_at": change.detected_at.isoformat(),
+                    },
+                )
+            )
+    session.add(
+        OutboxEvent(
+            topic=PROCESSED_EVENTS,
+            event_key=event.entity_key,
+            payload=json.loads(event.model_dump_json()),
+        )
+    )
     session.commit()
     return changes

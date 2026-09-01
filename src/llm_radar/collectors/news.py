@@ -5,6 +5,7 @@ from xml.etree import ElementTree
 
 from llm_radar.catalog import SOURCE_CATALOG, CollectionMethod, importance_for
 from llm_radar.collectors.base import BaseCollector, CollectorResult
+from llm_radar.event_intelligence import classify_event
 from llm_radar.events.schemas import (
     EventEnvelope,
     EventMetadata,
@@ -14,6 +15,27 @@ from llm_radar.events.schemas import (
 )
 
 RSS = "{http://www.w3.org/2005/Atom}"
+
+_EVENT_TYPE_BY_CATEGORY = {
+    "ai_agent": EventType.AI_AGENT_UPDATED,
+    "product_launch": EventType.PRODUCT_LAUNCHED,
+    "funding": EventType.FUNDING_ANNOUNCED,
+    "acquisition": EventType.ACQUISITION_ANNOUNCED,
+    "partnership": EventType.PARTNERSHIP_ANNOUNCED,
+    "infrastructure": EventType.INFRASTRUCTURE_UPDATED,
+    "regulation": EventType.REGULATION_UPDATED,
+    "security": EventType.SECURITY_ADVISORY,
+    "api_update": EventType.API_UPDATED,
+}
+
+
+def _announcement_type(payload: dict[str, Any]) -> EventType:
+    category = classify_event(
+        EventType.COMPANY_ANNOUNCEMENT.value,
+        str(payload.get("title") or ""),
+        payload,
+    )
+    return _EVENT_TYPE_BY_CATEGORY.get(category, EventType.COMPANY_ANNOUNCEMENT)
 
 
 def _local(tag: str) -> str:
@@ -70,15 +92,16 @@ class RssCollector(BaseCollector):
                 "published_at": published,
             }
             items.append(payload)
+            event_type = _announcement_type(payload)
             events.append(
                 EventEnvelope(
-                    event_type=EventType.COMPANY_ANNOUNCEMENT,
+                    event_type=event_type,
                     source=self.name,
                     entity_key=url,
                     occurred_at=collected_at,
                     collected_at=collected_at,
                     payload=payload,
-                    importance=Importance(importance_for("company.announcement", payload).value),
+                    importance=Importance(importance_for(event_type.value, payload).value),
                     metadata=EventMetadata(
                         source_url=url,
                         reliability=ReliabilityLevel(self.reliability)
@@ -128,9 +151,10 @@ class HtmlNewsCollector(BaseCollector):
             seen.add(url)
             payload = {"title": text[:240], "url": url}
             items.append(payload)
+            event_type = _announcement_type(payload)
             events.append(
                 EventEnvelope(
-                    event_type=EventType.COMPANY_ANNOUNCEMENT,
+                    event_type=event_type,
                     source=self.name,
                     entity_key=url,
                     occurred_at=collected_at,

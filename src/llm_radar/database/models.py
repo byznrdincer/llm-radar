@@ -106,6 +106,38 @@ class Model(TimestampMixin, Base):
     capabilities: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     company: Mapped[Company] = relationship(back_populates="models")
     snapshots: Mapped[list["ModelSnapshot"]] = relationship(back_populates="model")
+    profile: Mapped["ModelProfile | None"] = relationship(
+        back_populates="model", cascade="all, delete-orphan", uselist=False
+    )
+
+
+class ModelProfile(TimestampMixin, Base):
+    """Canonical, query-optimized model features derived from source observations."""
+
+    __tablename__ = "model_profiles"
+
+    model_id: Mapped[UUID] = mapped_column(
+        ForeignKey("models.id", ondelete="CASCADE"), primary_key=True
+    )
+    context_window: Mapped[int | None] = mapped_column(Integer, index=True)
+    max_output_tokens: Mapped[int | None] = mapped_column(Integer)
+    input_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 8), index=True)
+    output_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 8), index=True)
+    cache_read_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    modalities: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    capabilities: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    supports_tool_calling: Mapped[bool | None] = mapped_column(Boolean, index=True)
+    supports_structured_output: Mapped[bool | None] = mapped_column(Boolean)
+    supports_reasoning: Mapped[bool | None] = mapped_column(Boolean, index=True)
+    supports_streaming: Mapped[bool | None] = mapped_column(Boolean)
+    availability: Mapped[str | None] = mapped_column(String(32), index=True)
+    license: Mapped[str | None] = mapped_column(String(120), index=True)
+    commercial_use_allowed: Mapped[bool | None] = mapped_column(Boolean)
+    field_provenance: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    source_id: Mapped[UUID] = mapped_column(ForeignKey("sources.id"), index=True)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+    model: Mapped[Model] = relationship(back_populates="profile")
 
 
 class ModelVersion(TimestampMixin, Base):
@@ -268,6 +300,7 @@ class ChangeEvent(Base):
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     event_type: Mapped[str] = mapped_column(String(80), index=True)
+    category: Mapped[str] = mapped_column(String(40), default="model_update", index=True)
     entity_type: Mapped[str] = mapped_column(String(40))
     entity_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), index=True)
     title: Mapped[str] = mapped_column(String(240))
@@ -277,6 +310,8 @@ class ChangeEvent(Base):
     change_percentage: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
     absolute_change: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
     importance: Mapped[str] = mapped_column(String(20), default="info")
+    importance_score: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    importance_factors: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     confidence: Mapped[str] = mapped_column(String(20), default="source_asserted")
     verification_status: Mapped[str] = mapped_column(String(40), default="source_asserted")
     evidence: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
@@ -294,6 +329,20 @@ class ProcessedEvent(Base):
     processed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class OutboxEvent(Base):
+    __tablename__ = "outbox_events"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    topic: Mapped[str] = mapped_column(String(160), index=True)
+    event_key: Mapped[str] = mapped_column(String(240))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    last_error: Mapped[str | None] = mapped_column(Text)
 
 
 class EntityAlias(TimestampMixin, Base):

@@ -1,7 +1,8 @@
 import logging
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -16,7 +17,7 @@ settings = get_settings()
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     try:
         from llm_radar.bootstrap import seed
 
@@ -47,7 +48,9 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def security_headers(request, call_next):  # type: ignore[no-untyped-def]
+async def security_headers(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"

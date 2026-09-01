@@ -33,7 +33,9 @@ test("server-renders the LLM Radar dashboard shell", async () => {
   assert.match(html, /MODEL KATALOĞU/);
   assert.match(html, /MODEL KARŞILAŞTIRMA/);
   assert.match(html, /TEKNOLOJİ AKIŞI/);
-  assert.match(html, /Radar’a yeni düşenler/);
+  assert.match(html, /Önemli gelişmeler önce/);
+  assert.match(html, /EVENT KATEGORİSİ/);
+  assert.match(html, /Model Release/);
   assert.match(html, /İzlenen model/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/i);
 });
@@ -46,4 +48,16 @@ test("renders accessible catalog toggle and navigation", async () => {
   assert.match(html, /href="#models"/);
   assert.match(html, /href="#compare"/);
   assert.match(html, /href="#events"/);
+});
+
+test("renders the sidebar, comparison chart entry point and benchmark help", async () => {
+  const response = await render();
+  const html = await response.text();
+
+  assert.match(html, /aria-label="Ana navigasyon"/);
+  assert.match(html, /Model kataloğu/);
+  assert.match(html, /Benchmarklar/);
+  assert.match(html, /Grafikle karşılaştır/);
+  assert.match(html, /aria-haspopup="dialog"/);
+  assert.match(html, /Chatbot Arena hakkında bilgi/);
 });

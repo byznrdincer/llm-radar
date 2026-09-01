@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     clickhouse_url: str = "http://localhost:8123"
     clickhouse_database: str = "llm_radar"
     artificial_analysis_api_key: str | None = None
+    groq_api_key: str | None = None
+    replicate_api_token: str | None = None
+    nanogpt_api_key: str | None = None
     github_token: str | None = None
     huggingface_token: str | None = None
     admin_api_token: str | None = None
@@ -47,3 +50,13 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def source_is_configured(slug: str, settings: Settings | None = None) -> bool:
+    current = settings or get_settings()
+    credentials = {
+        "artificial-analysis": current.artificial_analysis_api_key,
+        "groqcloud": current.groq_api_key,
+        "replicate": current.replicate_api_token,
+    }
+    return slug not in credentials or bool(credentials[slug])

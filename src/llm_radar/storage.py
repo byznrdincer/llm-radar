@@ -51,7 +51,9 @@ def cache_get(key: str) -> str | None:
 
         client = redis.Redis.from_url(get_settings().redis_url)
         value = client.get(key)
-        return value.decode() if value else None
+        if isinstance(value, bytes):
+            return value.decode()
+        return value if isinstance(value, str) else None
     except Exception:
         return None
 

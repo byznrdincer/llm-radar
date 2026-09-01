@@ -25,6 +25,15 @@ class EventType(StrEnum):
     RESEARCH_PUBLISHED = "research.published"
     TECHNOLOGY_DETECTED = "technology.detected"
     MARKET_SHARE_CHANGED = "market_share.changed"
+    AI_AGENT_UPDATED = "agent.updated"
+    PRODUCT_LAUNCHED = "product.launched"
+    FUNDING_ANNOUNCED = "funding.announced"
+    ACQUISITION_ANNOUNCED = "acquisition.announced"
+    PARTNERSHIP_ANNOUNCED = "partnership.announced"
+    INFRASTRUCTURE_UPDATED = "infrastructure.updated"
+    REGULATION_UPDATED = "regulation.updated"
+    SECURITY_ADVISORY = "security.advisory"
+    API_UPDATED = "api.updated"
 
 
 class ReliabilityLevel(StrEnum):

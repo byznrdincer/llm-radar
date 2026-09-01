@@ -83,6 +83,9 @@ services:
       HUGGINGFACE_TOKEN: ${HUGGINGFACE_TOKEN:-}
       ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-}
       ARTIFICIAL_ANALYSIS_API_KEY: ${ARTIFICIAL_ANALYSIS_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN:-}
+      NANOGPT_API_KEY: ${NANOGPT_API_KEY:-}
       API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
       API_ALLOWED_HOSTS: ${API_ALLOWED_HOSTS:-localhost,127.0.0.1}
     ports:
@@ -109,6 +112,19 @@ services:
       redpanda:
         condition: service_healthy
 
+  outbox-worker:
+    build: .
+    command: ["python", "-m", "llm_radar.outbox_worker"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://llm_radar:llm_radar@postgres:5432/llm_radar}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-redpanda:9092}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+
   scheduler:
     build: .
     command: ["python", "-m", "llm_radar.collectors.scheduler"]
@@ -122,6 +138,9 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-change-me-in-production}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       ARTIFICIAL_ANALYSIS_API_KEY: ${ARTIFICIAL_ANALYSIS_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN:-}
+      NANOGPT_API_KEY: ${NANOGPT_API_KEY:-}
       COLLECTOR_INTERVAL_SECONDS: ${COLLECTOR_INTERVAL_SECONDS:-21600}
       BENCHMARK_INTERVAL_SECONDS: ${BENCHMARK_INTERVAL_SECONDS:-43200}
     depends_on:

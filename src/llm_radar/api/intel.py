@@ -21,7 +21,7 @@ from llm_radar.collectors.arxiv import ArxivCollector
 from llm_radar.collectors.github import GitHubCollector
 from llm_radar.collectors.huggingface import HuggingFaceCollector
 from llm_radar.collectors.openrouter import OpenRouterCollector
-from llm_radar.config import get_settings
+from llm_radar.config import get_settings, source_is_configured
 from llm_radar.database.models import (
     ChangeEvent,
     CollectorRun,
@@ -32,6 +32,7 @@ from llm_radar.database.models import (
     TechnologySignal,
 )
 from llm_radar.database.session import get_db
+from llm_radar.event_intelligence import EVENT_CATEGORIES, classify_event
 from llm_radar.ranking import ranking_catalog, value_score
 from llm_radar.resolution import remember_alias
 
@@ -78,9 +79,11 @@ def event_catalog() -> dict[str, Any]:
                 "description": item.description,
                 "default_importance": item.default_importance.value,
                 "entity_type": item.entity_type,
+                "category": classify_event(item.event_type),
             }
             for item in EVENT_CATALOG
         ],
+        "categories": [{"slug": slug, "label": label} for slug, label in EVENT_CATEGORIES.items()],
     }
 
 
@@ -90,6 +93,7 @@ def source_catalog(session: DatabaseSession) -> dict[str, Any]:
     items = []
     for spec in SOURCE_CATALOG:
         row = rows.get(spec.slug)
+        configured = source_is_configured(spec.slug)
         items.append(
             {
                 "slug": spec.slug,
@@ -103,8 +107,13 @@ def source_catalog(session: DatabaseSession) -> dict[str, Any]:
                 "auth_type": spec.auth_type,
                 "reliability": spec.reliability,
                 "terms_url": spec.terms_url,
-                "is_active": spec.is_active if row is None else row.is_active,
-                "status": None if row is None else row.status,
+                "is_active": configured and (spec.is_active if row is None else row.is_active),
+                "configured": configured,
+                "status": (
+                    "not_configured"
+                    if not configured
+                    else (None if row is None else row.status)
+                ),
                 "last_success_at": None if row is None else row.last_success_at,
                 "last_error": None if row is None else row.last_error,
             }
@@ -198,8 +207,11 @@ def list_notifications(
     rows = session.scalars(
         select(Notification).order_by(Notification.created_at.desc()).limit(limit)
     ).all()
-    return {
-        "items": [
+    items: list[dict[str, Any]] = []
+    for row in rows:
+        change = session.get(ChangeEvent, row.change_event_id) if row.change_event_id else None
+        source = session.get(Source, change.source_id) if change is not None else None
+        items.append(
             {
                 "id": str(row.id),
                 "title": row.title,
@@ -207,16 +219,11 @@ def list_notifications(
                 "importance": row.importance,
                 "status": row.status,
                 "channel": row.channel,
-                "source_url": (
-                    session.get(Source, session.get(ChangeEvent, row.change_event_id).source_id).url
-                    if row.change_event_id and session.get(ChangeEvent, row.change_event_id)
-                    else None
-                ),
+                "source_url": source.url if source is not None else None,
                 "created_at": row.created_at,
             }
-            for row in rows
-        ]
-    }
+        )
+    return {"items": items}
 
 
 @router.post("/notifications/{notification_id}/read", tags=["notifications"])
@@ -248,20 +255,19 @@ async def stream_events(request: Request) -> StreamingResponse:
                         .limit(20)
                     )
                 rows = session.scalars(query).all()
-            for row in rows:
+                event_rows = [(row, session.get(Source, row.source_id)) for row in rows]
+            for row, source in event_rows:
                 last_seen = (
                     row.detected_at if last_seen is None else max(last_seen, row.detected_at)
                 )
                 payload = {
                     "id": str(row.id),
                     "event_type": row.event_type,
+                    "category": row.category,
                     "title": row.title,
                     "importance": row.importance,
-                    "source_url": (
-                        session.get(Source, row.source_id).url
-                        if session.get(Source, row.source_id)
-                        else None
-                    ),
+                    "importance_score": row.importance_score,
+                    "source_url": source.url if source is not None else None,
                     "detected_at": row.detected_at.isoformat(),
                 }
                 yield f"id: {row.id}\nevent: change\ndata: {json.dumps(payload)}\n\n"

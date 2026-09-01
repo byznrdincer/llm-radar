@@ -57,4 +57,13 @@ TOPIC_BY_EVENT_TYPE = {
     "research.published": RESEARCH_PAPERS,
     "technology.detected": MODEL_UPDATES,
     "market_share.changed": PRICE_CHANGES,
+    "agent.updated": COMPANY_NEWS,
+    "product.launched": COMPANY_NEWS,
+    "funding.announced": COMPANY_NEWS,
+    "acquisition.announced": COMPANY_NEWS,
+    "partnership.announced": COMPANY_NEWS,
+    "infrastructure.updated": COMPANY_NEWS,
+    "regulation.updated": COMPANY_NEWS,
+    "security.advisory": COMPANY_NEWS,
+    "api.updated": COMPANY_NEWS,
 }
