@@ -45,11 +45,16 @@ class OpenRouterCollector(BaseCollector):
         supports_reasoning = bool(item.get("reasoning")) or any(
             value in supported_parameters for value in ("reasoning", "include_reasoning")
         )
+        created = item.get("created")
+        release_date = None
+        if isinstance(created, (int, float)) and created > 0:
+            release_date = datetime.fromtimestamp(created, tz=UTC).date().isoformat()
         payload = {
             "external_id": model_id,
             "name": item.get("name") or model_id,
             "description": item.get("description"),
             "created": item.get("created"),
+            "release_date": release_date,
             "context_window": item.get("context_length"),
             "max_output_tokens": top_provider.get("max_completion_tokens"),
             "input_modalities": architecture.get("input_modalities", []),

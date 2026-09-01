@@ -13,8 +13,9 @@ async def test_huggingface_requires_downloadable_weight_evidence(
     payload = [
         {
             "id": "example/with-weights",
-            "cardData": {"license": "apache-2.0"},
+            "cardData": {"license": "apache-2.0", "active_parameters": "3B"},
             "siblings": [{"rfilename": "model.safetensors"}],
+            "safetensors": {"parameters": {"BF16": 7_000_000_000}},
         },
         {
             "id": "example/without-weights",
@@ -33,8 +34,11 @@ async def test_huggingface_requires_downloadable_weight_evidence(
 
     assert result.events[0].payload["is_open_weight"] is True
     assert result.events[0].payload["open_weight_evidence"]["files"] == ["model.safetensors"]
+    assert result.events[0].payload["parameter_count"] == 7_000_000_000
+    assert result.events[0].payload["active_parameter_count"] == "3B"
     assert result.events[1].payload["is_open_weight"] is None
     assert result.events[1].payload["open_weight_evidence"] is None
+    assert result.events[1].payload["parameter_count"] is None
 
 
 @pytest.mark.asyncio

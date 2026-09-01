@@ -40,6 +40,20 @@ def _headers() -> dict[str, str]:
     return headers
 
 
+def _parameter_count(item: dict[str, Any]) -> int | None:
+    safetensors = as_dict(item.get("safetensors"))
+    parameters = as_dict(safetensors.get("parameters"))
+    values = [value for value in parameters.values() if isinstance(value, int) and value > 0]
+    return sum(values) if values else None
+
+
+def _active_parameter_count(card_data: dict[str, Any]) -> int | str | None:
+    for key in ("active_parameter_count", "active_parameters", "num_active_parameters"):
+        if card_data.get(key) not in (None, ""):
+            return card_data[key]
+    return None
+
+
 class HuggingFaceCollector(BaseCollector):
     name = "huggingface"
 
@@ -59,6 +73,8 @@ class HuggingFaceCollector(BaseCollector):
             "pipeline_tag": item.get("pipeline_tag"),
             "likes": item.get("likes"),
             "downloads": item.get("downloads"),
+            "parameter_count": _parameter_count(item),
+            "active_parameter_count": _active_parameter_count(card_data),
             "license": normalize_license(card_data.get("license")),
             "is_open_weight": True if weight_files else None,
             "open_weight_evidence": {

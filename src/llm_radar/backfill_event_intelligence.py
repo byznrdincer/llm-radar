@@ -105,9 +105,7 @@ def backfill_event_intelligence(session: Session) -> EventBackfillResult:
                 ]
         else:
             slug = str(event.payload.get("signal") or event.entity_key)
-            signal = session.scalar(
-                select(TechnologySignal).where(TechnologySignal.slug == slug)
-            )
+            signal = session.scalar(select(TechnologySignal).where(TechnologySignal.slug == slug))
             if signal is not None and not _already_recorded(
                 session, event.event_type.value, signal.id
             ):

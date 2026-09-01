@@ -6,7 +6,7 @@ from uuid import UUID
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from llm_radar.composite import canonical_model_name
@@ -45,7 +45,14 @@ class ModelSelectionRequest(BaseModel):
     max_output_price: Decimal | None = Field(default=None, ge=0)
     requires_tool_calling: bool | None = None
     requires_reasoning: bool | None = None
-    availability: Literal["open_weight", "proprietary", "unknown"] | None = None
+    availability: Literal["open_source", "open_weight", "proprietary", "unknown"] | None = None
+    openness: list[Literal["open_source", "open_weight", "proprietary", "unknown"]] = Field(
+        default_factory=list
+    )
+    licenses: list[str] = Field(default_factory=list)
+    commercial_use_statuses: list[Literal["allowed", "restricted", "not_allowed", "unknown"]] = (
+        Field(default_factory=list)
+    )
     commercial_use: bool | None = None
     limit: int = Field(default=10, ge=1, le=50)
 
@@ -84,11 +91,113 @@ def stats(session: DatabaseSession) -> dict[str, int]:
 
 _UNKNOWN_LICENSES = {"", "unknown", "n/a", "none", "null", "-"}
 
+# Benchmark providers sometimes publish a score before their machine-readable feed
+# includes the open_weights field.  Keep the small set of manually verified models
+# here so a feed omission does not become a misleading question mark in the UI.
+# Values describe weight availability, not whether the full training stack meets
+# the OSI Open Source AI definition.
+_VERIFIED_MODEL_LICENSES = {
+    "a.x-k2": "Apache-2.0",
+    "agnes 2.5 pro alpha": "Open",
+    "agnes 2.5 pro beta": "Proprietary",
+    "apodex 1.1": "Open",
+    "athene-v2-chat": "Open",
+    "echo-ego-v2-14b": "Open",
+    "ernie-4.5-300b-a47b": "Apache-2.0",
+    "g9v3-39a5b": "Apache-2.0",
+    "hy3": "Apache-2.0",
+    "inkling": "Apache-2.0",
+    "inkling small": "Apache-2.0",
+    "intern-s1": "Apache-2.0",
+    "jt-4.1 flash 236b a21b": "Proprietary",
+    "k2.5-1t-a32b": "Open",
+    "kat coder pro v2": "Proprietary",
+    "ling 3.0 flash": "MIT",
+    "longcat-flash-chat": "MIT",
+    "minimax-m1": "Open",
+    "minimax-text-01": "Open",
+    "mimo-v2-flash": "MIT",
+    "mimo-v2-pro": "MIT",
+    "mimo-v2.5": "MIT",
+    "mimo-v2.5-pro": "MIT",
+    "mistral medium 3.5": "Open",
+    "motif 3": "MIT",
+    "motif 3 (beta)": "MIT",
+    "muse glimmer": "Open",
+    "muse spark": "Proprietary",
+    "nex-n2-pro": "Apache-2.0",
+    "pine voice preview": "Proprietary",
+    "raft-30b-a3b": "Proprietary",
+    "solar open2 250b": "Open",
+    "solar pro 4": "Proprietary",
+    "xbai-o4-medium": "Apache-2.0",
+    "yi-large": "Proprietary",
+    "yi-lightning": "Proprietary",
+}
+
+_NOT_APPLICABLE_BENCHMARK_ENTRIES = {
+    "brokk + sonnet4.5 (standard) + flash3 (minimal)",
+    "cascaded baseline",
+    "distyl buttonagent (high)",
+}
+
+
+def _normalized_model_label(value: str) -> str:
+    return " ".join(value.strip().lower().replace("_", "-").split())
+
 
 def _meaningful_license(value: str | None) -> str | None:
     if value is None or value.strip().lower() in _UNKNOWN_LICENSES:
         return None
     return value.strip()
+
+
+def _license_category(value: str | None) -> str:
+    normalized = (value or "").strip().lower().replace("_", "-")
+    if not normalized or normalized in _UNKNOWN_LICENSES:
+        return "unknown"
+    if normalized == "mit" or "mit license" in normalized:
+        return "mit"
+    if "apache" in normalized:
+        return "apache_2_0"
+    if "llama" in normalized:
+        return "llama_community"
+    if any(token in normalized for token in ("model-specific", "custom", "research")):
+        return "model_specific"
+    return "other"
+
+
+def _license_filter(categories: list[str]) -> Any:
+    clauses: list[Any] = []
+    known = or_(
+        func.lower(ModelProfile.license).contains("mit"),
+        func.lower(ModelProfile.license).contains("apache"),
+        func.lower(ModelProfile.license).contains("llama"),
+        func.lower(ModelProfile.license).contains("model-specific"),
+        func.lower(ModelProfile.license).contains("custom"),
+        func.lower(ModelProfile.license).contains("research"),
+    )
+    for category in categories:
+        normalized = category.strip().lower().replace("-", "_").replace(".", "_")
+        if normalized == "mit":
+            clauses.append(func.lower(ModelProfile.license).contains("mit"))
+        elif normalized in {"apache", "apache_2", "apache_2_0"}:
+            clauses.append(func.lower(ModelProfile.license).contains("apache"))
+        elif normalized in {"llama", "llama_community", "llama_community_license"}:
+            clauses.append(func.lower(ModelProfile.license).contains("llama"))
+        elif normalized == "model_specific":
+            clauses.append(
+                or_(
+                    func.lower(ModelProfile.license).contains("model-specific"),
+                    func.lower(ModelProfile.license).contains("custom"),
+                    func.lower(ModelProfile.license).contains("research"),
+                )
+            )
+        elif normalized == "other":
+            clauses.append(and_(ModelProfile.license.is_not(None), ~known))
+        elif normalized == "unknown":
+            clauses.append(ModelProfile.license.is_(None))
+    return or_(*clauses) if clauses else None
 
 
 def _catalog_model_license(model: Model, profile: ModelProfile | None) -> str | None:
@@ -104,28 +213,81 @@ def _catalog_model_license(model: Model, profile: ModelProfile | None) -> str | 
 
 def _known_family_license(model_name: str, organization: str) -> str | None:
     """Use only family-level rules whose public/closed distribution is unambiguous."""
-    name = model_name.strip().lower().replace("_", "-")
+    name = _normalized_model_label(model_name)
     org = organization.strip().lower().replace(" ", "")
+    if name in _NOT_APPLICABLE_BENCHMARK_ENTRIES:
+        return "Not applicable"
+    if verified := _VERIFIED_MODEL_LICENSES.get(name):
+        return verified
+    if name.startswith("inkling"):
+        return "Apache-2.0"
+    if name.startswith("athene-v2-chat"):
+        return "Open"
+    if name.startswith("mimo-v2-flash"):
+        return "MIT"
+    if name.startswith("pine voice preview"):
+        return "Proprietary"
+    if name.startswith("motif 3"):
+        return "MIT"
+    if name.startswith("muse glimmer"):
+        return "Open"
+    if name.startswith("muse spark"):
+        return "Proprietary"
     if "gpt-oss" in name:
         return "Open"
     if org in {"anthropic"} and "claude" in name:
         return "Proprietary"
-    if org in {"openai"} and (
-        "gpt" in name or name.startswith(("o1", "o3", "o4"))
-    ):
+    if org in {"openai"} and ("gpt" in name or name.startswith(("o1", "o3", "o4"))):
         return "Proprietary"
     if org in {"google", "gemini"} and "gemini" in name:
         return "Proprietary"
     if "grok" in name and org in {"xai", "spacexai", "pickle"}:
         return "Open" if name in {"grok-1", "grok 1"} else "Proprietary"
     if "qwen" in name:
-        return (
-            "Proprietary"
-            if any(tier in name for tier in ("max", "plus", "turbo"))
-            else "Open"
-        )
+        return "Proprietary" if any(tier in name for tier in ("max", "plus", "turbo")) else "Open"
     if (org in {"zai", "zhipuai"} or "zhipu" in org) and "glm" in name:
         return "MIT"
+    if name.startswith("glm-5.2"):
+        return "MIT"
+    if name.startswith("xai-realtime"):
+        return "Proprietary"
+    legacy_open_weight_prefixes = (
+        "aya-expanse-",
+        "c4ai-command-r-",
+        "granite-",
+        "internmath-",
+        "jamba-1.5-",
+        "magnum-",
+        "mammoth2-",
+        "mathstral-",
+        "ministral-",
+        "mistral-",
+        "mixtral-",
+        "neo-7b-",
+        "openchat-",
+        "phi-3.",
+        "phi3-",
+        "rrd2.5-",
+        "staring-7b",
+        "wizardlm-",
+        "yi-1.5-",
+        "yi-34b",
+        "yi-6b-",
+        "zephyr-",
+    )
+    if name.startswith(legacy_open_weight_prefixes):
+        return "Open"
+    if name.startswith("seed1.6") or name.startswith("seed2.0") or name.startswith("seed-thinking"):
+        return "Proprietary"
+    if name in {
+        "hunyuan-t1",
+        "hunyunturbos",
+        "hunyuanturbos",
+        "hunyuan turbos",
+    }:
+        return "Proprietary"
+    if name.startswith("doubao-"):
+        return "Proprietary"
     open_family_signals = (
         "deepseek",
         "exaone",
@@ -249,12 +411,8 @@ def _leaderboard_response(
                 "organization": row.organization,
                 "license": license_name,
                 "rating": float(row.score),
-                "rating_lower": (
-                    float(row.score_lower) if row.score_lower is not None else None
-                ),
-                "rating_upper": (
-                    float(row.score_upper) if row.score_upper is not None else None
-                ),
+                "rating_lower": (float(row.score_lower) if row.score_lower is not None else None),
+                "rating_upper": (float(row.score_upper) if row.score_upper is not None else None),
                 "vote_count": row.vote_count,
                 "rank": display_rank,
                 "category": row.category,
@@ -592,6 +750,9 @@ def list_models(
                 "name": model.name,
                 "company": {"slug": company_row.slug, "name": company_row.name},
                 "family": model.family,
+                "release_date": model.release_date,
+                "parameter_count": model.parameter_count,
+                "active_parameter_count": model.active_parameter_count,
                 "context_window": model.context_window,
                 "capabilities": model.capabilities,
                 "pricing": (
@@ -629,6 +790,9 @@ def model_facets(session: DatabaseSession) -> dict[str, Any]:
     families: dict[str, int] = {}
     modalities: dict[str, int] = {}
     capabilities: dict[str, int] = {}
+    licenses: dict[str, int] = {}
+    openness: dict[str, int] = {}
+    commercial_use: dict[str, int] = {}
     for model, company, profile in rows:
         item = developers.setdefault(
             company.slug, {"slug": company.slug, "name": company.name, "count": 0}
@@ -640,6 +804,12 @@ def model_facets(session: DatabaseSession) -> dict[str, Any]:
             modalities[value] = modalities.get(value, 0) + 1
         for value in profile.capabilities:
             capabilities[value] = capabilities.get(value, 0) + 1
+        license_category = _license_category(profile.license)
+        licenses[license_category] = licenses.get(license_category, 0) + 1
+        openness_value = profile.openness or "unknown"
+        openness[openness_value] = openness.get(openness_value, 0) + 1
+        commercial_value = profile.commercial_use_status or "unknown"
+        commercial_use[commercial_value] = commercial_use.get(commercial_value, 0) + 1
     providers = session.execute(
         select(PriceObservation.provider, func.count(func.distinct(PriceObservation.model_id)))
         .group_by(PriceObservation.provider)
@@ -654,6 +824,11 @@ def model_facets(session: DatabaseSession) -> dict[str, Any]:
         ],
         "capabilities": [
             {"name": name, "count": count} for name, count in sorted(capabilities.items())
+        ],
+        "licenses": [{"name": name, "count": count} for name, count in sorted(licenses.items())],
+        "openness": [{"name": name, "count": count} for name, count in sorted(openness.items())],
+        "commercial_use": [
+            {"name": name, "count": count} for name, count in sorted(commercial_use.items())
         ],
         "benchmark_focuses": list(BENCHMARK_FOCUSES),
     }
@@ -673,12 +848,20 @@ def search_models(
     max_output_price: Annotated[Decimal | None, Query(ge=0)] = None,
     tool_calling: bool | None = None,
     reasoning: bool | None = None,
-    availability: Literal["open_weight", "proprietary", "unknown"] | None = None,
+    availability: Literal["open_source", "open_weight", "proprietary", "unknown"] | None = None,
+    openness: Annotated[list[str] | None, Query()] = None,
+    license: Annotated[list[str] | None, Query()] = None,
     commercial_use: bool | None = None,
+    commercial_use_status: Annotated[list[str] | None, Query()] = None,
     benchmark_focus: str | None = None,
     sort_by: Annotated[
-        str, Query(pattern="^(name|context|input_price|output_price|updated_at|best_match)$")
+        str,
+        Query(
+            pattern="^(name|provider|input_price|output_price|context|release_date|"
+            "benchmark_score|parameter_count|active_parameter_count|backend|updated_at|best_match)$"
+        ),
     ] = "name",
+    sort_order: Literal["asc", "desc"] = "asc",
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> dict[str, Any]:
@@ -697,7 +880,7 @@ def search_models(
         filters.append(
             Model.id.in_(
                 select(PriceObservation.model_id).where(
-                    PriceObservation.provider.in_([item.lower() for item in provider])
+                    func.lower(PriceObservation.provider).in_([item.lower() for item in provider])
                 )
             )
         )
@@ -714,45 +897,113 @@ def search_models(
     if reasoning is not None:
         filters.append(ModelProfile.supports_reasoning.is_(reasoning))
     if availability == "unknown":
-        filters.append(ModelProfile.availability.is_(None))
+        filters.append(or_(ModelProfile.openness.is_(None), ModelProfile.openness == "unknown"))
     elif availability:
-        filters.append(ModelProfile.availability == availability)
+        filters.append(ModelProfile.openness == availability)
+    if openness:
+        normalized_openness = [item.lower().replace("-", "_") for item in openness]
+        openness_clauses: list[Any] = [ModelProfile.openness.in_(normalized_openness)]
+        if "unknown" in normalized_openness:
+            openness_clauses.append(ModelProfile.openness.is_(None))
+        filters.append(or_(*openness_clauses))
+    license_clause = _license_filter(license or [])
+    if license_clause is not None:
+        filters.append(license_clause)
     if commercial_use is not None:
         filters.append(ModelProfile.commercial_use_allowed.is_(commercial_use))
+    if commercial_use_status:
+        normalized_commercial = [item.lower().replace("-", "_") for item in commercial_use_status]
+        commercial_clauses: list[Any] = [
+            ModelProfile.commercial_use_status.in_(normalized_commercial)
+        ]
+        if "unknown" in normalized_commercial:
+            commercial_clauses.append(ModelProfile.commercial_use_status.is_(None))
+        filters.append(or_(*commercial_clauses))
     for item in capability or []:
-        filters.append(ModelProfile.capabilities.contains([item.lower()]))
+        normalized_capability = item.lower().replace("-", "_").strip()
+        if normalized_capability in {"tool_calling", "function_calling"}:
+            filters.append(ModelProfile.supports_tool_calling.is_(True))
+        elif normalized_capability == "reasoning":
+            filters.append(ModelProfile.supports_reasoning.is_(True))
+        elif normalized_capability == "vision":
+            filters.append(ModelProfile.modalities.contains(["image"]))
+        elif normalized_capability == "multimodal":
+            filters.append(func.jsonb_array_length(ModelProfile.modalities) >= 2)
+        elif normalized_capability == "long_context":
+            filters.append(ModelProfile.context_window >= 131072)
+        elif normalized_capability == "agents":
+            filters.append(
+                or_(
+                    ModelProfile.capabilities.contains(["agents"]),
+                    ModelProfile.capabilities.contains(["agent"]),
+                    ModelProfile.capabilities.contains(["agentic"]),
+                )
+            )
+        else:
+            filters.append(ModelProfile.capabilities.contains([normalized_capability]))
     for item in modality or []:
         filters.append(ModelProfile.modalities.contains([item.lower()]))
 
+    backend_name = (
+        select(func.min(PriceObservation.provider))
+        .where(PriceObservation.model_id == Model.id)
+        .correlate(Model)
+        .scalar_subquery()
+    )
     sort_columns: dict[str, Any] = {
-        "name": Model.name.asc(),
-        "context": ModelProfile.context_window.desc().nullslast(),
-        "input_price": ModelProfile.input_price.asc().nullslast(),
-        "output_price": ModelProfile.output_price.asc().nullslast(),
-        "updated_at": ModelProfile.updated_at.desc(),
-        "best_match": Model.name.asc(),
+        "name": Model.name,
+        "provider": Company.name,
+        "context": ModelProfile.context_window,
+        "input_price": ModelProfile.input_price,
+        "output_price": ModelProfile.output_price,
+        "release_date": Model.release_date,
+        "parameter_count": Model.parameter_count,
+        "active_parameter_count": Model.active_parameter_count,
+        "backend": backend_name,
+        "updated_at": ModelProfile.updated_at,
+        "best_match": Model.name,
     }
+    sort_column = sort_columns.get(sort_by, Model.name)
+    ordering = sort_column.asc() if sort_order == "asc" else sort_column.desc()
     query = (
         select(Model, Company, ModelProfile)
         .join(ModelProfile, ModelProfile.model_id == Model.id)
         .join(Company, Company.id == Model.company_id)
         .where(*filters)
-        .order_by(sort_columns[sort_by])
+        .order_by(ordering.nullslast(), Model.name.asc(), Model.id.asc())
     )
-    rows = list(session.execute(query).all())
-    matches = selection_matches(session, benchmark_focus) if benchmark_focus else {}
-    if benchmark_focus:
-        rows = [row for row in rows if canonical_model_name(row[0].name) in matches]
-        rows.sort(
-            key=lambda row: (
-                -matches[canonical_model_name(row[0].name)].score,
-                row[2].input_price is None,
-                row[2].input_price or Decimal("0"),
-                row[0].name,
+    match_focus = benchmark_focus or ("general" if sort_by == "benchmark_score" else None)
+    matches = selection_matches(session, match_focus) if match_focus else {}
+    requires_python_ranking = bool(benchmark_focus or sort_by == "benchmark_score")
+    if requires_python_ranking:
+        rows = list(session.execute(query).all())
+        if benchmark_focus:
+            rows = [row for row in rows if canonical_model_name(row[0].name) in matches]
+        if sort_by in {"benchmark_score", "best_match"}:
+            score_direction = 1 if sort_by == "benchmark_score" and sort_order == "asc" else -1
+            rows.sort(
+                key=lambda row: (
+                    canonical_model_name(row[0].name) not in matches,
+                    score_direction * matches[canonical_model_name(row[0].name)].score
+                    if canonical_model_name(row[0].name) in matches
+                    else 0,
+                    row[0].name.lower(),
+                )
             )
+        total = len(rows)
+        paged_rows = rows[offset : offset + limit]
+    else:
+        total = (
+            session.scalar(
+                select(func.count())
+                .select_from(Model)
+                .join(ModelProfile, ModelProfile.model_id == Model.id)
+                .join(Company, Company.id == Model.company_id)
+                .where(*filters)
+            )
+            or 0
         )
-    total = len(rows)
-    paged_rows = rows[offset : offset + limit]
+        paged_rows = list(session.execute(query.offset(offset).limit(limit)).all())
     provider_by_model: dict[UUID, set[str]] = {}
     paged_model_ids = [model.id for model, _, _ in paged_rows]
     if paged_model_ids:
@@ -778,6 +1029,9 @@ def search_models(
             ),
             "providers": model_providers,
             "family": model.family,
+            "release_date": model.release_date,
+            "parameter_count": model.parameter_count,
+            "active_parameter_count": model.active_parameter_count,
             "context_window": profile.context_window,
             "max_output_tokens": profile.max_output_tokens,
             "pricing": {
@@ -792,8 +1046,11 @@ def search_models(
             "tool_calling": profile.supports_tool_calling,
             "reasoning": profile.supports_reasoning,
             "availability": profile.availability,
+            "openness": profile.openness or "unknown",
             "license": profile.license,
+            "license_category": _license_category(profile.license),
             "commercial_use_allowed": profile.commercial_use_allowed,
+            "commercial_use_status": profile.commercial_use_status or "unknown",
             "field_provenance": profile.field_provenance,
             "observed_at": profile.observed_at,
             "selection": None
@@ -805,11 +1062,9 @@ def search_models(
                 "evidence_count": match.evidence_count,
                 "basis": match.basis,
                 "explanation": (
-                    "Zorunlu filtreler uygulandı; doğrulanmış profil modalitelerine göre "
-                    "sıralandı."
+                    "Zorunlu filtreler uygulandı; doğrulanmış profil modalitelerine göre sıralandı."
                     if match.basis == "profile"
-                    else "Zorunlu filtreler uygulandı; ilgili benchmark yüzdeliğine göre "
-                    "sıralandı."
+                    else "Zorunlu filtreler uygulandı; ilgili benchmark yüzdeliğine göre sıralandı."
                 ),
             },
         }
@@ -819,6 +1074,8 @@ def search_models(
         "limit": limit,
         "offset": offset,
         "benchmark_focus": benchmark_focus,
+        "sort_by": sort_by,
+        "sort_order": sort_order,
         "items": [serialize(model, company, profile) for model, company, profile in paged_rows],
     }
 
@@ -840,9 +1097,13 @@ def select_models(request: ModelSelectionRequest, session: DatabaseSession) -> d
         tool_calling=request.requires_tool_calling,
         reasoning=request.requires_reasoning,
         availability=request.availability,
+        openness=request.openness or None,
+        license=request.licenses or None,
         commercial_use=request.commercial_use,
+        commercial_use_status=request.commercial_use_statuses or None,
         benchmark_focus=request.use_case,
         sort_by="best_match",
+        sort_order="asc",
         limit=request.limit,
         offset=0,
     )
@@ -884,6 +1145,9 @@ def compare_model_features(
                     else None,
                     "output_price": str(profile.output_price)
                     if profile and profile.output_price is not None
+                    else None,
+                    "cache_read_price": str(profile.cache_read_price)
+                    if profile and profile.cache_read_price is not None
                     else None,
                     "modalities": profile.modalities if profile else [],
                     "capabilities": profile.capabilities if profile else [],

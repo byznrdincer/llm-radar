@@ -110,9 +110,7 @@ def source_catalog(session: DatabaseSession) -> dict[str, Any]:
                 "is_active": configured and (spec.is_active if row is None else row.is_active),
                 "configured": configured,
                 "status": (
-                    "not_configured"
-                    if not configured
-                    else (None if row is None else row.status)
+                    "not_configured" if not configured else (None if row is None else row.status)
                 ),
                 "last_success_at": None if row is None else row.last_success_at,
                 "last_error": None if row is None else row.last_error,

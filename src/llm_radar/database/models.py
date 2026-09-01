@@ -103,6 +103,7 @@ class Model(TimestampMixin, Base):
     context_window: Mapped[int | None]
     status: Mapped[str] = mapped_column(String(40), default="active")
     parameter_count: Mapped[int | None]
+    active_parameter_count: Mapped[int | None]
     capabilities: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     company: Mapped[Company] = relationship(back_populates="models")
     snapshots: Mapped[list["ModelSnapshot"]] = relationship(back_populates="model")
@@ -131,8 +132,10 @@ class ModelProfile(TimestampMixin, Base):
     supports_reasoning: Mapped[bool | None] = mapped_column(Boolean, index=True)
     supports_streaming: Mapped[bool | None] = mapped_column(Boolean)
     availability: Mapped[str | None] = mapped_column(String(32), index=True)
+    openness: Mapped[str | None] = mapped_column(String(32), index=True)
     license: Mapped[str | None] = mapped_column(String(120), index=True)
     commercial_use_allowed: Mapped[bool | None] = mapped_column(Boolean)
+    commercial_use_status: Mapped[str | None] = mapped_column(String(32), index=True)
     field_provenance: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     source_id: Mapped[UUID] = mapped_column(ForeignKey("sources.id"), index=True)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
@@ -472,3 +475,49 @@ class DeadLetterEvent(Base):
     error: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     replayed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AnalyticsEvent(Base):
+    """Privacy-minimal product analytics linked only by an anonymous session UUID."""
+
+    __tablename__ = "analytics_events"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    event_type: Mapped[str] = mapped_column(String(40), index=True)
+    session_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), index=True)
+    model_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("models.id", ondelete="SET NULL"), index=True
+    )
+    related_model_ids: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    filters: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    sort: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    page: Mapped[str] = mapped_column(String(120), default="/")
+    event_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    session_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), index=True)
+    feedback_type: Mapped[str] = mapped_column(String(40), index=True)
+    message: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(24), default="new", index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+
+
+class ModelDemand(Base):
+    __tablename__ = "model_demands"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), index=True)
+    requested_models: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    other_model: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )

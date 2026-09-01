@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from llm_radar.api.engagement import router as engagement_router
+from llm_radar.api.insights import router as insights_router
 from llm_radar.api.intel import router as intel_router
 from llm_radar.api.routes import router
 from llm_radar.config import get_settings
@@ -35,6 +37,8 @@ app = FastAPI(
 )
 app.include_router(router)
 app.include_router(intel_router)
+app.include_router(engagement_router)
+app.include_router(insights_router)
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=[host.strip() for host in settings.api_allowed_hosts.split(",")],

@@ -23,8 +23,10 @@ SCALAR_FIELDS = (
     "supports_reasoning",
     "supports_streaming",
     "availability",
+    "openness",
     "license",
     "commercial_use_allowed",
+    "commercial_use_status",
 )
 LIST_FIELDS = ("modalities", "capabilities")
 
@@ -44,7 +46,13 @@ def _field_is_asserted(payload: dict[str, Any], field: str) -> bool:
         "supports_reasoning": ("supports_reasoning", "reasoning"),
         "supports_streaming": ("supports_streaming", "streaming"),
         "availability": ("availability", "is_open_weight"),
+        "openness": ("openness", "is_open_source", "is_open_weight", "availability"),
         "commercial_use_allowed": ("commercial_use_allowed", "license"),
+        "commercial_use_status": (
+            "commercial_use_status",
+            "commercial_use_allowed",
+            "license",
+        ),
         "modalities": ("input_modalities", "output_modalities"),
         "capabilities": ("capabilities", "supported_parameters"),
     }
@@ -148,9 +156,7 @@ def upsert_model_profile(
             "observed_at": observed_at.isoformat(),
         }
         if field == "availability":
-            evidence = payload.get("open_weight_evidence") or payload.get(
-                "availability_evidence"
-            )
+            evidence = payload.get("open_weight_evidence") or payload.get("availability_evidence")
             if evidence:
                 provenance[field]["evidence"] = evidence
 
@@ -162,9 +168,9 @@ def upsert_model_profile(
 
     model.context_window = profile.context_window
     model.license = profile.license
-    if profile.availability == "open_weight":
+    if profile.openness in {"open_source", "open_weight"} or profile.availability == "open_weight":
         model.is_open_weight = True
-    elif profile.availability == "proprietary":
+    elif profile.openness == "proprietary" or profile.availability == "proprietary":
         model.is_open_weight = False
     else:
         model.is_open_weight = None
@@ -208,16 +214,18 @@ def propagate_availability_evidence(
         elif payload.get("is_open_weight") is False:
             availability = "proprietary"
     evidence = payload.get("open_weight_evidence") or payload.get("availability_evidence")
-    if availability not in {"open_weight", "proprietary"} or not evidence:
+    if availability not in {"open_source", "open_weight", "proprietary"} or not evidence:
         return 0
     identity = model_variant_identity(model.slug)
     related = session.scalars(select(Model).where(Model.company_id == model.company_id)).all()
     inherited_payload: dict[str, Any] = {
-        "is_open_weight": availability == "open_weight",
+        "is_open_source": availability == "open_source",
+        "is_open_weight": availability in {"open_source", "open_weight"},
+        "openness": availability,
         "availability": availability,
         "availability_evidence": evidence,
     }
-    if availability == "open_weight":
+    if availability in {"open_source", "open_weight"}:
         inherited_payload["open_weight_evidence"] = evidence
     for field in ("license", "commercial_use_allowed"):
         if field in payload:

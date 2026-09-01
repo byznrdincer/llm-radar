@@ -21,6 +21,7 @@ async def test_openrouter_collector_normalizes_prices_per_million() -> None:
             {
                 "id": "example/model",
                 "name": "Example Model",
+                "created": 1_735_689_600,
                 "context_length": 128000,
                 "architecture": {
                     "input_modalities": ["text"],
@@ -51,3 +52,4 @@ async def test_openrouter_collector_normalizes_prices_per_million() -> None:
     assert event.payload["supports_reasoning"] is True
     assert event.payload["supports_structured_output"] is True
     assert event.payload["supports_streaming"] is None
+    assert event.payload["release_date"] == "2025-01-01"

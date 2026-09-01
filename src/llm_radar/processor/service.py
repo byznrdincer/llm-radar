@@ -83,6 +83,33 @@ def _price_decimal(value: Any) -> Decimal | None:
     return amount if amount is None or amount >= 0 else None
 
 
+def _positive_int(value: Any) -> int | None:
+    """Parse source-supplied parameter counts without guessing from model names."""
+    if value in (None, "") or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if isinstance(value, float):
+        parsed = int(value)
+        return parsed if parsed > 0 else None
+    normalized = str(value).strip().lower().replace(",", "").replace("_", "")
+    match = re.fullmatch(r"(\d+(?:\.\d+)?)\s*([kmbt])?", normalized)
+    if match is None:
+        return None
+    multipliers = {None: 1, "k": 1_000, "m": 1_000_000, "b": 1_000_000_000, "t": 1_000_000_000_000}
+    parsed = int(Decimal(match.group(1)) * multipliers[match.group(2)])
+    return parsed if parsed > 0 else None
+
+
+def _release_date(value: Any) -> date | None:
+    if value in (None, ""):
+        return None
+    try:
+        return date.fromisoformat(str(value).strip()[:10])
+    except ValueError:
+        return None
+
+
 def _match_profile_model(session: Session, model_name: str) -> Model | None:
     canonical = canonical_model_name(model_name)
     if not canonical:
@@ -224,6 +251,7 @@ def _change_event(
 
 def event_title_similarity(left: str, right: str) -> float:
     """Return a conservative token Jaccard score for cross-source headlines."""
+
     def tokenize(value: str) -> set[str]:
         return {
             token
@@ -238,9 +266,7 @@ def event_title_similarity(left: str, right: str) -> float:
     return len(left_tokens & right_tokens) / len(left_tokens | right_tokens)
 
 
-def _corroborate_change(
-    existing: ChangeEvent, event: EventEnvelope, source: Source
-) -> None:
+def _corroborate_change(existing: ChangeEvent, event: EventEnvelope, source: Source) -> None:
     evidence = dict(existing.evidence or {})
     sources = list(evidence.get("sources") or [])
     if not sources and evidence.get("source"):
@@ -538,6 +564,9 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
                 str(payload.get("name") or event.entity_key), event.entity_key
             ),
             context_window=payload.get("context_window"),
+            release_date=_release_date(payload.get("release_date")),
+            parameter_count=_positive_int(payload.get("parameter_count")),
+            active_parameter_count=_positive_int(payload.get("active_parameter_count")),
             license=payload.get("license"),
             is_open_weight=payload.get("is_open_weight"),
             status=str(payload.get("status") or "active"),
@@ -618,6 +647,14 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
                 )
 
         model.name = str(payload.get("name") or model.name)
+        if parsed_release_date := _release_date(payload.get("release_date")):
+            model.release_date = parsed_release_date
+        if parsed_parameter_count := _positive_int(payload.get("parameter_count")):
+            model.parameter_count = parsed_parameter_count
+        if parsed_active_parameter_count := _positive_int(
+            payload.get("active_parameter_count")
+        ):
+            model.active_parameter_count = parsed_active_parameter_count
         if profile_accepted and payload.get("is_open_weight") is not None:
             model.is_open_weight = payload.get("is_open_weight")
         if payload.get("status"):

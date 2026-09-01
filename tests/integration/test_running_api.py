@@ -2,11 +2,17 @@ import os
 from collections.abc import Callable
 from decimal import Decimal
 from typing import Any
+from uuid import uuid4
 
 import httpx
 import pytest
+from sqlalchemy import create_engine, delete
+from sqlalchemy.orm import Session
+
+from llm_radar.database.models import AnalyticsEvent, Feedback, ModelDemand
 
 BASE_URL = os.getenv("LLM_RADAR_INTEGRATION_BASE_URL")
+DATABASE_URL = os.getenv("LLM_RADAR_INTEGRATION_DATABASE_URL")
 pytestmark = pytest.mark.skipif(not BASE_URL, reason="running API URL was not provided")
 
 
@@ -144,3 +150,135 @@ def test_event_feed_exposes_scores_and_categories() -> None:
     assert items
     assert all(0 <= item["importance_score"] <= 100 for item in items)
     assert all(item["category"] for item in items)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "name",
+        "provider",
+        "input_price",
+        "output_price",
+        "context",
+        "release_date",
+        "parameter_count",
+        "active_parameter_count",
+        "backend",
+    ],
+)
+def test_model_table_sorting_supports_both_directions(field: str) -> None:
+    responses = {}
+    for order in ("asc", "desc"):
+        response = httpx.get(
+            f"{BASE_URL}/api/v1/models/search",
+            params={"sort_by": field, "sort_order": order, "limit": 100},
+            timeout=30,
+        )
+        response.raise_for_status()
+        responses[order] = response.json()
+    assert responses["asc"]["sort_order"] == "asc"
+    assert responses["desc"]["sort_order"] == "desc"
+    accessors: dict[str, Callable[[dict[str, Any]], Any]] = {
+        "name": lambda item: item["name"],
+        "provider": lambda item: item["developer"]["name"],
+        "input_price": lambda item: item["pricing"]["input"],
+        "output_price": lambda item: item["pricing"]["output"],
+        "context": lambda item: item["context_window"],
+        "release_date": lambda item: item["release_date"],
+        "parameter_count": lambda item: item["parameter_count"],
+        "active_parameter_count": lambda item: item["active_parameter_count"],
+        "backend": lambda item: item["providers"][0] if item["providers"] else None,
+    }
+    distinct_values = {
+        value for item in responses["asc"]["items"] if (value := accessors[field](item)) is not None
+    }
+    if len(distinct_values) > 1:
+        assert [item["id"] for item in responses["asc"]["items"]] != [
+            item["id"] for item in responses["desc"]["items"]
+        ]
+
+
+def test_new_filters_can_be_combined() -> None:
+    response = httpx.get(
+        f"{BASE_URL}/api/v1/models/search",
+        params=[
+            ("openness", "open_weight"),
+            ("capability", "reasoning"),
+            ("capability", "tool_calling"),
+            ("commercial_use_status", "allowed"),
+            ("sort_by", "input_price"),
+            ("sort_order", "asc"),
+            ("limit", "100"),
+        ],
+        timeout=30,
+    )
+    response.raise_for_status()
+    for item in response.json()["items"]:
+        assert item["openness"] == "open_weight"
+        assert item["reasoning"] is True
+        assert item["tool_calling"] is True
+        assert item["commercial_use_status"] == "allowed"
+
+
+def test_engagement_writes_are_idempotent_and_forms_validate() -> None:
+    if not DATABASE_URL:
+        pytest.skip("running database URL was not provided for cleanup")
+    session_id = uuid4()
+    event_id = uuid4()
+    feedback_id = uuid4()
+    demand_id = uuid4()
+    try:
+        event_payload = {
+            "event_id": str(event_id),
+            "event_type": "sort_changed",
+            "session_id": str(session_id),
+            "sort": {"sort_by": "output_price", "sort_order": "asc"},
+        }
+        first = httpx.post(f"{BASE_URL}/api/v1/analytics/events", json=event_payload, timeout=30)
+        duplicate = httpx.post(
+            f"{BASE_URL}/api/v1/analytics/events", json=event_payload, timeout=30
+        )
+        assert first.status_code == 201
+        assert first.json()["accepted"] is True
+        assert duplicate.status_code == 201
+        assert duplicate.json()["duplicate"] is True
+
+        feedback = httpx.post(
+            f"{BASE_URL}/api/v1/feedback",
+            json={
+                "submission_id": str(feedback_id),
+                "session_id": str(session_id),
+                "feedback_type": "feature_request",
+                "message": "Smoke test feedback",
+            },
+            timeout=30,
+        )
+        assert feedback.status_code == 201
+        empty_feedback = httpx.post(
+            f"{BASE_URL}/api/v1/feedback",
+            json={
+                "session_id": str(session_id),
+                "feedback_type": "general",
+                "message": "",
+            },
+            timeout=30,
+        )
+        assert empty_feedback.status_code == 422
+
+        demand = httpx.post(
+            f"{BASE_URL}/api/v1/model-demands",
+            json={
+                "submission_id": str(demand_id),
+                "session_id": str(session_id),
+                "requested_models": ["Qwen", "DeepSeek"],
+            },
+            timeout=30,
+        )
+        assert demand.status_code == 201
+    finally:
+        engine = create_engine(DATABASE_URL)
+        with Session(engine) as session, session.begin():
+            session.execute(delete(AnalyticsEvent).where(AnalyticsEvent.session_id == session_id))
+            session.execute(delete(Feedback).where(Feedback.session_id == session_id))
+            session.execute(delete(ModelDemand).where(ModelDemand.session_id == session_id))
+        engine.dispose()

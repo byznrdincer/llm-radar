@@ -19,8 +19,10 @@ class NormalizedModelFeatures:
     supports_reasoning: bool | None
     supports_streaming: bool | None
     availability: str | None
+    openness: str | None
     license: str | None
     commercial_use_allowed: bool | None
+    commercial_use_status: str | None
 
 
 def _optional_bool(value: Any) -> bool | None:
@@ -90,6 +92,7 @@ def normalize_model_features(payload: dict[str, Any]) -> NormalizedModelFeatures
     )
 
     is_open_weight = _optional_bool(payload.get("is_open_weight"))
+    is_open_source = _optional_bool(payload.get("is_open_source"))
     availability = payload.get("availability")
     if availability is not None:
         availability = str(availability).strip().lower().replace("-", "_")
@@ -98,6 +101,18 @@ def normalize_model_features(payload: dict[str, Any]) -> NormalizedModelFeatures
     elif is_open_weight is False:
         availability = "proprietary"
 
+    openness = payload.get("openness")
+    if openness is not None:
+        openness = str(openness).strip().lower().replace("-", "_")
+    elif is_open_source is True or availability == "open_source":
+        openness = "open_source"
+    elif is_open_weight is True or availability == "open_weight":
+        openness = "open_weight"
+    elif is_open_weight is False or availability in {"proprietary", "closed_source"}:
+        openness = "proprietary"
+    if openness not in {"open_source", "open_weight", "proprietary", None}:
+        openness = None
+
     input_price = to_decimal(pricing.get("input_per_1m_tokens"))
     output_price = to_decimal(pricing.get("output_per_1m_tokens"))
     cache_read_price = to_decimal(pricing.get("cache_read_per_1m_tokens"))
@@ -105,8 +120,17 @@ def normalize_model_features(payload: dict[str, Any]) -> NormalizedModelFeatures
     commercial_use = _optional_bool(payload.get("commercial_use_allowed"))
     if commercial_use is None and license_name in {"Apache-2.0", "MIT"}:
         commercial_use = True
-    elif commercial_use is None and license_name == "proprietary":
-        commercial_use = False
+    # A proprietary model can still permit commercial API use. Without explicit
+    # terms, the license label alone is not enough to call it restricted.
+    commercial_status = payload.get("commercial_use_status")
+    if commercial_status is not None:
+        commercial_status = str(commercial_status).strip().lower().replace("-", "_")
+    elif commercial_use is True:
+        commercial_status = "allowed"
+    elif commercial_use is False:
+        commercial_status = "restricted"
+    if commercial_status not in {"allowed", "restricted", "not_allowed", "unknown", None}:
+        commercial_status = None
 
     return NormalizedModelFeatures(
         context_window=_optional_int(payload.get("context_window")),
@@ -123,6 +147,8 @@ def normalize_model_features(payload: dict[str, Any]) -> NormalizedModelFeatures
         supports_reasoning=reasoning,
         supports_streaming=streaming,
         availability=str(availability) if availability else None,
+        openness=str(openness) if openness else None,
         license=license_name,
         commercial_use_allowed=commercial_use,
+        commercial_use_status=str(commercial_status) if commercial_status else None,
     )
