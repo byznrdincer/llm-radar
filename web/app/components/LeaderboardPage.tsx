@@ -1,5 +1,7 @@
 "use client";
 
+import ModelAvatar from "./ModelAvatar";
+
 export type LeaderboardItem = {
     model_name: string;
     organization: string;
@@ -142,6 +144,14 @@ function rankTone(rank: number) {
     return "default";
 }
 
+function organizationSlug(organization: string) {
+    return organization
+        .trim()
+        .toLocaleLowerCase("en-US")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+}
+
 function formatScore(item: LeaderboardItem, isArena: boolean, isSwe: boolean, isSweLive: boolean, isTau: boolean) {
     if (isArena) return Math.round(item.rating).toLocaleString("tr-TR");
     if (isSwe || isSweLive || isTau) return `${item.rating.toFixed(1)}%`;
@@ -207,6 +217,14 @@ export default function LeaderboardPage({
     const isLive = view === "livebench" || view.startsWith("livebench-");
     const isMmlu = view === "mmlu-pro";
     const scoreLabel = isArena ? "Arena Rating" : isSwe || isSweLive ? "Çözüm oranı" : isTau ? "Pass@1" : "Puan";
+    const ratings = board?.items.map(item => item.rating) ?? [];
+    const maximumRating = ratings.length ? Math.max(...ratings) : 0;
+    const minimumRating = ratings.length ? Math.min(...ratings) : 0;
+
+    function scoreWidth(rating: number) {
+        if (maximumRating === minimumRating) return 100;
+        return 35 + ((rating - minimumRating) / (maximumRating - minimumRating)) * 65;
+    }
 
     return (
         <section className="leaderboard-page app-page" id="leaderboard">
@@ -232,21 +250,6 @@ export default function LeaderboardPage({
                             ))}
                         </div>
                     ))}
-                </div>
-                <div className="lb-toolbar-meta">
-                    {board?.source.url && (
-                        <a className="lb-source-link" href={board.source.url} target="_blank" rel="noreferrer">
-                            Kaynağı aç ↗
-                        </a>
-                    )}
-                    <button
-                        type="button"
-                        className="lb-about-btn"
-                        aria-label={`${benchmarkInfo[view].name} hakkında bilgi`}
-                        onClick={onOpenInfo}
-                    >
-                        Benchmark nedir?
-                    </button>
                 </div>
             </div>
 
@@ -295,18 +298,45 @@ export default function LeaderboardPage({
                 </div>
             ) : null}
 
+            <div className="lb-summary-grid" aria-label="Benchmark özeti">
+                <div className="lb-summary-card">
+                    <span>Listelenen model</span>
+                    <strong>{board?.items.length ?? 0} model</strong>
+                </div>
+                <div className="lb-summary-card">
+                    <span>En yüksek {scoreLabel}</span>
+                    <strong>{board?.items[0] ? formatScore(board.items[0], isArena, isSwe, isSweLive, isTau) : "—"}</strong>
+                </div>
+                <div className="lb-summary-card">
+                    <span>Son güncelleme</span>
+                    <strong>{board?.published_at ? new Date(board.published_at).toLocaleDateString("tr-TR") : "—"}</strong>
+                </div>
+            </div>
+
             <div className="leaderboard-table-shell">
                 <div className="lb-table-banner">
                     <div>
                         <h2>{viewTitles[view]}</h2>
                         <p>{viewHints[view]}</p>
                     </div>
-                    <div className="lb-table-stats">
-                        <span><strong>{board?.items.length ?? 0}</strong> model</span>
-                        <span>{board?.published_at ? new Date(board.published_at).toLocaleDateString("tr-TR") : "—"}</span>
+                    <div className="lb-table-actions">
+                        <button
+                            type="button"
+                            className="lb-about-btn"
+                            aria-label={`${benchmarkInfo[view].name} hakkında bilgi`}
+                            onClick={onOpenInfo}
+                        >
+                            <span className="lb-info-icon" aria-hidden="true">i</span>
+                            Benchmark bilgisi
+                        </button>
+                        {board?.source.url && (
+                            <a className="lb-source-link" href={board.source.url} target="_blank" rel="noreferrer">
+                                Kaynağı aç ↗
+                            </a>
+                        )}
                     </div>
                 </div>
-                <div className="leaderboard-scroll" tabIndex={0} aria-label="Benchmark sıralama tablosu">
+                <div className="leaderboard-scroll" aria-label="Benchmark sıralama tablosu">
                     {!board?.items.length ? (
                         <div className="leaderboard-empty">Bu benchmark için henüz veri yok.</div>
                     ) : (
@@ -330,13 +360,23 @@ export default function LeaderboardPage({
                                             </td>
                                             <td className="lb-col-model">
                                                 <button type="button" className="lb-model-btn" onClick={() => onInspectModel(item)}>
-                                                    <strong>{item.model_name}</strong>
-                                                    <span>{item.organization}</span>
-                                                    <span className={`source-badge ${badge.kind}`}><i />{badge.label}</span>
+                                                    <ModelAvatar
+                                                        name={item.organization}
+                                                        companySlug={organizationSlug(item.organization)}
+                                                        companyName={item.organization}
+                                                        size="md"
+                                                    />
+                                                    <span className="lb-model-copy">
+                                                        <strong>{item.model_name}</strong>
+                                                        <span className="lb-model-meta">{item.organization}<i aria-hidden="true">·</i>{badge.label}</span>
+                                                    </span>
                                                 </button>
                                             </td>
                                             <td className="lb-col-score">
-                                                <strong className="lb-score">{formatScore(item, isArena, isSwe, isSweLive, isTau)}</strong>
+                                                <div className="lb-score-wrap">
+                                                    <strong className="lb-score">{formatScore(item, isArena, isSwe, isSweLive, isTau)}</strong>
+                                                    <span className="lb-score-track" aria-hidden="true"><i style={{ width: `${scoreWidth(item.rating)}%` }} /></span>
+                                                </div>
                                             </td>
                                             <td className="lb-col-detail lb-muted">
                                                 <span>{formatSecondary(item, isArena, isSwe, isSweLive, isTau, isLive, isMmlu)}</span>
@@ -344,7 +384,8 @@ export default function LeaderboardPage({
                                             </td>
                                             <td className="lb-col-action">
                                                 <button type="button" className="lb-inspect-btn" onClick={() => onInspectModel(item)}>
-                                                    İncele
+                                                    <span className="sr-only">{item.model_name} modelini incele</span>
+                                                    <span aria-hidden="true">↗</span>
                                                 </button>
                                             </td>
                                         </tr>

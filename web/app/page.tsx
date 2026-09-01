@@ -622,21 +622,24 @@ export default function Home() {
     function toggleModality(value: string) { setModalities(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]); setPage(1); }
     function toggleCapability(value: string) { setCapabilities(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]); setPage(1); }
     function toggleList(value: string, setter: Dispatch<SetStateAction<string[]>>) { setter(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]); setPage(1); }
-    function changeSort(field: SortBy) {
+    function changeSort(field: SortBy, requestedOrder?: "asc" | "desc") {
         const catalogField = field as CatalogSortSpec["field"];
         setSortStack(current => {
             const index = current.findIndex(item => item.field === catalogField);
             if (index >= 0) {
+                if (requestedOrder)
+                    return current.map((item, i) => i === index ? { ...item, order: requestedOrder } : item);
                 if (current[index].order === "asc")
                     return current.map((item, i) => i === index ? { ...item, order: "desc" as const } : item);
                 const next = current.filter((_, i) => i !== index);
                 return next.length ? next : DEFAULT_SORT_STACK;
             }
+            const order = requestedOrder ?? "asc";
             if (isDefaultSort(current))
-                return [{ field: catalogField, order: "asc" as const }];
+                return [{ field: catalogField, order }];
             if (current.length >= 3)
-                return [...current.slice(1), { field: catalogField, order: "asc" as const }];
-            return [...current, { field: catalogField, order: "asc" as const }];
+                return [...current.slice(1), { field: catalogField, order }];
+            return [...current, { field: catalogField, order }];
         });
         setPage(1);
         trackEvent(API, "sort_changed", { sort: { field } });
@@ -736,7 +739,7 @@ export default function Home() {
         setDetail(null);
         setDetailMissing(null);
     }
-    return <div className="app-shell">
+    return <div className={`app-shell${activeSection === "leaderboard" ? " leaderboard-shell" : ""}`}>
     <aside className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Ana navigasyon"><button type="button" className="sidebar-brand" onClick={() => navigateToSection("overview")}><span className="brand-mark">LR</span><span><strong>LLM RADAR</strong><small>MODEL INTELLIGENCE</small></span></button><nav className="sidebar-nav">{sidebarGroups.map(group => <div className="sidebar-group" key={group.label}><p>{group.label}</p>{group.items.map(item => <button type="button" key={item.id} className={activeSection === item.id ? "active" : ""} aria-current={activeSection === item.id ? "page" : undefined} onClick={() => navigateToSection(item.id)}><i aria-hidden="true">{item.icon}</i><span>{item.label}</span></button>)}</div>)}</nav><div className="sidebar-status"><span /><div><strong>Veri akışı aktif</strong><small>{stats.models || "—"} model izleniyor</small></div></div></aside>
     {sidebarOpen && <button className="sidebar-scrim" type="button" aria-label="Menüyü kapat" onClick={() => setSidebarOpen(false)}/>}
     {!sidebarOpen && <button className="sidebar-toast" type="button" aria-label="Menüyü aç" onClick={() => setSidebarOpen(true)}><span className="sidebar-toast-mark">LR</span><span className="sidebar-toast-label">Menü</span></button>}

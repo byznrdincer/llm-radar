@@ -109,7 +109,7 @@ type Props = {
     onAdvancedToggle: () => void;
     advancedActive: boolean;
     sortStack: CatalogSortSpec[];
-    onSort: (field: CatalogSortBy) => void;
+    onSort: (field: CatalogSortBy, order?: CatalogSortOrder) => void;
     sortLabels: Record<CatalogSortBy, string>;
     activeFilters: FilterChip[];
     onResetFilters: () => void;
@@ -413,11 +413,19 @@ function columnSortMark(stack: CatalogSortSpec[], field: CatalogSortBy) {
     return stack.length > 1 ? `${index + 1}${order}` : order;
 }
 
+function sortDirectionLabels(field: CatalogSortBy) {
+    if (field === "name" || field === "provider")
+        return { asc: "A → Z", desc: "Z → A" };
+    if (field === "benchmark_score")
+        return { asc: "Az gelişmişten başla", desc: "En gelişmişten başla" };
+    return { asc: "Azdan çoğa", desc: "Çoktan aza" };
+}
+
 function ColumnFilterHead({ label, field, sortStack, onSort, filterActive, filterCount, children }: {
     label: string;
     field: CatalogSortBy;
     sortStack: CatalogSortSpec[];
-    onSort: (field: CatalogSortBy) => void;
+    onSort: (field: CatalogSortBy, order?: CatalogSortOrder) => void;
     filterActive?: boolean;
     filterCount?: number;
     children?: ReactNode;
@@ -425,6 +433,8 @@ function ColumnFilterHead({ label, field, sortStack, onSort, filterActive, filte
     const [open, setOpen] = useState(false);
     const rootRef = useRef<HTMLTableCellElement>(null);
     const mark = columnSortMark(sortStack, field);
+    const activeOrder = sortStack.find(item => item.field === field)?.order;
+    const directionLabels = sortDirectionLabels(field);
 
     useEffect(() => {
         if (!open) return;
@@ -436,7 +446,11 @@ function ColumnFilterHead({ label, field, sortStack, onSort, filterActive, filte
     }, [open]);
 
     return (
-        <th ref={rootRef} className={`catalog-col-head${open ? " open" : ""}`}>
+        <th
+            ref={rootRef}
+            className={`catalog-col-head${open ? " open" : ""}`}
+            aria-sort={activeOrder === "asc" ? "ascending" : activeOrder === "desc" ? "descending" : "none"}
+        >
             <div className="catalog-col-head-inner">
                 <button
                     type="button"
@@ -445,20 +459,34 @@ function ColumnFilterHead({ label, field, sortStack, onSort, filterActive, filte
                 >
                     {label}{mark && <span className="sort-mark">{mark}</span>}
                 </button>
-                {children && (
-                    <button
-                        type="button"
-                        className={`catalog-col-filter-btn${filterActive ? " on" : ""}`}
-                        aria-expanded={open}
-                        aria-label={`${label} filtrele`}
-                        onClick={() => setOpen(v => !v)}
-                    >
-                        {filterCount ? filterCount : "⛭"}
-                    </button>
-                )}
+                <button
+                    type="button"
+                    className={`catalog-col-filter-btn${filterActive ? " on" : ""}${activeOrder ? " sorted" : ""}`}
+                    aria-expanded={open}
+                    aria-label={`${label} sırala${children ? " ve filtrele" : ""}`}
+                    onClick={() => setOpen(v => !v)}
+                >
+                    {filterCount ? filterCount : "⇅"}
+                </button>
             </div>
-            {open && children && (
+            {open && (
                 <div className="catalog-col-filter-menu" onClick={e => e.stopPropagation()}>
+                    <div className="catalog-sort-options" role="group" aria-label={`${label} sıralama yönü`}>
+                        <button
+                            type="button"
+                            className={activeOrder === "asc" ? "active" : ""}
+                            onClick={() => { onSort(field, "asc"); setOpen(false); }}
+                        >
+                            <span>{directionLabels.asc}</span><strong aria-hidden="true">↑</strong>
+                        </button>
+                        <button
+                            type="button"
+                            className={activeOrder === "desc" ? "active" : ""}
+                            onClick={() => { onSort(field, "desc"); setOpen(false); }}
+                        >
+                            <span>{directionLabels.desc}</span><strong aria-hidden="true">↓</strong>
+                        </button>
+                    </div>
                     {children}
                 </div>
             )}
