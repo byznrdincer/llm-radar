@@ -1053,6 +1053,8 @@ def list_events(
     session: DatabaseSession,
     event_type: str | None = None,
     category: str | None = None,
+    importance: Literal["critical", "high", "medium", "low", "info"] | None = None,
+    since: datetime | None = None,
     min_score: Annotated[int | None, Query(ge=0, le=100)] = None,
     sort_by: Literal["importance", "recent"] = "importance",
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
@@ -1065,6 +1067,10 @@ def list_events(
         if category not in EVENT_CATEGORIES:
             raise HTTPException(status_code=422, detail="Unknown event category")
         filters.append(ChangeEvent.category == category)
+    if importance:
+        filters.append(ChangeEvent.importance == importance)
+    if since is not None:
+        filters.append(ChangeEvent.detected_at >= since)
     if min_score is not None:
         filters.append(ChangeEvent.importance_score >= min_score)
     total = session.scalar(select(func.count()).select_from(ChangeEvent).where(*filters)) or 0
