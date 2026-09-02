@@ -70,6 +70,8 @@ services:
 
   api:
     build: .
+    env_file:
+      - .admin.env
     environment:
       APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://llm_radar:llm_radar@postgres:5432/llm_radar}

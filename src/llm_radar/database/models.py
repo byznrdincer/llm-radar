@@ -515,6 +515,15 @@ class Feedback(Base):
     session_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), index=True)
     feedback_type: Mapped[str] = mapped_column(String(40), index=True)
     message: Mapped[str] = mapped_column(Text)
+
+    related_model_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), nullable=True, index=True
+    )
+    subject: Mapped[str | None] = mapped_column(String(60), nullable=True, index=True)
+    severity: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    product_area: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+
     status: Mapped[str] = mapped_column(String(24), default="new", index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
@@ -526,8 +535,16 @@ class ModelDemand(Base):
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     session_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), index=True)
+
     requested_models: Mapped[list[Any]] = mapped_column(JSONB, default=list)
-    other_model: Mapped[str | None] = mapped_column(String(200))
+    requested_model_ids: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+
+    other_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    use_cases: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    criteria: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    demand_level: Mapped[str | None] = mapped_column(String(24), nullable=True, index=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )

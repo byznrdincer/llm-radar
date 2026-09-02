@@ -1,0 +1,7 @@
+.admin.env
+.env
+.venv
+.git
+__pycache__
+*.pyc
+web/node_modules

@@ -5,8 +5,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from llm_radar.admin import ADMIN_SECRET_KEY, create_admin
 from llm_radar.api.engagement import router as engagement_router
 from llm_radar.api.insights import router as insights_router
 from llm_radar.api.intel import router as intel_router
@@ -50,6 +52,16 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["*"],
 )
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=ADMIN_SECRET_KEY,
+    same_site="lax",
+    https_only=False,
+)
+
+admin = create_admin()
+admin.mount_to(app)
 
 
 @app.middleware("http")

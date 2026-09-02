@@ -23,7 +23,48 @@ AnalyticsEventType = Literal[
     "model_requested",
 ]
 FeedbackType = Literal[
-    "missing_model", "filter_suggestion", "bug_report", "feature_request", "general"
+    "missing_model",
+    "data_error",
+    "pricing_error",
+    "benchmark_error",
+    "source_suggestion",
+    "filter_suggestion",
+    "feature_request",
+    "ux_feedback",
+    "bug_report",
+    "general",
+]
+
+FeedbackSeverity = Literal[
+    "low",
+    "medium",
+    "high",
+    "critical",
+]
+
+DemandUseCase = Literal[
+    "chat",
+    "rag",
+    "coding",
+    "agent",
+    "multimodal",
+    "enterprise",
+    "other",
+]
+
+DemandCriterion = Literal[
+    "performance",
+    "price",
+    "speed",
+    "turkish",
+    "privacy",
+    "open_weight",
+]
+
+DemandLevel = Literal[
+    "interested",
+    "need",
+    "active_use",
 ]
 
 
@@ -45,22 +86,54 @@ class FeedbackRequest(BaseModel):
     feedback_type: FeedbackType
     message: str = Field(min_length=3, max_length=4000)
 
+    related_model_id: UUID | None = None
+    subject: str | None = Field(default=None, max_length=60)
+    severity: FeedbackSeverity | None = None
+    source_url: str | None = Field(default=None, max_length=500)
+    product_area: str | None = Field(default=None, max_length=80)
+
     @field_validator("message")
     @classmethod
     def clean_message(cls, value: str) -> str:
         return value.strip()
 
+    @field_validator("subject", "source_url", "product_area")
+    @classmethod
+    def clean_optional_text(cls, value: str | None) -> str | None:
+        cleaned = value.strip() if value else None
+        return cleaned or None
+
 
 class ModelDemandRequest(BaseModel):
     submission_id: UUID = Field(default_factory=uuid4)
     session_id: UUID
+
+    # Mevcut summary sistemiyle geriye uyumluluk için isim snapshot'ı.
     requested_models: list[str] = Field(default_factory=list, max_length=20)
+
+    # Canonical model kimlikleri.
+    requested_model_ids: list[UUID] = Field(default_factory=list, max_length=20)
+
     other_model: str | None = Field(default=None, max_length=200)
+
+    use_cases: list[DemandUseCase] = Field(default_factory=list, max_length=10)
+    criteria: list[DemandCriterion] = Field(default_factory=list, max_length=10)
+    demand_level: DemandLevel | None = None
 
     @field_validator("requested_models")
     @classmethod
     def normalize_models(cls, values: list[str]) -> list[str]:
         return list(dict.fromkeys(value.strip() for value in values if value.strip()))
+
+    @field_validator("requested_model_ids")
+    @classmethod
+    def normalize_model_ids(cls, values: list[UUID]) -> list[UUID]:
+        return list(dict.fromkeys(values))
+
+    @field_validator("use_cases", "criteria")
+    @classmethod
+    def normalize_choices(cls, values: list[Any]) -> list[Any]:
+        return list(dict.fromkeys(values))
 
     @field_validator("other_model")
     @classmethod
@@ -99,35 +172,108 @@ def record_analytics_event(
 def submit_feedback(request: FeedbackRequest, session: DatabaseSession) -> dict[str, Any]:
     existing = session.get(Feedback, request.submission_id)
     if existing is not None:
-        return {"accepted": False, "duplicate": True, "feedback_id": str(existing.id)}
+        return {
+            "accepted": False,
+            "duplicate": True,
+            "feedback_id": str(existing.id),
+        }
+
+    if (
+        request.related_model_id is not None
+        and session.get(Model, request.related_model_id) is None
+    ):
+        raise HTTPException(status_code=404, detail="Related model not found")
+
     item = Feedback(
         id=request.submission_id,
         session_id=request.session_id,
         feedback_type=request.feedback_type,
         message=request.message,
+        related_model_id=request.related_model_id,
+        subject=request.subject,
+        severity=request.severity,
+        source_url=request.source_url,
+        product_area=request.product_area,
         status="new",
     )
+
     session.add(item)
     session.commit()
-    return {"accepted": True, "duplicate": False, "feedback_id": str(item.id)}
+
+    return {
+        "accepted": True,
+        "duplicate": False,
+        "feedback_id": str(item.id),
+    }
 
 
 @router.post("/model-demands", tags=["feedback"], status_code=status.HTTP_201_CREATED)
 def submit_model_demand(request: ModelDemandRequest, session: DatabaseSession) -> dict[str, Any]:
-    if not request.requested_models and not request.other_model:
-        raise HTTPException(status_code=422, detail="Select or enter at least one model")
+    if (
+        not request.requested_model_ids
+        and not request.requested_models
+        and not request.other_model
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Select or enter at least one model",
+        )
+
     existing = session.get(ModelDemand, request.submission_id)
     if existing is not None:
-        return {"accepted": False, "duplicate": True, "demand_id": str(existing.id)}
+        return {
+            "accepted": False,
+            "duplicate": True,
+            "demand_id": str(existing.id),
+        }
+
+    requested_models = request.requested_models
+    requested_model_ids = request.requested_model_ids
+
+    if requested_model_ids:
+        found_models = session.scalars(
+            select(Model).where(Model.id.in_(requested_model_ids))
+        ).all()
+
+        models_by_id = {model.id: model for model in found_models}
+
+        missing_ids = [
+            model_id
+            for model_id in requested_model_ids
+            if model_id not in models_by_id
+        ]
+
+        if missing_ids:
+            raise HTTPException(
+                status_code=404,
+                detail="One or more requested models were not found",
+            )
+
+        # İsimleri frontend'den değil canonical Model kayıtlarından üret.
+        requested_models = [
+            models_by_id[model_id].name
+            for model_id in requested_model_ids
+        ]
+
     item = ModelDemand(
         id=request.submission_id,
         session_id=request.session_id,
-        requested_models=request.requested_models,
+        requested_models=requested_models,
+        requested_model_ids=[str(model_id) for model_id in requested_model_ids],
         other_model=request.other_model,
+        use_cases=request.use_cases,
+        criteria=request.criteria,
+        demand_level=request.demand_level,
     )
+
     session.add(item)
     session.commit()
-    return {"accepted": True, "duplicate": False, "demand_id": str(item.id)}
+
+    return {
+        "accepted": True,
+        "duplicate": False,
+        "demand_id": str(item.id),
+    }
 
 
 def _model_counts(
