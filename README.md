@@ -348,6 +348,15 @@ python -m llm_radar.collectors.run_huggingface
 python -m llm_radar.collectors.run_github
 python -m llm_radar.collectors.run_arxiv
 python -m llm_radar.collectors.run_provider_catalogs
+python -m llm_radar.backfill_arena_history
+```
+
+Arena'nın tarihsel `overall` snapshot'larını yalnızca ilk kurulumda veya kontrollü
+bir veri onarımı sırasında backfill edin. Komut resmî `text/full` Parquet verisini
+indirir ve aynı model/kategori/tarih kaydını tekrar eklemez:
+
+```bash
+docker compose run --rm api python -m llm_radar.backfill_arena_history
 ```
 
 Docker içinden:

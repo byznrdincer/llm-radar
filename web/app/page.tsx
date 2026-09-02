@@ -866,7 +866,17 @@ export default function Home() {
     )}
 
     {insightViews.has(activeSection as InsightsView) && (
-    <ProductInsights api={API} view={activeSection as InsightsView}/>
+    <ProductInsights
+        api={API}
+        view={activeSection as InsightsView}
+        onNavigate={navigateToSection}
+        onOpenWeight={() => {
+            setOpenness(["open_weight"]);
+            setPage(1);
+            setAdvancedOpen(true);
+            navigateToSection("models");
+        }}
+    />
     )}
 
     {activeSection === "events" && (

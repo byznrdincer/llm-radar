@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
@@ -13,6 +14,7 @@ from llm_radar.database.models import (
     Model,
     ModelProfile,
     ModelSnapshot,
+    PriceObservation,
 )
 from llm_radar.database.session import get_db
 from llm_radar.model_selection import benchmark_matches
@@ -40,6 +42,7 @@ CHINA_ORGANIZATIONS = {
     "qwen",
     "tencent",
     "z.ai",
+    "zai",
     "zhipu",
     "zhipu ai",
 }
@@ -70,6 +73,17 @@ TURKISH_SIGNALS = (
     "wiroai",
     "turkcell-llm",
 )
+
+MARKET_BENCHMARKS = {
+    "arena-text": {
+        "label": "Arena Rating",
+        "metric": "Arena Rating — yüksek daha iyi",
+    },
+    "artificial-analysis-intelligence": {
+        "label": "AA Intelligence Index",
+        "metric": "Intelligence Index — yüksek daha iyi",
+    },
+}
 
 
 def _turkish_haystack(
@@ -112,6 +126,235 @@ def _organization_region(value: str) -> str | None:
     if any(name in normalized for name in CHINA_ORGANIZATIONS):
         return "China"
     return None
+
+
+def _next_month(value: date) -> date:
+    if value.month == 12:
+        return date(value.year + 1, 1, 1)
+    return date(value.year, value.month + 1, 1)
+
+
+def _count_models_between(session: Session, start: date, end: date) -> int:
+    return (
+        session.scalar(
+            select(func.count(Model.id)).where(
+                Model.release_date >= start,
+                Model.release_date < end,
+            )
+        )
+        or 0
+    )
+
+
+@router.get("/insights/market-dashboard", tags=["insights"])
+def market_dashboard(
+    session: DatabaseSession,
+    benchmark: str = "arena-text",
+    days: Annotated[int, Query(ge=30, le=3650)] = 365,
+) -> dict[str, Any]:
+    """Return evidence-backed market KPIs and time series for the analysis dashboard."""
+    definition = session.scalar(
+        select(BenchmarkDefinition).where(BenchmarkDefinition.slug == benchmark)
+    )
+    benchmark_meta = MARKET_BENCHMARKS.get(
+        benchmark,
+        {
+            "label": definition.name if definition else benchmark,
+            "metric": f"{definition.name if definition else benchmark} — yüksek daha iyi",
+        },
+    )
+    today = datetime.now(UTC).date()
+    cutoff = today - timedelta(days=days)
+    rows: list[LeaderboardSnapshot] = []
+    if definition is not None:
+        rows = session.scalars(
+            select(LeaderboardSnapshot)
+            .where(
+                LeaderboardSnapshot.benchmark_id == definition.id,
+                LeaderboardSnapshot.published_at >= cutoff,
+            )
+            .order_by(
+                LeaderboardSnapshot.published_at.asc(),
+                LeaderboardSnapshot.score.desc(),
+            )
+        ).all()
+
+    by_date: dict[date, dict[str, dict[str, Any]]] = defaultdict(dict)
+    model_history: dict[tuple[str, str], dict[date, LeaderboardSnapshot]] = defaultdict(dict)
+    for row in rows:
+        region = _organization_region(row.organization)
+        if region is None:
+            continue
+        current = by_date[row.published_at].get(region)
+        if current is None or float(row.score) > current["score"]:
+            by_date[row.published_at][region] = {
+                "score": float(row.score),
+                "model": row.model_external_id,
+                "organization": row.organization,
+            }
+        model_key = (row.organization, row.model_external_id)
+        previous = model_history[model_key].get(row.published_at)
+        if previous is None or row.score > previous.score:
+            model_history[model_key][row.published_at] = row
+
+    country_trend = [
+        {
+            "date": published_at,
+            "usa": values.get("USA", {}).get("score"),
+            "china": values.get("China", {}).get("score"),
+            "usa_model": values.get("USA", {}).get("model"),
+            "china_model": values.get("China", {}).get("model"),
+            "usa_organization": values.get("USA", {}).get("organization"),
+            "china_organization": values.get("China", {}).get("organization"),
+        }
+        for published_at, values in sorted(by_date.items())
+    ]
+    complete_points = [
+        point for point in country_trend if point["usa"] is not None and point["china"] is not None
+    ]
+    first_gap = (
+        abs(float(complete_points[0]["usa"]) - float(complete_points[0]["china"]))
+        if complete_points
+        else None
+    )
+    current_gap = (
+        abs(float(complete_points[-1]["usa"]) - float(complete_points[-1]["china"]))
+        if complete_points
+        else None
+    )
+    gap_delta = (
+        round(current_gap - first_gap, 2)
+        if current_gap is not None and first_gap is not None
+        else None
+    )
+
+    movers: list[dict[str, Any]] = []
+    for (_, model_name), history in model_history.items():
+        ordered = sorted(history.items())
+        if len(ordered) < 2:
+            continue
+        first_row = ordered[0][1]
+        latest_row = ordered[-1][1]
+        movers.append(
+            {
+                "model": model_name,
+                "organization": latest_row.organization,
+                "region": _organization_region(latest_row.organization),
+                "delta": round(float(latest_row.score - first_row.score), 2),
+                "score": float(latest_row.score),
+            }
+        )
+    movers.sort(key=lambda item: (-item["delta"], item["model"].lower()))
+    movers = movers[:5]
+
+    latest_date = max(by_date, default=None)
+    provider_rows: list[dict[str, Any]] = []
+    if latest_date is not None:
+        best_by_provider: dict[str, LeaderboardSnapshot] = {}
+        for row in rows:
+            if row.published_at != latest_date:
+                continue
+            current = best_by_provider.get(row.organization)
+            if current is None or row.score > current.score:
+                best_by_provider[row.organization] = row
+        provider_rows = [
+            {
+                "organization": row.organization,
+                "model": row.model_external_id,
+                "score": float(row.score),
+                "region": _organization_region(row.organization),
+            }
+            for row in sorted(best_by_provider.values(), key=lambda item: item.score, reverse=True)[
+                :8
+            ]
+        ]
+
+    total_models = session.scalar(select(func.count(Model.id))) or 0
+    active_provider_cutoff = datetime.now(UTC) - timedelta(days=30)
+    active_providers = (
+        session.scalar(
+            select(func.count(func.distinct(PriceObservation.provider))).where(
+                PriceObservation.observed_at >= active_provider_cutoff
+            )
+        )
+        or 0
+    )
+    open_weight_models = (
+        session.scalar(
+            select(func.count(ModelProfile.model_id)).where(
+                ModelProfile.openness.in_(["open_source", "open_weight"])
+            )
+        )
+        or 0
+    )
+    open_weight_share = round((open_weight_models / total_models) * 100, 1) if total_models else 0
+
+    current_month = today.replace(day=1)
+    next_month = _next_month(current_month)
+    previous_month_end = current_month
+    previous_month_start = (current_month - timedelta(days=1)).replace(day=1)
+    new_models = _count_models_between(session, current_month, next_month)
+    previous_new_models = _count_models_between(session, previous_month_start, previous_month_end)
+    new_model_delta = new_models - previous_new_models
+
+    fastest_riser = movers[0] if movers else None
+    insights: list[str] = []
+    if current_gap is not None:
+        if gap_delta is not None and gap_delta < 0:
+            insights.append(
+                "Çin ve ABD arasındaki frontier farkı seçili dönemde "
+                f"{abs(gap_delta):g} puan daraldı."
+            )
+        elif gap_delta is not None and gap_delta > 0:
+            insights.append(
+                f"Çin ve ABD arasındaki frontier farkı seçili dönemde {gap_delta:g} puan açıldı."
+            )
+        else:
+            insights.append(f"Güncel Çin–ABD frontier farkı {current_gap:.1f} puan.")
+    insights.append(
+        "Açık ağırlıklı modeller doğrulanmış katalog kayıtlarının "
+        f"%{open_weight_share:g} payını oluşturuyor."
+    )
+    if fastest_riser:
+        insights.append(
+            f"{fastest_riser['model']} seçili dönemin en hızlı yükselen modeli: "
+            f"{fastest_riser['delta']:+g} puan."
+        )
+    insights.append(
+        f"Bu ay {new_models} yeni model yayın tarihiyle kataloğa girdi "
+        f"({new_model_delta:+d} önceki aya göre)."
+    )
+
+    return {
+        "generated_at": datetime.now(UTC),
+        "benchmark": {
+            "slug": benchmark,
+            "name": definition.name if definition else benchmark_meta["label"],
+            "label": benchmark_meta["label"],
+            "metric": benchmark_meta["metric"],
+        },
+        "period_days": days,
+        "published_at": latest_date,
+        "summary": {
+            "frontier_gap": round(current_gap, 2) if current_gap is not None else None,
+            "frontier_gap_delta": gap_delta,
+            "open_weight_share": open_weight_share,
+            "open_weight_models": open_weight_models,
+            "new_models_this_month": new_models,
+            "new_models_delta": new_model_delta,
+            "fastest_riser": fastest_riser,
+            "total_models": total_models,
+            "active_providers": active_providers,
+        },
+        "country_trend": country_trend,
+        "providers": provider_rows,
+        "movers": movers,
+        "insights": insights,
+        "method_note": (
+            "Ülke serisi, her snapshot tarihinde ilgili ülkenin en yüksek benchmark skorunu "
+            "gösterir; bileşik veya tahmini skor kullanılmaz."
+        ),
+    }
 
 
 @router.get("/insights/country-frontier", tags=["insights"])
@@ -219,7 +462,8 @@ def list_turkish_models(
     candidates.sort(key=lambda item: item[4], reverse=True)
     return {
         "selection_note": (
-            "Türkçe/Türkiye sinyali model adı, geliştirici, HF etiketleri veya kaynak metadata'sından gelir."
+            "Türkçe/Türkiye sinyali model adı, geliştirici, HF etiketleri "
+            "veya kaynak metadata'sından gelir."
         ),
         "items": [
             {

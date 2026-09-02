@@ -64,4 +64,5 @@ def test_openapi_contains_core_data_routes() -> None:
     assert "/api/v1/model-demands/summary" in schema["paths"]
     assert "/api/v1/insights/country-frontier" in schema["paths"]
     assert "/api/v1/insights/openness-trend" in schema["paths"]
+    assert "/api/v1/insights/market-dashboard" in schema["paths"]
     assert "/api/v1/models/turkish" in schema["paths"]

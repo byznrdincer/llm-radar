@@ -10,7 +10,13 @@ from uuid import NAMESPACE_URL, uuid5
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from llm_radar.canonical_pipeline import (
+    link_cross_source_models,
+    merge_runtime_capabilities,
+    observation_fingerprints,
+)
 from llm_radar.catalog import EVENT_BY_TYPE
+from llm_radar.company_domains import company_website_url
 from llm_radar.composite import canonical_model_name
 from llm_radar.database.models import (
     BenchmarkDefinition,
@@ -32,15 +38,9 @@ from llm_radar.event_intelligence import classify_event, score_importance
 from llm_radar.events.schemas import EventEnvelope, EventType
 from llm_radar.events.topics import PROCESSED_EVENTS, TOPIC_BY_EVENT_TYPE
 from llm_radar.model_family import infer_model_family
-from llm_radar.company_domains import company_website_url
 from llm_radar.normalize import company_display_name, normalize_company_name
 from llm_radar.notifications import dispatch_notifications
 from llm_radar.pipeline import canonical_hash, duplicate_reasons, remember_fingerprint
-from llm_radar.canonical_pipeline import (
-    link_cross_source_models,
-    merge_runtime_capabilities,
-    observation_fingerprints,
-)
 from llm_radar.processor.change_detector import detect_changes
 from llm_radar.profile_service import (
     propagate_availability_evidence,
@@ -333,17 +333,26 @@ def _handle_leaderboard(
         )
         session.add(benchmark)
         session.flush()
+    published_at = date.fromisoformat(str(payload["leaderboard_publish_date"]))
+    existing_snapshot = session.scalar(
+        select(LeaderboardSnapshot).where(
+            LeaderboardSnapshot.benchmark_id == benchmark.id,
+            LeaderboardSnapshot.model_external_id == payload["model_name"],
+            LeaderboardSnapshot.category == payload["category"],
+            LeaderboardSnapshot.published_at == published_at,
+        )
+    )
     previous_leaderboard = session.scalar(
         select(LeaderboardSnapshot)
         .where(
             LeaderboardSnapshot.benchmark_id == benchmark.id,
             LeaderboardSnapshot.model_external_id == payload["model_name"],
             LeaderboardSnapshot.category == payload["category"],
+            LeaderboardSnapshot.published_at < published_at,
         )
         .order_by(LeaderboardSnapshot.published_at.desc())
         .limit(1)
     )
-    published_at = date.fromisoformat(str(payload["leaderboard_publish_date"]))
     changes: list[ChangeEvent] = []
     open_weights = payload.get("open_weights")
     proprietary_claim = (
@@ -385,7 +394,7 @@ def _handle_leaderboard(
                 observed_at=event.collected_at,
                 payload=availability_payload,
             )
-    if previous_leaderboard is None or previous_leaderboard.published_at != published_at:
+    if existing_snapshot is None:
         snapshot = LeaderboardSnapshot(
             benchmark_id=benchmark.id,
             source_id=source.id,

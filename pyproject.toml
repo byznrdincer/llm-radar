@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
   "alembic>=1.13,<2",
   "confluent-kafka>=2.6,<3",
+  "duckdb>=1.4,<2",
   "fastapi>=0.115,<1",
   "httpx>=0.27,<1",
   "minio>=7.2,<8",
@@ -45,6 +46,7 @@ llm-radar-collect-arxiv = "llm_radar.collectors.run_arxiv:run"
 llm-radar-collect-provider-catalogs = "llm_radar.collectors.run_provider_catalogs:run"
 llm-radar-backfill-profiles = "llm_radar.backfill_profiles:main"
 llm-radar-backfill-events = "llm_radar.backfill_event_intelligence:main"
+llm-radar-backfill-arena = "llm_radar.backfill_arena_history:main"
 
 [build-system]
 requires = ["hatchling"]

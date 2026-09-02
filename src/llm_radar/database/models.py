@@ -254,6 +254,15 @@ class BenchmarkDefinition(TimestampMixin, Base):
 
 class LeaderboardSnapshot(Base):
     __tablename__ = "leaderboard_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "benchmark_id",
+            "model_external_id",
+            "category",
+            "published_at",
+            name="uq_leaderboard_snapshot_identity",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     benchmark_id: Mapped[UUID] = mapped_column(ForeignKey("benchmark_definitions.id"), index=True)
