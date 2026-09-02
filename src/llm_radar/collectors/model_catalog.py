@@ -81,6 +81,7 @@ def model_event(
     entity_key: str,
     payload: dict[str, Any],
     collected_at: datetime,
+    extraction_method: str = "api",
 ) -> EventEnvelope:
     clean_payload = {key: value for key, value in payload.items() if value is not None}
     pricing = clean_payload.get("pricing")
@@ -100,7 +101,7 @@ def model_event(
         metadata=EventMetadata(
             source_url=source_url,
             reliability=reliability,
-            extraction_method="api",
+            extraction_method=extraction_method,
         ),
     )
 

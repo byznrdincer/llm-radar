@@ -9,6 +9,7 @@ import FeedbackPage from "./components/FeedbackPage";
 import EventsPage from "./components/EventsPage";
 import ResearchPage, { type ResearchBootstrap } from "./components/ResearchPage";
 import TechnologyRadarPage from "./components/TechnologyRadarPage";
+import SourcesPage from "./components/SourcesPage";
 import type { TurkishModel } from "./components/TurkishLLMPage";
 import { trackEvent } from "./lib/analytics";
 import { toPublicSourceUrl } from "./lib/publicSourceUrl";
@@ -302,18 +303,6 @@ type EventItem = {
     } | null;
 };
 type LeaderboardItem = import("./components/LeaderboardPage").LeaderboardItem;
-type SourceCatalogItem = {
-    slug: string;
-    name: string;
-    url: string;
-    category: string;
-    source_class: string;
-    collection_method: string;
-    reliability: string;
-    is_active: boolean;
-    status: string | null;
-    last_success_at: string | null;
-};
 type TechnologyItem = {
     slug: string;
     name: string;
@@ -593,7 +582,6 @@ export default function Home() {
     const [detailMissing, setDetailMissing] = useState<string | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [compareProfiles, setCompareProfiles] = useState<Record<string, ComparedModel>>({});
-    const [sourceCatalog, setSourceCatalog] = useState<SourceCatalogItem[]>([]);
     const [technology, setTechnology] = useState<TechnologyItem[]>([]);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activeSection, setActiveSection] = useState("overview");
@@ -676,7 +664,7 @@ export default function Home() {
 
         return () => controller.abort();
     }, []);
-    useEffect(() => { fetch(`${API}/api/v1/catalog/sources`).then(r => r.ok ? r.json() : null).then(data => setSourceCatalog(data?.items ?? [])).catch(() => { }); fetch(`${API}/api/v1/technology`).then(r => r.ok ? r.json() : null).then(data => setTechnology(data?.items ?? [])).catch(() => { }); }, []);
+    useEffect(() => { fetch(`${API}/api/v1/technology`).then(r => r.ok ? r.json() : null).then(data => setTechnology(data?.items ?? [])).catch(() => { }); }, []);
     useEffect(() => {
         const boardKey = boardKeyForView(leaderboardView);
         const boards = {
@@ -953,8 +941,8 @@ export default function Home() {
     <aside className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Ana navigasyon"><button type="button" className="sidebar-brand" onClick={() => navigateToSection("overview")}><span className="brand-mark brand-radar" aria-hidden="true"><i /><b /><em /><em /><em /></span><span><strong>LLM RADAR</strong><small>MODEL INTELLIGENCE</small></span></button><nav className="sidebar-nav">{sidebarGroups.map(group => <div className="sidebar-group" key={group.label}><p>{group.label}</p>{group.items.map(item => <button type="button" key={item.id} className={activeSection === item.id ? "active" : ""} aria-current={activeSection === item.id ? "page" : undefined} onClick={() => navigateToSection(item.id)}><i aria-hidden="true">{item.icon}</i><span>{item.label}</span></button>)}</div>)}</nav><div className="sidebar-status"><span /><div><strong>Veri akışı aktif</strong><small>{stats.models || "—"} model izleniyor</small></div></div></aside>
     {sidebarOpen && <button className="sidebar-scrim" type="button" aria-label="Menüyü kapat" onClick={() => setSidebarOpen(false)}/>}
     {!sidebarOpen && <button className="sidebar-toast" type="button" aria-label="Menüyü aç" onClick={() => setSidebarOpen(true)}><span className="sidebar-toast-mark brand-radar" aria-hidden="true"><i /><b /><em /><em /><em /></span><span className="sidebar-toast-label">Menü</span></button>}
-    <main className={`main-content${activeSection === "leaderboard" ? " leaderboard-layout" : activeSection === "models" ? " catalog-layout" : activeSection === "turkish" ? " turkish-layout" : activeSection === "research" ? " rs-layout" : activeSection === "radar" ? " tr-layout" : ""}`} id="top">
-    {activeSection !== "research" && activeSection !== "radar" && (
+    <main className={`main-content${activeSection === "leaderboard" ? " leaderboard-layout" : activeSection === "models" ? " catalog-layout" : activeSection === "turkish" ? " turkish-layout" : activeSection === "research" ? " rs-layout" : activeSection === "radar" ? " tr-layout" : activeSection === "sources" ? " sources-layout" : ""}`} id="top">
+    {activeSection !== "research" && activeSection !== "radar" && activeSection !== "sources" && (
     <header className="topbar"><div className="topbar-context"><span>{sectionMeta[activeSection]?.group ?? "LLM Radar"}</span><strong>{sectionMeta[activeSection]?.title ?? "Model ve benchmark görünümü"}</strong></div><div className="live-pill"><span /> CANLI</div></header>
     )}
     <div className={`app-view${activeSection === "leaderboard" ? " app-view-leaderboard" : activeSection === "models" ? " app-view-catalog" : activeSection === "turkish" ? " app-view-turkish" : ""}`}>
@@ -1115,7 +1103,7 @@ export default function Home() {
     )}
 
     {activeSection === "sources" && (
-    <section className="catalog-section app-page" id="sources"><div className="section-title"><div><p className="kicker">KAYNAK KATALOĞU</p><h2>Kim söyledi, nerede, ne zaman.</h2></div><p>Resmî, bağımsız ve akademik kaynaklar; sınıf, yöntem ve son başarılı kontrol ile.</p></div><div className="panel table-wrap rich-table"><table><thead><tr><th>KAYNAK</th><th>SINIF</th><th>YÖNTEM</th><th>GÜVEN</th><th>DURUM</th></tr></thead><tbody>{sourceCatalog.map(source => <tr key={source.slug}><td><strong>{source.name}</strong><small><a href={source.url} target="_blank" rel="noreferrer">{source.url}</a></small></td><td>{source.source_class}</td><td>{source.collection_method}</td><td>{source.reliability}</td><td>{source.status ?? (source.is_active ? "aktif" : "pasif")}</td></tr>)}</tbody></table></div></section>
+    <SourcesPage api={API} />
     )}
 
     {activeSection === "feedback" && (
@@ -1124,7 +1112,7 @@ export default function Home() {
 
     </div>
 
-    {activeSection !== "leaderboard" && activeSection !== "models" && activeSection !== "turkish" && activeSection !== "events" && activeSection !== "research" && activeSection !== "radar" && <footer className="site-foot"><span>LLM RADAR / 2026</span><span>OpenRouter kaynaklı • Yakın gerçek zamanlı takip</span></footer>}
+    {activeSection !== "leaderboard" && activeSection !== "models" && activeSection !== "turkish" && activeSection !== "events" && activeSection !== "research" && activeSection !== "radar" && activeSection !== "sources" && <footer className="site-foot"><span>LLM RADAR / 2026</span><span>OpenRouter kaynaklı • Yakın gerçek zamanlı takip</span></footer>}
     {benchmarkInfoOpen && <div className="benchmark-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget)
         setBenchmarkInfoOpen(false); }}><section className="benchmark-info-modal" role="dialog" aria-modal="true" aria-labelledby="benchmark-info-title"><button type="button" className="benchmark-modal-close" aria-label="Benchmark açıklamasını kapat" onClick={() => setBenchmarkInfoOpen(false)}>×</button><p className="kicker">BENCHMARK REHBERİ</p><h2 id="benchmark-info-title">{benchmarkInfo[leaderboardView].name}</h2><p>{benchmarkInfo[leaderboardView].summary}</p><dl><div><dt>Ne ölçüyor?</dt><dd>{benchmarkInfo[leaderboardView].measure}</dd></div><div><dt>Nasıl okunmalı?</dt><dd>{benchmarkInfo[leaderboardView].reading}</dd></div></dl></section></div>}
 

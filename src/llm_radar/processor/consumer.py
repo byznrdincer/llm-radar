@@ -65,7 +65,7 @@ def main() -> None:
                         process_event(session, event)
                 EVENTS_INGESTED.labels(event_type=event.event_type.value).inc()
                 consumer.commit(message=message, asynchronous=False)
-            except (ValidationError, ValueError, KeyError) as exc:
+            except (ValidationError, ValueError, KeyError, SQLAlchemyError) as exc:
                 logger.exception("invalid event: %s", exc)
                 producer._producer.produce(  # noqa: SLF001
                     DEAD_LETTER, key=message.key(), value=message.value()

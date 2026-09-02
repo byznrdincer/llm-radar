@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     groq_api_key: str | None = None
     replicate_api_token: str | None = None
     nanogpt_api_key: str | None = None
+    together_api_key: str | None = None
+    fireworks_api_key: str | None = None
+    cloudflare_account_id: str | None = None
+    cloudflare_api_token: str | None = None
     github_token: str | None = None
     huggingface_token: str | None = None
     hf_org_limit: int = 50
@@ -60,5 +64,6 @@ def source_is_configured(slug: str, settings: Settings | None = None) -> bool:
         "artificial-analysis": current.artificial_analysis_api_key,
         "groqcloud": current.groq_api_key,
         "replicate": current.replicate_api_token,
+        "together": current.together_api_key,
     }
     return slug not in credentials or bool(credentials[slug])

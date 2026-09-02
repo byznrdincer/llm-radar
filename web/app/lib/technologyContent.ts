@@ -33,7 +33,7 @@ export type TechnologyCopy = {
 export const FEATURED_SLUGS: TechnologySlug[] = ["mcp", "agent", "context_compaction"];
 
 /** Öne çıkanlar dışındaki teknolojiler — sade liste */
-export const LIST_SLUGS: TechnologySlug[] = [
+export const GRID_SLUGS: TechnologySlug[] = [
   "moe",
   "reasoning",
   "computer_use",

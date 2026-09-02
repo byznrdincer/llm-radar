@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { companyAvatarStyle, companyInitials, companyLogoUrls } from "../lib/modelLogos";
 
 type Props = {
@@ -24,18 +24,18 @@ export default function ModelAvatar({
 }: Props) {
     const label = companyName ?? name;
     const initials = companyInitials(label);
-    const logoUrls = useMemo(
-        () => companyLogoUrls(companySlug, websiteUrl, fallbackSlugs),
-        // fallbackSlugs is compared by value; callers often pass inline arrays
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [companySlug, websiteUrl, fallbackSlugs.join("|")],
-    );
-    const [logoIndex, setLogoIndex] = useState(0);
+    const logoKey = `${companySlug}|${websiteUrl ?? ""}|${fallbackSlugs.join("|")}`;
+    const logoUrls = companyLogoUrls(companySlug, websiteUrl, fallbackSlugs);
+    const [logoAttempt, setLogoAttempt] = useState({ key: logoKey, index: 0 });
+    const logoIndex = logoAttempt.key === logoKey ? logoAttempt.index : 0;
     const fallbackStyle = useMemo(() => companyAvatarStyle(companySlug), [companySlug]);
 
-    useEffect(() => {
-        setLogoIndex(0);
-    }, [logoUrls]);
+    const tryNextLogo = () => {
+        setLogoAttempt(current => ({
+            key: logoKey,
+            index: (current.key === logoKey ? current.index : 0) + 1,
+        }));
+    };
 
     const logoUrl = logoUrls[logoIndex];
     if (!logoUrl || logoIndex >= logoUrls.length) {
@@ -60,9 +60,9 @@ export default function ModelAvatar({
             onLoad={event => {
                 const img = event.currentTarget;
                 if (img.naturalWidth < MIN_LOGO_SIZE || img.naturalHeight < MIN_LOGO_SIZE)
-                    setLogoIndex(index => index + 1);
+                    tryNextLogo();
             }}
-            onError={() => setLogoIndex(index => index + 1)}
+            onError={tryNextLogo}
         />
     );
 }

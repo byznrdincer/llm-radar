@@ -5,11 +5,16 @@ import httpx
 
 from llm_radar.collectors.aimlapi import AIMLAPICollector
 from llm_radar.collectors.base import BaseCollector
+from llm_radar.collectors.bifrost import BifrostCollector
+from llm_radar.collectors.cloudflare_workers_ai import CloudflareWorkersAICollector
+from llm_radar.collectors.deepinfra import DeepInfraCollector
+from llm_radar.collectors.fireworks import FireworksCollector
 from llm_radar.collectors.framework import collect_once
 from llm_radar.collectors.groqcloud import GroqCloudCollector
 from llm_radar.collectors.litellm import LiteLLMCollector
 from llm_radar.collectors.nanogpt import NanoGPTCollector
 from llm_radar.collectors.replicate import ReplicateCollector
+from llm_radar.collectors.together import TogetherCollector
 from llm_radar.collectors.vercel_gateway import VercelGatewayCollector
 from llm_radar.config import get_settings
 
@@ -20,6 +25,14 @@ async def main() -> None:
         VercelGatewayCollector,
         AIMLAPICollector,
         LiteLLMCollector,
+        DeepInfraCollector,
+        BifrostCollector,
+        lambda client: FireworksCollector(client, settings.fireworks_api_key),
+        lambda client: CloudflareWorkersAICollector(
+            client,
+            settings.cloudflare_account_id,
+            settings.cloudflare_api_token,
+        ),
         lambda client: NanoGPTCollector(client, settings.nanogpt_api_key),
     ]
     if settings.groq_api_key:
@@ -28,6 +41,8 @@ async def main() -> None:
         factories.append(
             lambda client: ReplicateCollector(client, settings.replicate_api_token or "")
         )
+    if settings.together_api_key:
+        factories.append(lambda client: TogetherCollector(client, settings.together_api_key or ""))
     counts = await asyncio.gather(*(collect_once(factory) for factory in factories))
     print(f"Published {sum(counts)} model catalog events from {len(factories)} sources")
 

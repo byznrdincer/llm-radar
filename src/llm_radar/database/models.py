@@ -4,6 +4,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Date,
     DateTime,
@@ -102,8 +103,8 @@ class Model(TimestampMixin, Base):
     license: Mapped[str | None] = mapped_column(String(120))
     context_window: Mapped[int | None]
     status: Mapped[str] = mapped_column(String(40), default="active")
-    parameter_count: Mapped[int | None]
-    active_parameter_count: Mapped[int | None]
+    parameter_count: Mapped[int | None] = mapped_column(BigInteger)
+    active_parameter_count: Mapped[int | None] = mapped_column(BigInteger)
     capabilities: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     company: Mapped[Company] = relationship(back_populates="models")
     snapshots: Mapped[list["ModelSnapshot"]] = relationship(back_populates="model")

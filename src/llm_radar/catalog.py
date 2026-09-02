@@ -64,6 +64,7 @@ class SourceSpec:
     reliability: str
     terms_url: str | None = None
     is_active: bool = True
+    public_url: str | None = None
 
 
 EVENT_CATALOG: tuple[EventSpec, ...] = (
@@ -273,6 +274,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "none",
         "official_document",
         "https://openai.com/policies/terms-of-use",
+        public_url="https://openai.com/news/",
     ),
     SourceSpec(
         "openai-pricing",
@@ -286,6 +288,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "none",
         "official_document",
         "https://openai.com/policies/terms-of-use",
+        public_url="https://developers.openai.com/api/docs/pricing",
     ),
     SourceSpec(
         "anthropic",
@@ -299,6 +302,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "none",
         "official_document",
         "https://www.anthropic.com/legal/consumer-terms",
+        public_url="https://www.anthropic.com/news",
     ),
     SourceSpec(
         "google-deepmind",
@@ -311,6 +315,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         6,
         "none",
         "official_document",
+        public_url="https://deepmind.google/discover/blog/",
     ),
     SourceSpec(
         "xai",
@@ -323,6 +328,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         4,
         "none",
         "official_document",
+        public_url="https://x.ai/news",
     ),
     SourceSpec(
         "meta-ai",
@@ -335,6 +341,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         6,
         "none",
         "official_document",
+        public_url="https://ai.meta.com/blog/",
     ),
     SourceSpec(
         "deepseek",
@@ -347,6 +354,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         10,
         "none",
         "official_document",
+        public_url="https://github.com/deepseek-ai",
     ),
     SourceSpec(
         "qwen",
@@ -359,6 +367,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         6,
         "none",
         "official_document",
+        public_url="https://qwenlm.github.io/",
     ),
     SourceSpec(
         "moonshot",
@@ -371,6 +380,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         4,
         "none",
         "official_document",
+        public_url="https://www.kimi.com/news",
     ),
     SourceSpec(
         "mistral",
@@ -383,6 +393,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         6,
         "none",
         "official_document",
+        public_url="https://mistral.ai/news",
     ),
     SourceSpec(
         "zai",
@@ -395,6 +406,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         4,
         "none",
         "official_document",
+        public_url="https://z.ai/",
     ),
     SourceSpec(
         "minimax",
@@ -407,6 +419,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         4,
         "none",
         "official_document",
+        public_url="https://www.minimax.io/",
     ),
     SourceSpec(
         "nvidia",
@@ -419,6 +432,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         10,
         "none",
         "official_document",
+        public_url="https://blogs.nvidia.com/blog/category/generative-ai/",
     ),
     SourceSpec(
         "huggingface",
@@ -432,6 +446,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "optional_token",
         "official_api",
         "https://huggingface.co/terms-of-service",
+        public_url="https://huggingface.co/models",
     ),
     SourceSpec(
         "ollama",
@@ -445,6 +460,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "none",
         "third_party",
         "https://ollama.com/terms",
+        public_url="https://ollama.com/library",
     ),
     SourceSpec(
         "lmstudio",
@@ -458,6 +474,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "none",
         "third_party",
         "https://lmstudio.ai/terms",
+        public_url="https://lmstudio.ai/models",
     ),
     SourceSpec(
         "github",
@@ -471,6 +488,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "optional_token",
         "official_api",
         "https://docs.github.com/site-policy/github-terms/github-terms-of-service",
+        public_url="https://github.com/",
     ),
     SourceSpec(
         "arxiv",
@@ -484,6 +502,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "none",
         "academic",
         "https://info.arxiv.org/help/api/tou.html",
+        public_url="https://arxiv.org/list/cs.AI/recent",
     ),
     SourceSpec(
         "openrouter",
@@ -497,6 +516,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "none",
         "third_party",
         "https://openrouter.ai/terms",
+        public_url="https://openrouter.ai/models",
     ),
     SourceSpec(
         "vercel-ai-gateway",
@@ -510,6 +530,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "none",
         "third_party",
         "https://vercel.com/legal/terms",
+        public_url="https://vercel.com/ai-gateway/models",
     ),
     SourceSpec(
         "aimlapi",
@@ -522,6 +543,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         20,
         "none",
         "third_party",
+        public_url="https://aimlapi.com/models",
     ),
     SourceSpec(
         "litellm",
@@ -535,6 +557,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "none",
         "community",
         "https://github.com/BerriAI/litellm/blob/main/LICENSE",
+        public_url="https://docs.litellm.ai/docs/",
     ),
     SourceSpec(
         "nanogpt",
@@ -547,6 +570,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         20,
         "optional_token",
         "third_party",
+        public_url="https://nano-gpt.com/models",
     ),
     SourceSpec(
         "groqcloud",
@@ -560,6 +584,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "api_key",
         "official_api",
         "https://groq.com/terms-of-use/",
+        public_url="https://console.groq.com/docs/models",
     ),
     SourceSpec(
         "replicate",
@@ -573,6 +598,77 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "api_key",
         "official_api",
         "https://replicate.com/terms",
+        public_url="https://replicate.com/explore",
+    ),
+    SourceSpec(
+        "together",
+        "Together AI",
+        "https://api.together.ai/v1/models",
+        SourceCategory.MARKET,
+        SourceClass.OFFICIAL,
+        CollectionMethod.REST,
+        21_600,
+        20,
+        "api_key",
+        "official_api",
+        "https://www.together.ai/terms-of-service",
+        public_url="https://www.together.ai/models",
+    ),
+    SourceSpec(
+        "deepinfra",
+        "DeepInfra",
+        "https://api.deepinfra.com/models/list",
+        SourceCategory.MARKET,
+        SourceClass.OFFICIAL,
+        CollectionMethod.REST,
+        21_600,
+        20,
+        "none",
+        "official_api",
+        "https://deepinfra.com/terms",
+        public_url="https://deepinfra.com/models",
+    ),
+    SourceSpec(
+        "fireworks",
+        "Fireworks AI",
+        "https://app.fireworks.ai/models?filter=LLM&serverless=true",
+        SourceCategory.MARKET,
+        SourceClass.OFFICIAL,
+        CollectionMethod.REST,
+        21_600,
+        20,
+        "optional_api_key",
+        "official_document",
+        "https://fireworks.ai/terms-of-service",
+        public_url="https://app.fireworks.ai/models?filter=LLM&serverless=true",
+    ),
+    SourceSpec(
+        "cloudflare-workers-ai",
+        "Cloudflare Workers AI",
+        "https://developers.cloudflare.com/workers-ai/models/",
+        SourceCategory.MARKET,
+        SourceClass.OFFICIAL,
+        CollectionMethod.REST,
+        21_600,
+        20,
+        "optional_api_token",
+        "official_document",
+        "https://www.cloudflare.com/website-terms/",
+        public_url="https://developers.cloudflare.com/workers-ai/models/",
+    ),
+    SourceSpec(
+        "bifrost",
+        "Bifrost",
+        "https://getbifrost.ai/datasheet",
+        SourceCategory.MARKET,
+        SourceClass.COMMUNITY,
+        CollectionMethod.REST,
+        86_400,
+        10,
+        "none",
+        "community",
+        "https://github.com/maximhq/bifrost/blob/main/LICENSE",
+        public_url="https://docs.getbifrost.ai/architecture/framework/model-catalog",
     ),
     SourceSpec(
         "arena",
@@ -585,6 +681,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         10,
         "none",
         "independent_measurement",
+        public_url="https://arena.ai/leaderboard/text",
     ),
     SourceSpec(
         "swe-bench",
@@ -597,6 +694,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         6,
         "none",
         "academic",
+        public_url="https://www.swebench.com/",
     ),
     SourceSpec(
         "swe-bench-live",
@@ -609,6 +707,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         6,
         "none",
         "academic",
+        public_url="https://swe-bench-live.github.io/",
     ),
     SourceSpec(
         "artificial-analysis",
@@ -621,6 +720,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         10,
         "api_key",
         "independent_measurement",
+        public_url="https://artificialanalysis.ai/leaderboards/models",
     ),
     SourceSpec(
         "livebench",
@@ -633,6 +733,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         6,
         "none",
         "academic",
+        public_url="https://livebench.ai/",
     ),
     SourceSpec(
         "mmlu-pro",
@@ -645,6 +746,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         6,
         "none",
         "academic",
+        public_url="https://huggingface.co/spaces/TIGER-Lab/MMLU-Pro",
     ),
     SourceSpec(
         "livecodebench",
@@ -657,6 +759,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         6,
         "none",
         "academic",
+        public_url="https://livecodebench.github.io/leaderboard.html",
     ),
     SourceSpec(
         "tau-bench",
@@ -669,6 +772,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         6,
         "none",
         "academic",
+        public_url="https://taubench.com/",
     ),
     SourceSpec(
         "terminal-bench",
@@ -682,6 +786,7 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "none",
         "academic",
         is_active=False,
+        public_url="https://www.tbench.ai/",
     ),
 )
 

@@ -10,23 +10,28 @@ from llm_radar.collectors.arena import ArenaCollector
 from llm_radar.collectors.artificial_analysis import ArtificialAnalysisCollector
 from llm_radar.collectors.arxiv import ArxivCollector
 from llm_radar.collectors.base import BaseCollector
+from llm_radar.collectors.bifrost import BifrostCollector
+from llm_radar.collectors.cloudflare_workers_ai import CloudflareWorkersAICollector
 from llm_radar.collectors.community_benchmarks import LiveBenchCollector, MMLUProCollector
+from llm_radar.collectors.deepinfra import DeepInfraCollector
+from llm_radar.collectors.fireworks import FireworksCollector
 from llm_radar.collectors.framework import collect_once
 from llm_radar.collectors.github import GitHubCollector, GitHubOrganizationCollector
 from llm_radar.collectors.groqcloud import GroqCloudCollector
 from llm_radar.collectors.huggingface import HuggingFaceCollector
 from llm_radar.collectors.litellm import LiteLLMCollector
-from llm_radar.collectors.lmstudio import LMStudioCollector
 from llm_radar.collectors.livecodebench import LiveCodeBenchCollector
+from llm_radar.collectors.lmstudio import LMStudioCollector
 from llm_radar.collectors.nanogpt import NanoGPTCollector
 from llm_radar.collectors.news import HtmlNewsCollector, RssCollector, html_sources, rss_sources
+from llm_radar.collectors.ollama import OllamaCollector
 from llm_radar.collectors.openai_pricing import OpenAIPricingCollector
 from llm_radar.collectors.openrouter import OpenRouterCollector
-from llm_radar.collectors.ollama import OllamaCollector
 from llm_radar.collectors.replicate import ReplicateCollector
 from llm_radar.collectors.swebench import SweBenchCollector
 from llm_radar.collectors.swebench_live import SweBenchLiveCollector
 from llm_radar.collectors.tau_bench import TauBenchCollector
+from llm_radar.collectors.together import TogetherCollector
 from llm_radar.collectors.vercel_gateway import VercelGatewayCollector
 from llm_radar.config import get_settings
 
@@ -50,6 +55,22 @@ async def main() -> None:
         (VercelGatewayCollector, settings.collector_interval_seconds, 10),
         (AIMLAPICollector, settings.collector_interval_seconds, 15),
         (LiteLLMCollector, settings.collector_interval_seconds, 25),
+        (DeepInfraCollector, settings.collector_interval_seconds, 27),
+        (BifrostCollector, settings.collector_interval_seconds * 4, 29),
+        (
+            lambda client: FireworksCollector(client, settings.fireworks_api_key),
+            settings.collector_interval_seconds,
+            85,
+        ),
+        (
+            lambda client: CloudflareWorkersAICollector(
+                client,
+                settings.cloudflare_account_id,
+                settings.cloudflare_api_token,
+            ),
+            settings.collector_interval_seconds,
+            95,
+        ),
         (
             lambda client: NanoGPTCollector(client, settings.nanogpt_api_key),
             settings.collector_interval_seconds,
@@ -122,6 +143,14 @@ async def main() -> None:
                 lambda client: ReplicateCollector(client, settings.replicate_api_token or ""),
                 settings.collector_interval_seconds,
                 70,
+            )
+        )
+    if settings.together_api_key:
+        jobs.append(
+            (
+                lambda client: TogetherCollector(client, settings.together_api_key or ""),
+                settings.collector_interval_seconds,
+                75,
             )
         )
     await asyncio.gather(*(run_job(*job) for job in jobs))

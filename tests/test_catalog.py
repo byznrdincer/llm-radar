@@ -29,7 +29,24 @@ def test_source_catalog_covers_official_labs() -> None:
         "nanogpt",
         "groqcloud",
         "replicate",
+        "together",
+        "deepinfra",
+        "fireworks",
+        "cloudflare-workers-ai",
+        "bifrost",
     } <= slugs
+
+
+def test_source_catalog_has_human_facing_links() -> None:
+    assert all(
+        item.public_url and item.public_url.startswith("https://") for item in SOURCE_CATALOG
+    )
+    assert next(item for item in SOURCE_CATALOG if item.slug == "openrouter").public_url == (
+        "https://openrouter.ai/models"
+    )
+    assert next(item for item in SOURCE_CATALOG if item.slug == "github").public_url == (
+        "https://github.com/"
+    )
 
 
 def test_price_drop_over_fifty_percent_is_critical() -> None:
@@ -73,13 +90,22 @@ def test_value_score_omits_missing_metrics() -> None:
     assert all(item["metric"] != "output_price" for item in result["breakdown"])
 
 
-def test_optional_sources_require_their_credentials() -> None:
+def test_optional_sources_require_credentials_only_without_public_catalogs() -> None:
     settings = Settings(
         _env_file=None,
         artificial_analysis_api_key=None,
         groq_api_key=None,
         replicate_api_token=None,
+        together_api_key=None,
+        fireworks_api_key=None,
+        cloudflare_account_id=None,
+        cloudflare_api_token=None,
     )
     assert source_is_configured("vercel-ai-gateway", settings) is True
     assert source_is_configured("groqcloud", settings) is False
     assert source_is_configured("replicate", settings) is False
+    assert source_is_configured("together", settings) is False
+    assert source_is_configured("deepinfra", settings) is True
+    assert source_is_configured("bifrost", settings) is True
+    assert source_is_configured("fireworks", settings) is True
+    assert source_is_configured("cloudflare-workers-ai", settings) is True

@@ -162,6 +162,7 @@ def source_catalog(session: DatabaseSession) -> dict[str, Any]:
                 "slug": spec.slug,
                 "name": spec.name,
                 "url": spec.url,
+                "public_url": spec.public_url or spec.url,
                 "category": spec.category.value,
                 "source_class": spec.source_class.value,
                 "collection_method": spec.collection_method.value,

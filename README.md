@@ -316,6 +316,10 @@ NEXT_PUBLIC_API_URL=http://localhost:8080 npm run dev -- --host 0.0.0.0
 | `GROQ_API_KEY` | GroqCloud model kataloğu | İsteğe bağlı; verilirse collector açılır |
 | `REPLICATE_API_TOKEN` | Replicate model kataloğu | İsteğe bağlı; verilirse collector açılır |
 | `NANOGPT_API_KEY` | Hesaba özel NanoGPT görünürlüğü/fiyatı | İsteğe bağlı |
+| `TOGETHER_API_KEY` | Together AI açık model kataloğu ve fiyatları | İsteğe bağlı; verilirse collector açılır |
+| `FIREWORKS_API_KEY` | Fireworks AI model kataloğu | İsteğe bağlı; yoksa resmî public katalog, varsa zengin API verisi kullanılır |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Workers AI hesap kimliği | İsteğe bağlı; token ile birlikte verilirse API verisi kullanılır |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare Workers AI okuma token'ı | İsteğe bağlı; yoksa resmî public model kataloğu kullanılır |
 | `GITHUB_TOKEN` | GitHub rate limitini artırır | İsteğe bağlı |
 | `HUGGINGFACE_TOKEN` | Hugging Face erişimi | İsteğe bağlı |
 | `ADMIN_API_TOKEN` | Admin Bearer token'ı | Üretimde zorunlu |
