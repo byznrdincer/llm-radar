@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
@@ -38,6 +39,10 @@ class BenchmarkMatch:
     benchmarks: tuple[str, ...]
     evidence_count: int
     basis: str = "benchmark"
+
+
+_match_cache: dict[str, tuple[float, dict[str, BenchmarkMatch]]] = {}
+_MATCH_CACHE_TTL_SECONDS = 120.0
 
 
 def benchmark_matches(session: Session, focus: str) -> dict[str, BenchmarkMatch]:
@@ -127,10 +132,18 @@ def multimodal_profile_matches(session: Session) -> dict[str, BenchmarkMatch]:
 
 def selection_matches(session: Session, focus: str) -> dict[str, BenchmarkMatch]:
     """Return the strongest available evidence for a model-selection focus."""
+    now = time.time()
+    cached = _match_cache.get(focus)
+    if cached and now - cached[0] < _MATCH_CACHE_TTL_SECONDS:
+        return cached[1]
+
     matches = benchmark_matches(session, focus)
     if matches or focus != "multimodal":
-        return matches
-    return multimodal_profile_matches(session)
+        result = matches
+    else:
+        result = multimodal_profile_matches(session)
+    _match_cache[focus] = (now, result)
+    return result
 
 
 def advancedness_tier_for_score(score: float | None) -> str | None:

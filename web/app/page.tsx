@@ -1,14 +1,162 @@
 "use client";
-import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import ProductInsights from "./components/ProductInsights";
 import type { InsightsView } from "./components/ProductInsights";
 import LeaderboardPage, { LIVEBENCH_VIEW_CATEGORY, type Leaderboard, type LeaderboardItem, type LeaderboardView } from "./components/LeaderboardPage";
 import ModelCatalogPage, { ADVANCEDNESS_LABELS, DEFAULT_SORT_STACK, type CatalogSortSpec } from "./components/ModelCatalogPage";
 import SmartModelComparison from "./components/SmartModelComparison";
 import FeedbackPage from "./components/FeedbackPage";
+import EventsPage from "./components/EventsPage";
+import ResearchPage, { type ResearchBootstrap } from "./components/ResearchPage";
+import TechnologyRadarPage from "./components/TechnologyRadarPage";
+import type { TurkishModel } from "./components/TurkishLLMPage";
 import { trackEvent } from "./lib/analytics";
+import { toPublicSourceUrl } from "./lib/publicSourceUrl";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const PAGE_SIZE = 20;
+const INITIAL_RESEARCH_LIMIT = 17;
+const LEADERBOARD_LIMIT = 40;
+
+type BoardKey = "general" | "coding" | "swe-live" | "tau-bench" | "intelligence" | "aa-coding" | "agentic" | "livebench" | "mmlu-pro" | "livecodebench";
+
+function boardKeyForView(view: LeaderboardView): BoardKey {
+    if (view === "general") return "general";
+    if (view === "coding") return "coding";
+    if (view === "swe-live") return "swe-live";
+    if (view === "tau-bench") return "tau-bench";
+    if (view === "intelligence") return "intelligence";
+    if (view === "aa-coding") return "aa-coding";
+    if (view === "agentic") return "agentic";
+    if (view === "mmlu-pro") return "mmlu-pro";
+    if (view === "livecodebench") return "livecodebench";
+    return "livebench";
+}
+
+function leaderboardUrl(
+    boardKey: BoardKey,
+    livebenchCategory: string,
+    mmluCategory: string,
+    sweLiveCategory: string,
+    tauCategory: string,
+): string {
+    switch (boardKey) {
+        case "general":
+            return `${API}/api/v1/leaderboards/arena?limit=${LEADERBOARD_LIMIT}`;
+        case "coding":
+            return `${API}/api/v1/leaderboards/swe-bench?limit=${LEADERBOARD_LIMIT}`;
+        case "swe-live":
+            return `${API}/api/v1/leaderboards/swe-bench-live?category=${sweLiveCategory}&limit=${LEADERBOARD_LIMIT}`;
+        case "tau-bench":
+            return `${API}/api/v1/leaderboards/tau-bench?category=${tauCategory}&limit=${LEADERBOARD_LIMIT}`;
+        case "intelligence":
+            return `${API}/api/v1/leaderboards/artificial-analysis/intelligence?limit=${LEADERBOARD_LIMIT}`;
+        case "aa-coding":
+            return `${API}/api/v1/leaderboards/artificial-analysis/coding?limit=${LEADERBOARD_LIMIT}`;
+        case "agentic":
+            return `${API}/api/v1/leaderboards/artificial-analysis/agentic?limit=${LEADERBOARD_LIMIT}`;
+        case "mmlu-pro":
+            return `${API}/api/v1/leaderboards/mmlu-pro?category=${mmluCategory}&limit=${LEADERBOARD_LIMIT}`;
+        case "livecodebench":
+            return `${API}/api/v1/leaderboards/livecodebench?limit=${LEADERBOARD_LIMIT}`;
+        default:
+            return `${API}/api/v1/leaderboards/livebench?category=${livebenchCategory}&limit=${LEADERBOARD_LIMIT}`;
+    }
+}
+
+function cachedLeaderboard(
+    boardKey: BoardKey,
+    boards: {
+        arena: Leaderboard | null;
+        swebench: Leaderboard | null;
+        swebenchLive: Leaderboard | null;
+        tauBench: Leaderboard | null;
+        aaIntelligence: Leaderboard | null;
+        aaCoding: Leaderboard | null;
+        aaAgentic: Leaderboard | null;
+        livebench: Leaderboard | null;
+        mmluPro: Leaderboard | null;
+        livecodebench: Leaderboard | null;
+    },
+    categories: {
+        livebenchCategory: string;
+        mmluCategory: string;
+        sweLiveCategory: string;
+        tauCategory: string;
+    },
+): Leaderboard | null {
+    let board: Leaderboard | null = null;
+    if (boardKey === "general") board = boards.arena;
+    else if (boardKey === "coding") board = boards.swebench;
+    else if (boardKey === "swe-live") board = boards.swebenchLive;
+    else if (boardKey === "tau-bench") board = boards.tauBench;
+    else if (boardKey === "intelligence") board = boards.aaIntelligence;
+    else if (boardKey === "aa-coding") board = boards.aaCoding;
+    else if (boardKey === "agentic") board = boards.aaAgentic;
+    else if (boardKey === "mmlu-pro") board = boards.mmluPro;
+    else if (boardKey === "livecodebench") board = boards.livecodebench;
+    else board = boards.livebench;
+
+    if (!board?.items?.length) return null;
+    if (boardKey === "livebench" && board.category !== categories.livebenchCategory) return null;
+    if (boardKey === "mmlu-pro" && board.category !== categories.mmluCategory) return null;
+    if (boardKey === "swe-live" && board.category !== categories.sweLiveCategory) return null;
+    if (boardKey === "tau-bench" && board.category !== categories.tauCategory) return null;
+    return board;
+}
+
+function applyLeaderboardData(
+    boardKey: BoardKey,
+    data: Leaderboard,
+    setters: {
+        setArena: Dispatch<SetStateAction<Leaderboard | null>>;
+        setSwebench: Dispatch<SetStateAction<Leaderboard | null>>;
+        setSwebenchLive: Dispatch<SetStateAction<Leaderboard | null>>;
+        setTauBench: Dispatch<SetStateAction<Leaderboard | null>>;
+        setAaIntelligence: Dispatch<SetStateAction<Leaderboard | null>>;
+        setAaCoding: Dispatch<SetStateAction<Leaderboard | null>>;
+        setAaAgentic: Dispatch<SetStateAction<Leaderboard | null>>;
+        setLivebench: Dispatch<SetStateAction<Leaderboard | null>>;
+        setMmluPro: Dispatch<SetStateAction<Leaderboard | null>>;
+        setLivecodebench: Dispatch<SetStateAction<Leaderboard | null>>;
+    },
+) {
+    if (boardKey === "general") setters.setArena(data);
+    else if (boardKey === "coding") setters.setSwebench(data);
+    else if (boardKey === "swe-live") setters.setSwebenchLive(data);
+    else if (boardKey === "tau-bench") setters.setTauBench(data);
+    else if (boardKey === "intelligence") setters.setAaIntelligence(data);
+    else if (boardKey === "aa-coding") setters.setAaCoding(data);
+    else if (boardKey === "agentic") setters.setAaAgentic(data);
+    else if (boardKey === "mmlu-pro") setters.setMmluPro(data);
+    else if (boardKey === "livecodebench") setters.setLivecodebench(data);
+    else setters.setLivebench(data);
+}
+
+function mapSearchModels(items: SearchModelItem[]): ModelItem[] {
+    return items.map(item => ({
+        id: item.id,
+        slug: item.slug,
+        name: item.name,
+        family: item.family,
+        release_date: item.release_date,
+        parameter_count: item.parameter_count,
+        active_parameter_count: item.active_parameter_count,
+        backend: item.providers[0] ?? null,
+        company: item.developer,
+        context_window: item.context_window,
+        capabilities: { input_modalities: item.modalities },
+        pricing: { ...item.pricing, currency: "USD", observed_at: item.observed_at },
+        profile: {
+            tool_calling: item.tool_calling,
+            reasoning: item.reasoning,
+            availability: item.availability,
+            openness: item.openness,
+            license: item.license,
+            commercial_use_status: item.commercial_use_status,
+        },
+        selection: item.selection,
+    }));
+}
 type Pricing = {
     input: string | null;
     output: string | null;
@@ -147,6 +295,11 @@ type EventItem = {
     importance: string;
     importance_score: number;
     detected_at: string;
+    evidence?: {
+        source?: string;
+        source_url?: string;
+        sources?: { source?: string; source_url?: string }[];
+    } | null;
 };
 type LeaderboardItem = import("./components/LeaderboardPage").LeaderboardItem;
 type SourceCatalogItem = {
@@ -161,14 +314,6 @@ type SourceCatalogItem = {
     status: string | null;
     last_success_at: string | null;
 };
-type ResearchItem = {
-    id: string;
-    title: string;
-    authors: string[];
-    url: string;
-    published_at: string | null;
-    categories: string[];
-};
 type TechnologyItem = {
     slug: string;
     name: string;
@@ -176,15 +321,6 @@ type TechnologyItem = {
     strength: string;
     last_seen_at: string;
     evidence: Record<string, unknown>;
-};
-type NoticeItem = {
-    id: string;
-    title: string;
-    body: string;
-    importance: string;
-    status: string;
-    created_at: string;
-    source_url?: string | null;
 };
 type Facets = {
     developers: {
@@ -252,21 +388,24 @@ function findLocalModel(modelName: string, organization: string, catalog: ModelI
     return candidates.find(model => model.company.name.toLowerCase() === orgKey || model.company.slug === orgKey) ?? candidates[0];
 }
 function daysAgoIso(days: number) { const d = new Date(); d.setDate(d.getDate() - days); return d.toISOString(); }
-function canOpenSourceUrl(url: string | null | undefined) {
-    if (!url)
+function canOpenSourceUrl(url: string | null | undefined, sourceSlug?: string | null) {
+    const publicUrl = toPublicSourceUrl(url, { sourceSlug });
+    if (!publicUrl)
         return false;
-    const value = url.toLowerCase();
+    const value = publicUrl.toLowerCase();
     if (!value.startsWith("http://") && !value.startsWith("https://"))
         return false;
     if (value.includes("datasets-server.huggingface.co/rows"))
         return false;
-    if (value.includes("/api/"))
+    // Block machine JSON/API payloads, but allow human docs under /api/docs/...
+    if (/\/api\/v\d+\//.test(value) || value.includes("/api/v1/models"))
         return false;
-    if (value.includes("/api/v1/models"))
-        return false;
-    if (value.endsWith(".json") || value.endsWith(".jsonl") || value.endsWith(".csv"))
+    if (value.endsWith(".json") || value.endsWith(".jsonl") || value.endsWith(".csv") || value.endsWith(".md"))
         return false;
     return true;
+}
+function publicHref(url: string | null | undefined, sourceSlug?: string | null) {
+    return toPublicSourceUrl(url, { sourceSlug }) ?? url ?? "";
 }
 const eventMeta: Record<string, {
     label: string;
@@ -302,9 +441,9 @@ const sectionMeta: Record<string, { group: string; title: string }> = {
     compare: { group: "Keşfet", title: "Model karşılaştırma" },
     popularity: { group: "Analiz", title: "Popüler modeller" },
     insights: { group: "Analiz", title: "Pazar grafikleri" },
-    turkish: { group: "Analiz", title: "Türkiye LLM ekosistemi" },
-    events: { group: "İstihbarat", title: "Teknoloji gelişmeleri" },
-    research: { group: "İstihbarat", title: "Araştırma ve bildirimler" },
+    turkish: { group: "Analiz", title: "Türkçe odaklı modeller" },
+    events: { group: "İstihbarat", title: "Gelişmeler" },
+    research: { group: "İstihbarat", title: "Araştırma akışı" },
     radar: { group: "İstihbarat", title: "Teknoloji radarı" },
     sources: { group: "İstihbarat", title: "Kaynak kataloğu" },
     feedback: { group: "İletişim", title: "Geri bildirim" },
@@ -413,7 +552,6 @@ function eventDetail(event: EventItem) {
 export default function Home() {
     const [stats, setStats] = useState(emptyStats);
     const [models, setModels] = useState<ModelItem[]>([]);
-    const [events, setEvents] = useState<EventItem[]>([]);
     const [arena, setArena] = useState<Leaderboard | null>(null);
     const [swebench, setSwebench] = useState<Leaderboard | null>(null);
     const [swebenchLive, setSwebenchLive] = useState<Leaderboard | null>(null);
@@ -434,6 +572,9 @@ export default function Home() {
     const [profileResults, setProfileResults] = useState<ModelItem[] | null>(null);
     const [profileTotal, setProfileTotal] = useState(0);
     const [profileLoading, setProfileLoading] = useState(false);
+    const [researchBootstrap, setResearchBootstrap] = useState<ResearchBootstrap | null>(null);
+    const [turkishBootstrap, setTurkishBootstrap] = useState<TurkishModel[] | null>(null);
+    const skipInitialCatalogFetchRef = useRef(true);
     const [minContext, setMinContext] = useState("");
     const [maxInputPrice, setMaxInputPrice] = useState("");
     const [maxOutputPrice, setMaxOutputPrice] = useState("");
@@ -453,56 +594,129 @@ export default function Home() {
     const [detailLoading, setDetailLoading] = useState(false);
     const [compareProfiles, setCompareProfiles] = useState<Record<string, ComparedModel>>({});
     const [sourceCatalog, setSourceCatalog] = useState<SourceCatalogItem[]>([]);
-    const [research, setResearch] = useState<ResearchItem[]>([]);
     const [technology, setTechnology] = useState<TechnologyItem[]>([]);
-    const [notices, setNotices] = useState<NoticeItem[]>([]);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activeSection, setActiveSection] = useState("overview");
     const [benchmarkInfoOpen, setBenchmarkInfoOpen] = useState(false);
     const [facets, setFacets] = useState<Facets>({ developers: [], providers: [], families: [], capabilities: [], licenses: [], openness: [], commercial_use: [], benchmark_focuses: [] });
     const [eventCategory, setEventCategory] = useState("any");
-    const [eventImportance, setEventImportance] = useState("any");
     const [eventDays, setEventDays] = useState("any");
     const [livebenchCategory, setLivebenchCategory] = useState("overall");
     const [mmluCategory, setMmluCategory] = useState("overall");
     const [sweLiveCategory, setSweLiveCategory] = useState("lite");
     const [tauCategory, setTauCategory] = useState("airline");
-    useEffect(() => { const optional = (url: string) => fetch(url).then(r => r.ok ? r.json() : null); Promise.all([fetch(`${API}/api/v1/stats`).then(r => r.json()), fetch(`${API}/api/v1/models?limit=1000`).then(r => r.json()), fetch(`${API}/api/v1/events?limit=120&sort_by=importance`).then(r => r.json()), fetch(`${API}/api/v1/leaderboards/arena?limit=50`).then(r => r.json()), fetch(`${API}/api/v1/leaderboards/swe-bench?limit=50`).then(r => r.json()), optional(`${API}/api/v1/leaderboards/artificial-analysis/intelligence?limit=50`), optional(`${API}/api/v1/leaderboards/artificial-analysis/coding?limit=50`), optional(`${API}/api/v1/leaderboards/artificial-analysis/agentic?limit=50`), optional(`${API}/api/v1/leaderboards/livebench?limit=50`), optional(`${API}/api/v1/leaderboards/mmlu-pro?limit=50`), optional(`${API}/api/v1/leaderboards/livecodebench?limit=50`)]).then(([s, m, e, a, sw, aai, aac, aaa, lb, mp, lcb]) => { setStats(s); setModels(m.items); setEvents(e.items); setArena(a); setSwebench(sw); setAaIntelligence(aai); setAaCoding(aac); setAaAgentic(aaa); setLivebench(lb); setMmluPro(mp); setLivecodebench(lcb); }).catch(() => setError(true)).finally(() => setLoading(false)); }, []);
-    useEffect(() => { fetch(`${API}/api/v1/catalog/sources`).then(r => r.ok ? r.json() : null).then(data => setSourceCatalog(data?.items ?? [])).catch(() => { }); fetch(`${API}/api/v1/models/facets`).then(r => r.ok ? r.json() : null).then(data => { if (data)
-        setFacets(data); }).catch(() => { }); fetch(`${API}/api/v1/research?limit=8`).then(r => r.ok ? r.json() : null).then(data => setResearch(data?.items ?? [])).catch(() => { }); fetch(`${API}/api/v1/technology`).then(r => r.ok ? r.json() : null).then(data => setTechnology(data?.items ?? [])).catch(() => { }); fetch(`${API}/api/v1/notifications?limit=8`).then(r => r.ok ? r.json() : null).then(data => setNotices(data?.items ?? [])).catch(() => { }); }, []);
-    useEffect(() => { const stream = new EventSource(`${API}/api/v1/stream/events`); stream.addEventListener("change", ev => { try {
-        const incoming = JSON.parse(ev.data) as Partial<EventItem> & {
-            id: string;
-            event_type: string;
-            title: string;
-            importance: string;
-            detected_at: string;
-            source_url?: string | null;
+    useEffect(() => {
+        const controller = new AbortController();
+        const { signal } = controller;
+        const bootParams = new URLSearchParams({
+            limit: String(PAGE_SIZE),
+            offset: "0",
+            sort_by: "name",
+            sort_order: "asc",
+        });
+
+        // Priority: show catalog models immediately — do NOT wait for turkish/research/leaderboards.
+        fetch(`${API}/api/v1/models/search?${bootParams}`, { signal })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data?.items) {
+                    setProfileResults(mapSearchModels(data.items as SearchModelItem[]));
+                    setProfileTotal(Number(data.total ?? 0));
+                }
+            })
+            .catch(() => { /* keep empty catalog */ });
+
+        fetch(`${API}/api/v1/stats`, { signal })
+            .then(r => r.json())
+            .then(setStats)
+            .catch(() => setError(true))
+            .finally(() => setLoading(false));
+
+        fetch(`${API}/api/v1/models/facets`, { signal })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) setFacets(data); })
+            .catch(() => { /* optional */ });
+
+        // Background: never block the catalog on these.
+        fetch(`${API}/api/v1/research?limit=${INITIAL_RESEARCH_LIMIT}&offset=0`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data?.items) {
+                    setResearchBootstrap({
+                        items: data.items,
+                        total: Number(data.total ?? 0),
+                        summary: data.summary ?? null,
+                        limit: Number(data.limit ?? INITIAL_RESEARCH_LIMIT),
+                    });
+                }
+            })
+            .catch(() => { /* optional */ });
+
+        fetch(`${API}/api/v1/models/turkish?limit=200`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data?.items) setTurkishBootstrap(data.items as TurkishModel[]);
+            })
+            .catch(() => { /* optional */ });
+
+        fetch(`${API}/api/v1/leaderboards/arena?limit=${LEADERBOARD_LIMIT}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) setArena(data as Leaderboard); })
+            .catch(() => { /* optional */ });
+
+        fetch(`${API}/api/v1/leaderboards/artificial-analysis/intelligence?limit=${LEADERBOARD_LIMIT}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) setAaIntelligence(data as Leaderboard); })
+            .catch(() => { /* optional */ });
+
+        fetch(`${API}/api/v1/leaderboards/swe-bench?limit=${LEADERBOARD_LIMIT}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) setSwebench(data as Leaderboard); })
+            .catch(() => { /* optional */ });
+
+        return () => controller.abort();
+    }, []);
+    useEffect(() => { fetch(`${API}/api/v1/catalog/sources`).then(r => r.ok ? r.json() : null).then(data => setSourceCatalog(data?.items ?? [])).catch(() => { }); fetch(`${API}/api/v1/technology`).then(r => r.ok ? r.json() : null).then(data => setTechnology(data?.items ?? [])).catch(() => { }); }, []);
+    useEffect(() => {
+        const boardKey = boardKeyForView(leaderboardView);
+        const boards = {
+            arena,
+            swebench,
+            swebenchLive,
+            tauBench,
+            aaIntelligence,
+            aaCoding,
+            aaAgentic,
+            livebench,
+            mmluPro,
+            livecodebench,
         };
-        const item: EventItem = { id: incoming.id, event_type: incoming.event_type, category: incoming.category ?? "model_update", entity_id: incoming.entity_id ?? "", title: incoming.title, old_value: incoming.old_value ?? null, new_value: incoming.new_value ?? null, change_percentage: incoming.change_percentage ?? null, importance: incoming.importance, importance_score: incoming.importance_score ?? 0, detected_at: incoming.detected_at };
-        setEvents(current => current.some(event => event.id === item.id) ? current : [item, ...current].sort((a, b) => b.importance_score - a.importance_score).slice(0, 120));
-        setNotices(current => [{ id: item.id, title: item.title, body: item.event_type, importance: item.importance, status: "unread", created_at: item.detected_at, source_url: incoming.source_url ?? null }, ...current].slice(0, 8));
-    }
-    catch {
-        return;
-    } }); return () => stream.close(); }, []);
-    useEffect(() => { const params = new URLSearchParams({ limit: "120", sort_by: "importance" }); if (eventCategory !== "any")
-        params.set("category", eventCategory); if (eventImportance !== "any")
-        params.set("importance", eventImportance); if (eventDays !== "any")
-        params.set("since", daysAgoIso(Number(eventDays))); fetch(`${API}/api/v1/events?${params}`).then(r => r.ok ? r.json() : null).then(data => { if (data)
-        setEvents(data.items); }).catch(() => setError(true)); }, [eventCategory, eventImportance, eventDays]);
-    useEffect(() => { const refreshAcademic = () => Promise.all([fetch(`${API}/api/v1/leaderboards/livebench?category=${livebenchCategory}&limit=50`).then(r => r.ok ? r.json() : null), fetch(`${API}/api/v1/leaderboards/mmlu-pro?category=${mmluCategory}&limit=50`).then(r => r.ok ? r.json() : null)]).then(([lb, mp]) => { if (lb)
-        setLivebench(lb); if (mp)
-        setMmluPro(mp); }).catch(() => { }); const timer = window.setInterval(refreshAcademic, 30000); const onVisible = () => { if (document.visibilityState === "visible")
-        void refreshAcademic(); }; document.addEventListener("visibilitychange", onVisible); return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); }; }, [livebenchCategory, mmluCategory]);
-    useEffect(() => { fetch(`${API}/api/v1/leaderboards/livebench?category=${livebenchCategory}&limit=50`).then(r => r.ok ? r.json() : null).then(data => { if (data)
-        setLivebench(data); }).catch(() => { }); }, [livebenchCategory]);
-    useEffect(() => { fetch(`${API}/api/v1/leaderboards/mmlu-pro?category=${mmluCategory}&limit=50`).then(r => r.ok ? r.json() : null).then(data => { if (data)
-        setMmluPro(data); }).catch(() => { }); }, [mmluCategory]);
-    useEffect(() => { fetch(`${API}/api/v1/leaderboards/swe-bench-live?category=${sweLiveCategory}&limit=50`).then(r => r.ok ? r.json() : null).then(data => { if (data)
-        setSwebenchLive(data); }).catch(() => { }); }, [sweLiveCategory]);
-    useEffect(() => { fetch(`${API}/api/v1/leaderboards/tau-bench?category=${tauCategory}&limit=50`).then(r => r.ok ? r.json() : null).then(data => { if (data)
-        setTauBench(data); }).catch(() => { }); }, [tauCategory]);
+        const categories = { livebenchCategory, mmluCategory, sweLiveCategory, tauCategory };
+        if (cachedLeaderboard(boardKey, boards, categories))
+            return;
+
+        const controller = new AbortController();
+        fetch(leaderboardUrl(boardKey, livebenchCategory, mmluCategory, sweLiveCategory, tauCategory), { signal: controller.signal })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                applyLeaderboardData(boardKey, data as Leaderboard, {
+                    setArena,
+                    setSwebench,
+                    setSwebenchLive,
+                    setTauBench,
+                    setAaIntelligence,
+                    setAaCoding,
+                    setAaAgentic,
+                    setLivebench,
+                    setMmluPro,
+                    setLivecodebench,
+                });
+            })
+            .catch(() => { /* keep previous board */ });
+
+        return () => controller.abort();
+    }, [leaderboardView, livebenchCategory, mmluCategory, sweLiveCategory, tauCategory, arena, swebench, swebenchLive, tauBench, aaIntelligence, aaCoding, aaAgentic, livebench, mmluPro, livecodebench]);
     useEffect(() => { if (!benchmarkInfoOpen)
         return; const close = (event: KeyboardEvent) => { if (event.key === "Escape")
         setBenchmarkInfoOpen(false); }; window.addEventListener("keydown", close); return () => window.removeEventListener("keydown", close); }, [benchmarkInfoOpen]);
@@ -536,6 +750,10 @@ export default function Home() {
     useEffect(() => {
         if (!serverFiltering)
             return;
+        if (page === 1 && !query.trim() && !filterActive && skipInitialCatalogFetchRef.current && profileResults !== null && profileResults.length > 0) {
+            skipInitialCatalogFetchRef.current = false;
+            return;
+        }
         const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String((page - 1) * PAGE_SIZE) });
         sortStack.forEach(spec => {
             params.append("sort_by", spec.field);
@@ -563,6 +781,7 @@ export default function Home() {
         modalities.forEach(item => params.append("modality", item));
         capabilities.forEach(item => params.append("capability", item));
         const controller = new AbortController();
+        const debounceMs = query.trim() ? 250 : 0;
         const timer = window.setTimeout(() => {
             setProfileLoading(true);
             fetch(`${API}/api/v1/models/search?${params}`, { signal: controller.signal })
@@ -573,29 +792,20 @@ export default function Home() {
                 })
                 .then(data => {
                     setProfileTotal(data.total);
-                    setProfileResults((data.items as SearchModelItem[]).map(item => ({
-                        id: item.id,
-                        slug: item.slug,
-                        name: item.name,
-                        family: item.family,
-                        release_date: item.release_date,
-                        parameter_count: item.parameter_count,
-                        active_parameter_count: item.active_parameter_count,
-                        backend: item.providers[0] ?? null,
-                        company: item.developer,
-                        context_window: item.context_window,
-                        capabilities: { input_modalities: item.modalities },
-                        pricing: { ...item.pricing, currency: "USD", observed_at: item.observed_at },
-                        profile: { tool_calling: item.tool_calling, reasoning: item.reasoning, availability: item.availability, openness: item.openness, license: item.license, commercial_use_status: item.commercial_use_status },
-                        selection: item.selection,
-                    })));
+                    const mapped = mapSearchModels(data.items as SearchModelItem[]);
+                    setProfileResults(current => {
+                        if (page === 1)
+                            return mapped;
+                        const seen = new Set((current ?? []).map(item => item.id));
+                        return [...(current ?? []), ...mapped.filter(item => !seen.has(item.id))];
+                    });
                 })
                 .catch(error => { if (error.name !== "AbortError")
                     setError(true); })
                 .finally(() => setProfileLoading(false));
-        }, 250);
+        }, debounceMs);
         return () => { window.clearTimeout(timer); controller.abort(); };
-    }, [serverFiltering, page, query, developers, providers, families, minContext, maxInputPrice, maxOutputPrice, openness, licenses, commercialStatuses, modalities, capabilities, advancedness, benchmarkFocus, sortStack]);
+    }, [serverFiltering, page, query, developers, providers, families, minContext, maxInputPrice, maxOutputPrice, openness, licenses, commercialStatuses, modalities, capabilities, advancedness, benchmarkFocus, sortStack, filterActive]);
     useEffect(() => { if (selected.length < 2) {
         return;
     } const params = new URLSearchParams(); selected.forEach(model => params.append("ids", model.id)); fetch(`${API}/api/v1/models/compare?${params}`).then(r => r.ok ? r.json() : null).then(data => { if (data)
@@ -603,10 +813,10 @@ export default function Home() {
     const companies = useMemo(() => facets.developers.length ? facets.developers : Array.from(new Map(models.map(m => [m.company.slug, m.company])).values()).sort((a, b) => a.name.localeCompare(b.name)), [models, facets.developers]);
     const developerSites = useMemo(() => Object.fromEntries(companies.map(company => [company.slug, "website_url" in company ? company.website_url : null])), [companies]);
     const filtered = serverFiltering ? (profileResults ?? []) : models;
-    const visibleEvents = useMemo(() => events.slice(0, 12), [events]);
     const resultTotal = serverFiltering ? profileTotal : stats.models;
-    const pages = Math.max(1, Math.ceil(resultTotal / PAGE_SIZE));
-    const visible = serverFiltering ? filtered : filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const catalogHasMore = serverFiltering && filtered.length < resultTotal;
+    const catalogBootReady = profileResults !== null && profileResults.length > 0;
+    const visible = serverFiltering ? filtered : filtered.slice(0, PAGE_SIZE);
     function toggle(model: ModelItem) {
         setSelected(current => {
             const removing = current.some(item => item.id === model.id);
@@ -740,12 +950,14 @@ export default function Home() {
         setDetailMissing(null);
     }
     return <div className={`app-shell${activeSection === "leaderboard" ? " leaderboard-shell" : ""}`}>
-    <aside className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Ana navigasyon"><button type="button" className="sidebar-brand" onClick={() => navigateToSection("overview")}><span className="brand-mark">LR</span><span><strong>LLM RADAR</strong><small>MODEL INTELLIGENCE</small></span></button><nav className="sidebar-nav">{sidebarGroups.map(group => <div className="sidebar-group" key={group.label}><p>{group.label}</p>{group.items.map(item => <button type="button" key={item.id} className={activeSection === item.id ? "active" : ""} aria-current={activeSection === item.id ? "page" : undefined} onClick={() => navigateToSection(item.id)}><i aria-hidden="true">{item.icon}</i><span>{item.label}</span></button>)}</div>)}</nav><div className="sidebar-status"><span /><div><strong>Veri akışı aktif</strong><small>{stats.models || "—"} model izleniyor</small></div></div></aside>
+    <aside className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Ana navigasyon"><button type="button" className="sidebar-brand" onClick={() => navigateToSection("overview")}><span className="brand-mark brand-radar" aria-hidden="true"><i /><b /><em /><em /><em /></span><span><strong>LLM RADAR</strong><small>MODEL INTELLIGENCE</small></span></button><nav className="sidebar-nav">{sidebarGroups.map(group => <div className="sidebar-group" key={group.label}><p>{group.label}</p>{group.items.map(item => <button type="button" key={item.id} className={activeSection === item.id ? "active" : ""} aria-current={activeSection === item.id ? "page" : undefined} onClick={() => navigateToSection(item.id)}><i aria-hidden="true">{item.icon}</i><span>{item.label}</span></button>)}</div>)}</nav><div className="sidebar-status"><span /><div><strong>Veri akışı aktif</strong><small>{stats.models || "—"} model izleniyor</small></div></div></aside>
     {sidebarOpen && <button className="sidebar-scrim" type="button" aria-label="Menüyü kapat" onClick={() => setSidebarOpen(false)}/>}
-    {!sidebarOpen && <button className="sidebar-toast" type="button" aria-label="Menüyü aç" onClick={() => setSidebarOpen(true)}><span className="sidebar-toast-mark">LR</span><span className="sidebar-toast-label">Menü</span></button>}
-    <main className={`main-content${activeSection === "leaderboard" ? " leaderboard-layout" : activeSection === "models" ? " catalog-layout" : ""}`} id="top">
+    {!sidebarOpen && <button className="sidebar-toast" type="button" aria-label="Menüyü aç" onClick={() => setSidebarOpen(true)}><span className="sidebar-toast-mark brand-radar" aria-hidden="true"><i /><b /><em /><em /><em /></span><span className="sidebar-toast-label">Menü</span></button>}
+    <main className={`main-content${activeSection === "leaderboard" ? " leaderboard-layout" : activeSection === "models" ? " catalog-layout" : activeSection === "turkish" ? " turkish-layout" : activeSection === "research" ? " rs-layout" : activeSection === "radar" ? " tr-layout" : ""}`} id="top">
+    {activeSection !== "research" && activeSection !== "radar" && (
     <header className="topbar"><div className="topbar-context"><span>{sectionMeta[activeSection]?.group ?? "LLM Radar"}</span><strong>{sectionMeta[activeSection]?.title ?? "Model ve benchmark görünümü"}</strong></div><div className="live-pill"><span /> CANLI</div></header>
-    <div className={`app-view${activeSection === "leaderboard" ? " app-view-leaderboard" : activeSection === "models" ? " app-view-catalog" : ""}`}>
+    )}
+    <div className={`app-view${activeSection === "leaderboard" ? " app-view-leaderboard" : activeSection === "models" ? " app-view-catalog" : activeSection === "turkish" ? " app-view-turkish" : ""}`}>
     {activeSection === "overview" && <>
     <section className="hero" id="overview"><div><p className="eyebrow">LLM INTELLIGENCE PLATFORM</p><h1>Yapay zekâ dünyasının<br /><em>nabzını tut.</em></h1><p className="hero-copy">Modelleri, fiyatları ve teknoloji değişimlerini tek merkezden, kaynaklarıyla birlikte takip et.</p></div><div className="radar"><span className="orbit orbit-one"/><span className="orbit orbit-two"/><span className="orbit orbit-three"/><span className="sweep"/><span className="dot dot-one"/><span className="dot dot-two"/><span className="dot dot-three"/><b>{stats.models || "—"}</b><small>İZLENEN MODEL</small></div></section>
     {error && <div className="error">API bağlantısı kurulamadı. Backend servisinin çalıştığını kontrol et.</div>}
@@ -773,10 +985,10 @@ export default function Home() {
 
     {activeSection === "models" && (
     <ModelCatalogPage
-        loading={loading}
+        loading={!catalogBootReady && loading}
         modelCount={stats.models}
         resultTotal={resultTotal}
-        profileLoading={profileLoading}
+        profileLoading={profileLoading && !catalogBootReady}
         query={query}
         onQueryChange={value => { setQuery(value); setPage(1); }}
         developers={developers}
@@ -825,9 +1037,9 @@ export default function Home() {
         selectedIds={selected.map(item => item.id)}
         onToggleSelect={toggle}
         onInspect={openDetail}
-        page={page}
-        pages={pages}
-        onPageChange={setPage}
+        hasMore={catalogHasMore}
+        loadingMore={profileLoading && page > 1}
+        onLoadMore={() => { if (catalogHasMore && !profileLoading) setPage(current => current + 1); }}
         money={money}
         developerSites={developerSites}
     />
@@ -870,6 +1082,7 @@ export default function Home() {
         api={API}
         view={activeSection as InsightsView}
         onNavigate={navigateToSection}
+        turkishBootstrap={turkishBootstrap}
         onOpenWeight={() => {
             setOpenness(["open_weight"]);
             setPage(1);
@@ -880,16 +1093,25 @@ export default function Home() {
     )}
 
     {activeSection === "events" && (
-    <section className="events-section app-page" id="events"><div className="section-title"><div><p className="kicker">TEKNOLOJİ AKIŞI</p><h2>Önemli gelişmeler önce.</h2></div><p>Gelişmeler kaynak güvenilirliği, değişimin büyüklüğü, sektörel etki ve doğrulama durumuyla 0–100 puanlanır.</p></div><div className="event-toolbar"><label><span>EVENT KATEGORİSİ</span><select value={eventCategory} onChange={e => setEventCategory(e.target.value)}><option value="any">Tüm kategoriler</option>{eventCategories.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label><span>ÖNEM SEVİYESİ</span><select value={eventImportance} onChange={e => setEventImportance(e.target.value)}><option value="any">Tümü</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label><label><span>ZAMAN ARALIĞI</span><select value={eventDays} onChange={e => setEventDays(e.target.value)}><option value="any">Tüm zamanlar</option><option value="1">Son 24 saat</option><option value="7">Son 7 gün</option><option value="30">Son 30 gün</option><option value="90">Son 90 gün</option></select></label><p>Importance puanına göre sıralı</p></div><div className="event-grid">{visibleEvents.map(event => { const meta = eventInfo(event.event_type); return <article className={`event-card ${meta.className}`} key={event.id}><div className="event-card-head"><span className="event-icon">{meta.icon}</span><p>{eventCategories.find(item => item[0] === event.category)?.[1] ?? meta.label}</p><b className={`importance-score ${event.importance}`}>{event.importance_score}</b></div><strong>{cleanEventTitle(event)}</strong><small>{eventDetail(event)}</small><time>{new Date(event.detected_at).toLocaleString("tr-TR")} · {event.importance}</time></article>; })}</div></section>
+    <EventsPage
+        api={API}
+        category={eventCategory}
+        days={eventDays}
+        onCategoryChange={setEventCategory}
+        onDaysChange={setEventDays}
+    />
     )}
 
     {activeSection === "research" && (
-    <section className="catalog-section app-page" id="research"><div className="section-title"><div><p className="kicker">ARAŞTIRMA VE BİLDİRİM</p><h2>Makaleler, uyarılar, kanıt.</h2></div><p>arXiv ve laboratuvar duyuruları kaynak URL’siyle; bildirimler önem seviyesine göre.</p></div><div className="intel-grid">{research.length ? research.map(paper => <article key={paper.id}><p>ARAŞTIRMA</p><h3>{paper.title}</h3><small>{(paper.authors || []).slice(0, 3).join(", ") || "Yazar yok"}</small>{canOpenSourceUrl(paper.url) && <a href={paper.url} target="_blank" rel="noreferrer">Kaynağı aç ↗</a>}</article>) : <article className="empty-card"><p>ARAŞTIRMA</p><h3>Henüz makale toplanmadı</h3><small>Scheduler arXiv collector’ını çalıştırınca burada görünür.</small></article>}{notices.map(notice => <article key={notice.id} className={`notice ${notice.importance}`}><p>{notice.importance}</p><h3>{notice.title}</h3><small>{notice.body}</small>{canOpenSourceUrl(notice.source_url) && <a href={notice.source_url ?? ""} target="_blank" rel="noreferrer">Kaynağı aç ↗</a>}<time>{new Date(notice.created_at).toLocaleString("tr-TR")}</time></article>)}</div></section>
+    <ResearchPage api={API} bootstrap={researchBootstrap} />
     )}
 
     {activeSection === "radar" && (
-
-    <section className="compare-section app-page" id="radar"><div className="section-title"><div><p className="kicker">TEKNOLOJİ RADARI</p><h2>Agent, MCP, computer use.</h2></div><p>GitHub sürümleri ve araştırma metinlerinden çıkan sinyaller; uydurulmaz, yalnızca görülen kanıt kaydedilir.</p></div>{technology.length ? <div className="compare-grid">{technology.map(signal => <article key={signal.slug}><p>{signal.category}</p><h3>{signal.name}</h3><dl><div><dt>Güç</dt><dd>{signal.strength}</dd></div><div><dt>Son görülme</dt><dd>{new Date(signal.last_seen_at).toLocaleDateString("tr-TR")}</dd></div></dl></article>)}</div> : <div className="empty-state">Teknoloji sinyali henüz yok. GitHub ve arXiv collector’ları dolduracak.</div>}</section>
+    <TechnologyRadarPage
+        api={API}
+        signals={technology}
+        onViewAllEvents={() => navigateToSection("events")}
+    />
     )}
 
     {activeSection === "sources" && (
@@ -902,7 +1124,7 @@ export default function Home() {
 
     </div>
 
-    {activeSection !== "leaderboard" && activeSection !== "models" && <footer className="site-foot"><span>LLM RADAR / 2026</span><span>OpenRouter kaynaklı • Yakın gerçek zamanlı takip</span></footer>}
+    {activeSection !== "leaderboard" && activeSection !== "models" && activeSection !== "turkish" && activeSection !== "events" && activeSection !== "research" && activeSection !== "radar" && <footer className="site-foot"><span>LLM RADAR / 2026</span><span>OpenRouter kaynaklı • Yakın gerçek zamanlı takip</span></footer>}
     {benchmarkInfoOpen && <div className="benchmark-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget)
         setBenchmarkInfoOpen(false); }}><section className="benchmark-info-modal" role="dialog" aria-modal="true" aria-labelledby="benchmark-info-title"><button type="button" className="benchmark-modal-close" aria-label="Benchmark açıklamasını kapat" onClick={() => setBenchmarkInfoOpen(false)}>×</button><p className="kicker">BENCHMARK REHBERİ</p><h2 id="benchmark-info-title">{benchmarkInfo[leaderboardView].name}</h2><p>{benchmarkInfo[leaderboardView].summary}</p><dl><div><dt>Ne ölçüyor?</dt><dd>{benchmarkInfo[leaderboardView].measure}</dd></div><div><dt>Nasıl okunmalı?</dt><dd>{benchmarkInfo[leaderboardView].reading}</dd></div></dl></section></div>}
 

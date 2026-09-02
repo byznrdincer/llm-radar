@@ -433,24 +433,61 @@ def openness_trend(session: DatabaseSession) -> dict[str, Any]:
     }
 
 
+def _turkish_model_tags(
+    model: Model,
+    profile: ModelProfile | None,
+    snapshot: ModelSnapshot | None,
+) -> list[str]:
+    tags = ["TR"]
+    openness = profile.openness if profile else None
+    snapshot_data = snapshot.data if snapshot and isinstance(snapshot.data, dict) else {}
+    is_open_weight = snapshot_data.get("is_open_weight") is True
+    if openness in {"open_weight", "open_source"} or is_open_weight:
+        tags.append("Open Weight")
+    haystack = " ".join(
+        [
+            model.name,
+            model.slug,
+            str(snapshot_data.get("tasks") or ""),
+            str(snapshot_data.get("tags") or ""),
+            " ".join(snapshot_data.get("open_weight_evidence", {}).get("files", []))
+            if isinstance(snapshot_data.get("open_weight_evidence"), dict)
+            else "",
+        ]
+    ).lower()
+    if "gguf" in haystack:
+        tags.append("GGUF")
+    if "4bit" in haystack or "4-bit" in haystack:
+        tags.append("4bit")
+    return tags
+
+
 def list_turkish_models(
     session: DatabaseSession,
     limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> dict[str, Any]:
+    latest_snapshot = (
+        select(
+            ModelSnapshot.model_id.label("model_id"),
+            func.max(ModelSnapshot.observed_at).label("max_observed"),
+        )
+        .group_by(ModelSnapshot.model_id)
+        .subquery()
+    )
     rows = session.execute(
-        select(Model, Company, ModelProfile)
+        select(Model, Company, ModelProfile, ModelSnapshot)
         .join(Company, Company.id == Model.company_id)
         .outerjoin(ModelProfile, ModelProfile.model_id == Model.id)
+        .outerjoin(latest_snapshot, latest_snapshot.c.model_id == Model.id)
+        .outerjoin(
+            ModelSnapshot,
+            (ModelSnapshot.model_id == latest_snapshot.c.model_id)
+            & (ModelSnapshot.observed_at == latest_snapshot.c.max_observed),
+        )
     ).all()
     benchmark_index = benchmark_matches(session, "general")
     candidates: list[tuple[Model, Company, ModelProfile | None, ModelSnapshot | None, int]] = []
-    for model, company, profile in rows:
-        snapshot = session.scalar(
-            select(ModelSnapshot)
-            .where(ModelSnapshot.model_id == model.id)
-            .order_by(ModelSnapshot.observed_at.desc())
-            .limit(1)
-        )
+    for model, company, profile, snapshot in rows:
         if not _is_turkish_model(model, company, profile, snapshot):
             continue
         downloads = (
@@ -477,6 +514,8 @@ def list_turkish_models(
                 ),
                 "parameter_count": model.parameter_count,
                 "license": profile.license if profile else model.license,
+                "openness": profile.openness if profile else None,
+                "tags": _turkish_model_tags(model, profile, snapshot),
                 "downloads": (
                     snapshot.data.get("downloads")
                     if snapshot and isinstance(snapshot.data, dict)

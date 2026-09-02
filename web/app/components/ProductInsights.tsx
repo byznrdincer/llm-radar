@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import MarketAnalysisDashboard from "./MarketAnalysisDashboard";
+import TurkishLLMPage, { type TurkishModel } from "./TurkishLLMPage";
 
 type RankedModel = { model_id: string; name: string; company: string; count: number };
 type PopularData = {
@@ -19,19 +20,6 @@ type SpotlightData = {
   metric_note: string;
   items: RankedModel[];
 };
-type TurkishModel = {
-  id: string;
-  name: string;
-  organization: string;
-  base_model: string | null;
-  parameter_count: number | null;
-  license: string | null;
-  downloads: number | null;
-  likes: number | null;
-  benchmark_score: number | null;
-  last_updated: string;
-};
-type TurkishData = { selection_note: string; items: TurkishModel[] };
 
 const emptyPopular: PopularData = {
   window_days: 30,
@@ -41,8 +29,6 @@ const emptyPopular: PopularData = {
   rising: [],
   most_requested: [],
 };
-
-const TURKISH_PAGE_SIZE = 10;
 
 function compact(value: number | null): string {
   if (value == null) return "—";
@@ -79,27 +65,15 @@ type Props = {
   view: InsightsView;
   onNavigate: (section: string) => void;
   onOpenWeight: () => void;
+  turkishBootstrap?: TurkishModel[] | null;
 };
 
-export default function ProductInsights({ api, view, onNavigate, onOpenWeight }: Props) {
+export default function ProductInsights({ api, view, onNavigate, onOpenWeight, turkishBootstrap = null }: Props) {
   const [popular, setPopular] = useState<PopularData>(emptyPopular);
   const [popularDays, setPopularDays] = useState<1 | 7 | 30 | 365>(7);
   const [showCalculation, setShowCalculation] = useState(false);
   const [spotlightPeriod, setSpotlightPeriod] = useState<"week" | "month" | "year">("week");
   const [spotlight, setSpotlight] = useState<SpotlightData | null>(null);
-  const [turkish, setTurkish] = useState<TurkishData>({ selection_note: "", items: [] });
-  const [turkishPage, setTurkishPage] = useState(1);
-
-  const turkishPages = Math.max(1, Math.ceil(turkish.items.length / TURKISH_PAGE_SIZE));
-  const safeTurkishPage = Math.min(turkishPage, turkishPages);
-  const visibleTurkish = useMemo(
-    () =>
-      turkish.items.slice(
-        (safeTurkishPage - 1) * TURKISH_PAGE_SIZE,
-        safeTurkishPage * TURKISH_PAGE_SIZE,
-      ),
-    [turkish.items, safeTurkishPage],
-  );
 
   useEffect(() => {
     const optional = (url: string) => fetch(url)
@@ -112,14 +86,6 @@ export default function ProductInsights({ api, view, onNavigate, onOpenWeight }:
       ]).then(([popularData, spotlightData]) => {
         if (popularData) setPopular(popularData);
         if (spotlightData) setSpotlight(spotlightData);
-      });
-    }
-    if (view === "turkish") {
-      void optional(`${api}/api/v1/models/turkish?limit=100`).then((turkishData) => {
-        if (turkishData) {
-          setTurkish(turkishData);
-          setTurkishPage(1);
-        }
       });
     }
   }, [api, spotlightPeriod, popularDays, view]);
@@ -269,84 +235,7 @@ export default function ProductInsights({ api, view, onNavigate, onOpenWeight }:
       )}
 
       {view === "turkish" && (
-      <section className="catalog-section app-page" id="turkish">
-        <div className="section-title">
-          <div>
-            <p className="kicker">TÜRKİYE LLM EKOSİSTEMİ</p>
-            <h2>Türkçe odaklı modeller.</h2>
-          </div>
-          <p>
-            {turkish.selection_note || "Kaynak etiketleriyle doğrulanan modeller."}
-            {turkish.items.length > 0 && (
-              <> · <strong>{turkish.items.length}</strong> model</>
-            )}
-          </p>
-        </div>
-        {turkish.items.length ? (
-          <>
-            <div className="panel table-wrap rich-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>MODEL</th>
-                    <th>KURULUŞ</th>
-                    <th>TEMEL MODEL</th>
-                    <th>PARAMETRE</th>
-                    <th>LİSANS</th>
-                    <th>İNDİRME</th>
-                    <th>BEĞENİ</th>
-                    <th>BENCHMARK</th>
-                    <th>GÜNCELLEME</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleTurkish.map((model) => (
-                    <tr key={model.id}>
-                      <td><strong>{model.name}</strong></td>
-                      <td>{model.organization}</td>
-                      <td>{model.base_model ?? "—"}</td>
-                      <td className="mono">{compact(model.parameter_count)}</td>
-                      <td>{model.license ?? "—"}</td>
-                      <td className="mono">{compact(model.downloads)}</td>
-                      <td className="mono">{compact(model.likes)}</td>
-                      <td className="mono">
-                        {model.benchmark_score != null ? `%${model.benchmark_score}` : "—"}
-                      </td>
-                      <td>{new Date(model.last_updated).toLocaleDateString("tr-TR")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {turkishPages > 1 && (
-              <div className="pagination turkish-pagination">
-                <button
-                  type="button"
-                  disabled={safeTurkishPage === 1}
-                  onClick={() => setTurkishPage((current) => current - 1)}
-                >
-                  ← Önceki
-                </button>
-                <span>
-                  Sayfa {safeTurkishPage} / {turkishPages}
-                </span>
-                <button
-                  type="button"
-                  disabled={safeTurkishPage === turkishPages}
-                  onClick={() => setTurkishPage((current) => current + 1)}
-                >
-                  Sonraki →
-                </button>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="empty-light">
-            Doğrulanmış Türkçe/Türkiye modeli henüz katalogda bulunmuyor. Hugging Face collector’ı
-            bu bölümü otomatik dolduracak.
-          </div>
-        )}
-      </section>
+      <TurkishLLMPage api={api} bootstrap={turkishBootstrap} />
       )}
     </>
   );

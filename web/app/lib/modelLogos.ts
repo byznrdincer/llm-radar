@@ -7,12 +7,17 @@ const SLUG_ALIASES: Record<string, string> = {
     moonshotai: "moonshot",
     stabilityai: "stability",
     "stable-diffusion-v1-5": "stability",
+    compvis: "stability",
+    "google-deepmind": "deepmind",
+    deepmind: "deepmind",
     gemini: "google",
+    gemma: "google",
     doubao: "bytedance",
     "ibm-granite": "ibm",
     "bytedance-seed": "bytedance",
     "tencent-hunyuan": "tencent",
     "openai-community": "openai",
+    "openai-pricing": "openai",
     "lmstudio-community": "lmstudio",
     rekaai: "reka",
     "arcee-ai": "arcee",
@@ -27,6 +32,16 @@ const SLUG_ALIASES: Record<string, string> = {
     "tongyi-mai": "alibaba",
     "tongyi-zhiwen": "alibaba",
     qwen: "alibaba",
+    mistralai: "mistral",
+    "meta-llama": "meta",
+    "meta-ai": "meta",
+    facebook: "meta",
+    minimaxai: "minimax",
+    "deepseek-ai": "deepseek",
+    "blackforestlabs": "black-forest-labs",
+    bfl: "black-forest-labs",
+    "artificial-analysis": "artificialanalysis",
+    "vercel-ai-gateway": "vercel",
 };
 
 const COMPANY_DOMAINS: Record<string, string> = {
@@ -42,6 +57,9 @@ const COMPANY_DOMAINS: Record<string, string> = {
     anthropic: "anthropic.com",
     apple: "apple.com",
     arcee: "arcee.ai",
+    artificialanalysis: "artificialanalysis.ai",
+    arena: "arena.ai",
+    arxiv: "arxiv.org",
     baichuan: "baichuan-ai.com",
     baidu: "baidu.com",
     baseten: "baseten.co",
@@ -63,6 +81,8 @@ const COMPANY_DOMAINS: Record<string, string> = {
     fetchai: "fetch.ai",
     fireworks: "fireworks.ai",
     google: "google.com",
+    "google-deepmind": "deepmind.google",
+    deepmind: "deepmind.google",
     groq: "groq.com",
     holo: "holo.ai",
     huihui: "huihui.ai",
@@ -118,12 +138,20 @@ const COMPANY_DOMAINS: Record<string, string> = {
     tensorblock: "tensorblock.co",
     thinkingmachines: "thinkingmachines.com",
     thothai: "thoth.ai",
+    lmsys: "lmsys.org",
+    github: "github.com",
+    huggingface: "huggingface.co",
+    "meta-models": "meta.com",
+    muse: "nvidia.com",
+    rundiffusion: "rundiffusion.com",
     thudm: "thudm.cn",
     together: "together.ai",
+    trendyol: "trendyol.com",
     turkcell: "turkcell.com.tr",
     unsloth: "unsloth.ai",
     upstage: "upstage.ai",
     venice: "venice.ai",
+    vercel: "vercel.com",
     vngrs: "vngrs.com",
     wiroai: "wiro.ai",
     writer: "writer.com",
@@ -189,20 +217,24 @@ function companySiteUrl(domain: string, websiteUrl?: string | null) {
     return `https://www.${domain}/`;
 }
 
-export function companyLogoUrls(slug: string, websiteUrl?: string | null) {
-    const domain = knownCompanyDomain(slug, websiteUrl);
-    if (!domain)
-        return [];
-    const siteUrl = companySiteUrl(domain, websiteUrl);
-    const encodedDomain = encodeURIComponent(domain);
-    const encodedSiteUrl = encodeURIComponent(siteUrl);
-    return [
-        `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodedSiteUrl}&size=128`,
-        `https://logo.clearbit.com/${encodedDomain}`,
-        `https://icons.duckduckgo.com/ip3/${encodedDomain}.ico`,
-        `https://www.${domain}/favicon.ico`,
-        `https://www.${domain}/apple-touch-icon.png`,
-    ];
+export function companyLogoUrls(slug: string, websiteUrl?: string | null, fallbackSlugs: string[] = []) {
+    const candidates = [slug, ...fallbackSlugs].filter(Boolean);
+    for (const candidate of candidates) {
+        const domain = knownCompanyDomain(candidate, websiteUrl);
+        if (!domain)
+            continue;
+        const siteUrl = companySiteUrl(domain, websiteUrl);
+        const encodedDomain = encodeURIComponent(domain);
+        const encodedSiteUrl = encodeURIComponent(siteUrl);
+        return [
+            `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodedSiteUrl}&size=128`,
+            `https://logo.clearbit.com/${encodedDomain}`,
+            `https://icons.duckduckgo.com/ip3/${encodedDomain}.ico`,
+            `https://www.${domain}/favicon.ico`,
+            `https://www.${domain}/apple-touch-icon.png`,
+        ];
+    }
+    return [];
 }
 
 export function companyLogoUrl(slug: string, websiteUrl?: string | null) {

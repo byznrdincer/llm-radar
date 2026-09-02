@@ -1,13 +1,13 @@
 import asyncio
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from llm_radar.catalog import (
@@ -40,6 +40,67 @@ from llm_radar.resolution import remember_alias
 
 router = APIRouter(prefix="/api/v1")
 DatabaseSession = Annotated[Session, Depends(get_db)]
+
+_research_summary_cache: tuple[float, dict[str, Any]] | None = None
+_RESEARCH_SUMMARY_TTL_SECONDS = 60.0
+
+
+def _research_summary(session: Session) -> dict[str, Any]:
+    global _research_summary_cache
+    now_mono = datetime.now(UTC).timestamp()
+    if (
+        _research_summary_cache is not None
+        and now_mono - _research_summary_cache[0] < _RESEARCH_SUMMARY_TTL_SECONDS
+    ):
+        return _research_summary_cache[1]
+
+    today = datetime.now(UTC).date()
+    week_start = datetime.now(UTC) - timedelta(days=7)
+    yesterday = today - timedelta(days=1)
+    all_total = session.scalar(select(func.count()).select_from(ResearchPaper)) or 0
+    arxiv_total = (
+        session.scalar(
+            select(func.count())
+            .select_from(ResearchPaper)
+            .where(ResearchPaper.url.ilike("%arxiv.org%"))
+        )
+        or 0
+    )
+    added_today = (
+        session.scalar(
+            select(func.count())
+            .select_from(ResearchPaper)
+            .where(func.date(ResearchPaper.observed_at) == today)
+        )
+        or 0
+    )
+    added_yesterday = (
+        session.scalar(
+            select(func.count())
+            .select_from(ResearchPaper)
+            .where(func.date(ResearchPaper.observed_at) == yesterday)
+        )
+        or 0
+    )
+    verified_week = (
+        session.scalar(
+            select(func.count())
+            .select_from(ResearchPaper)
+            .where(
+                ResearchPaper.observed_at >= week_start,
+                ResearchPaper.url.ilike("%arxiv.org%"),
+            )
+        )
+        or 0
+    )
+    summary = {
+        "added_today": added_today,
+        "added_yesterday": added_yesterday,
+        "primary_source_pct": round(100 * arxiv_total / all_total) if all_total else 0,
+        "verified_week": verified_week,
+    }
+    _research_summary_cache = (now_mono, summary)
+    return summary
 
 
 def _translate_to_turkish(text: str | None) -> str | None:
@@ -125,24 +186,48 @@ def source_catalog(session: DatabaseSession) -> dict[str, Any]:
 def list_research(
     session: DatabaseSession,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    source: Annotated[str | None, Query(max_length=40)] = None,
+    category: Annotated[str | None, Query(max_length=40)] = None,
+    q: Annotated[str | None, Query(max_length=200)] = None,
 ) -> dict[str, Any]:
-    papers = session.scalars(
-        select(ResearchPaper).order_by(ResearchPaper.observed_at.desc()).limit(limit)
-    ).all()
+    filters: list[Any] = []
+    if source == "arxiv":
+        filters.append(ResearchPaper.url.ilike("%arxiv.org%"))
+    if category:
+        filters.append(ResearchPaper.categories.contains([category]))
+    if q:
+        like = f"%{q.strip()}%"
+        filters.append(or_(ResearchPaper.title.ilike(like), ResearchPaper.abstract.ilike(like)))
+
+    count_stmt = select(func.count()).select_from(ResearchPaper)
+    list_stmt = select(ResearchPaper).order_by(ResearchPaper.observed_at.desc())
+    for clause in filters:
+        count_stmt = count_stmt.where(clause)
+        list_stmt = list_stmt.where(clause)
+
+    total = session.scalar(count_stmt) or 0
+    papers = session.scalars(list_stmt.offset(offset).limit(limit)).all()
+
     return {
         "items": [
             {
                 "id": str(paper.id),
                 "external_id": paper.external_id,
-                "title": _translate_to_turkish(paper.title),
+                "title": paper.title,
                 "authors": paper.authors,
                 "abstract": paper.abstract,
                 "published_at": paper.published_at,
+                "observed_at": paper.observed_at,
                 "url": paper.url,
                 "categories": paper.categories,
             }
             for paper in papers
-        ]
+        ],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "summary": _research_summary(session) if offset == 0 and not filters else None,
     }
 
 

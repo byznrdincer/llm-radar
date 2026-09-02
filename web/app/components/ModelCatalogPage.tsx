@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ModelAvatar from "./ModelAvatar";
+import { useInfiniteScroll } from "../lib/useInfiniteScroll";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -147,9 +148,9 @@ type Props = {
     selectedIds: string[];
     onToggleSelect: (model: CatalogModel) => void;
     onInspect: (model: CatalogModel) => void;
-    page: number;
-    pages: number;
-    onPageChange: (value: number | ((current: number) => number)) => void;
+    hasMore: boolean;
+    loadingMore: boolean;
+    onLoadMore: () => void;
     money: (value: string | null | undefined) => string;
     developerSites: Record<string, string | null | undefined>;
 };
@@ -526,6 +527,7 @@ function ColumnCheckboxList({ values, options, onToggle, onClear, renderLabel = 
 
 export default function ModelCatalogPage(props: Props) {
     const p = props;
+    const sentinelRef = useInfiniteScroll(p.onLoadMore, p.hasMore && !p.loadingMore);
     const capOptions = useMemo(() => Array.from(new Map([
         ...p.runtimeCapabilityOptions.map(v => [v, 0] as [string, number]),
         ["reasoning", 0], ["coding", 0], ["tool_calling", 0],
@@ -722,12 +724,15 @@ export default function ModelCatalogPage(props: Props) {
                             })}
                         </tbody>
                     </table>
+                    {p.hasMore && <div ref={sentinelRef} className="catalog-scroll-sentinel" aria-hidden="true" />}
                 </div>
-                <div className="catalog-foot" role="navigation" aria-label="Sayfalama">
-                    <button type="button" className="catalog-page-btn" disabled={p.page === 1} onClick={() => p.onPageChange(n => n - 1)}>← Önceki</button>
-                    <span className="catalog-page-meta">{p.page} / {p.pages}</span>
-                    <button type="button" className="catalog-page-btn" disabled={p.page === p.pages} onClick={() => p.onPageChange(n => n + 1)}>Sonraki →</button>
+                {!p.hasMore && (
+                <div className="catalog-foot" aria-live="polite">
+                    <span className="catalog-page-meta">
+                        {p.models.length.toLocaleString("tr-TR")} / {p.resultTotal.toLocaleString("tr-TR")} model
+                    </span>
                 </div>
+                )}
             </div>
         </section>
     );

@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import ModelAvatar from "./ModelAvatar";
+import { useInfiniteScroll } from "../lib/useInfiniteScroll";
 
 export type LeaderboardItem = {
     model_name: string;
@@ -210,6 +212,7 @@ export default function LeaderboardPage({
     onInspectModel,
 }: Props) {
     const board = resolveBoard(view, boards);
+    const [visibleCount, setVisibleCount] = useState(20);
     const isArena = view === "general";
     const isSwe = view === "coding";
     const isSweLive = view === "swe-live";
@@ -217,9 +220,20 @@ export default function LeaderboardPage({
     const isLive = view === "livebench" || view.startsWith("livebench-");
     const isMmlu = view === "mmlu-pro";
     const scoreLabel = isArena ? "Arena Rating" : isSwe || isSweLive ? "Çözüm oranı" : isTau ? "Pass@1" : "Puan";
-    const ratings = board?.items.map(item => item.rating) ?? [];
+    const allItems = board?.items ?? [];
+    const visibleItems = allItems.slice(0, visibleCount);
+    const hasMore = visibleCount < allItems.length;
+    const ratings = allItems.map(item => item.rating);
     const maximumRating = ratings.length ? Math.max(...ratings) : 0;
     const minimumRating = ratings.length ? Math.min(...ratings) : 0;
+
+    useEffect(() => {
+        setVisibleCount(20);
+    }, [view, board?.category, board?.published_at]);
+
+    const sentinelRef = useInfiniteScroll(() => {
+        setVisibleCount(count => count + 20);
+    }, hasMore);
 
     function scoreWidth(rating: number) {
         if (maximumRating === minimumRating) return 100;
@@ -241,7 +255,7 @@ export default function LeaderboardPage({
                                     role="tab"
                                     aria-selected={view === tab.id}
                                     className={`lb-benchmark-pill${view === tab.id ? " active" : ""}`}
-                                    disabled={boards[tab.board] == null}
+                                    disabled={false}
                                     title={tab.hint}
                                     onClick={() => onViewChange(tab.id)}
                                 >
@@ -301,7 +315,7 @@ export default function LeaderboardPage({
             <div className="lb-summary-grid" aria-label="Benchmark özeti">
                 <div className="lb-summary-card">
                     <span>Listelenen model</span>
-                    <strong>{board?.items.length ?? 0} model</strong>
+                    <strong>{allItems.length || "—"} model</strong>
                 </div>
                 <div className="lb-summary-card">
                     <span>En yüksek {scoreLabel}</span>
@@ -337,9 +351,12 @@ export default function LeaderboardPage({
                     </div>
                 </div>
                 <div className="leaderboard-scroll" aria-label="Benchmark sıralama tablosu">
-                    {!board?.items.length ? (
+                    {!board ? (
+                        <div className="leaderboard-empty">Benchmark yükleniyor…</div>
+                    ) : !allItems.length ? (
                         <div className="leaderboard-empty">Bu benchmark için henüz veri yok.</div>
                     ) : (
+                        <>
                         <table className="leaderboard-table">
                             <thead>
                                 <tr>
@@ -351,7 +368,7 @@ export default function LeaderboardPage({
                                 </tr>
                             </thead>
                             <tbody>
-                                {board.items.map(item => {
+                                {visibleItems.map(item => {
                                     const badge = sourceBadge(item.license);
                                     return (
                                         <tr key={`${item.rank}-${item.model_name}`}>
@@ -393,6 +410,8 @@ export default function LeaderboardPage({
                                 })}
                             </tbody>
                         </table>
+                        {hasMore && <div ref={sentinelRef} className="lb-scroll-sentinel" aria-hidden="true" />}
+                        </>
                     )}
                 </div>
             </div>

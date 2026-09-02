@@ -8,15 +8,28 @@ type Props = {
     companySlug: string;
     companyName?: string;
     websiteUrl?: string | null;
+    fallbackSlugs?: string[];
     size?: "sm" | "md";
 };
 
 const MIN_LOGO_SIZE = 20;
 
-export default function ModelAvatar({ name, companySlug, companyName, websiteUrl, size = "md" }: Props) {
+export default function ModelAvatar({
+    name,
+    companySlug,
+    companyName,
+    websiteUrl,
+    fallbackSlugs = [],
+    size = "md",
+}: Props) {
     const label = companyName ?? name;
     const initials = companyInitials(label);
-    const logoUrls = useMemo(() => companyLogoUrls(companySlug, websiteUrl), [companySlug, websiteUrl]);
+    const logoUrls = useMemo(
+        () => companyLogoUrls(companySlug, websiteUrl, fallbackSlugs),
+        // fallbackSlugs is compared by value; callers often pass inline arrays
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [companySlug, websiteUrl, fallbackSlugs.join("|")],
+    );
     const [logoIndex, setLogoIndex] = useState(0);
     const fallbackStyle = useMemo(() => companyAvatarStyle(companySlug), [companySlug]);
 
