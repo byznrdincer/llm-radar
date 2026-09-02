@@ -446,17 +446,41 @@ def _scoped_catalog_candidates(
     return scoped or candidates
 
 
+def _catalog_model_name_candidates(model_name: str) -> list[str]:
+    """Return likely base-model names for benchmark configurations.
+
+    Agent benchmarks often publish a configuration such as
+    ``SWE-agent + Claude-4.5-Sonnet`` instead of a bare catalog model name.
+    The right-most component is the primary model in these records, while the
+    full value is retained as a final fallback for genuine compound names.
+    """
+    parts = [part.strip() for part in re.split(r"\s+\+\s+", model_name) if part.strip()]
+    ordered = [*reversed(parts), model_name.strip()] if len(parts) > 1 else parts
+    candidates: list[str] = []
+    seen: set[str] = set()
+    for candidate in ordered:
+        key = canonical_model_name(candidate)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        candidates.append(candidate)
+    return candidates
+
+
 def _resolve_catalog_model(
     session: DatabaseSession,
     model_name: str,
     organization: str,
     catalog_index: dict[str, list[tuple[Model, ModelProfile | None, str]]],
 ) -> Model | None:
-    candidates = _scoped_catalog_candidates(model_name, organization, catalog_index)
-    if candidates:
-        return candidates[0][0]
+    candidate_names = _catalog_model_name_candidates(model_name)
+    for candidate_name in candidate_names:
+        candidates = _scoped_catalog_candidates(candidate_name, organization, catalog_index)
+        if candidates:
+            return candidates[0][0]
 
-    normalized_name = model_name.strip().lower().replace("_", "-")
+    lookup_name = candidate_names[0] if candidate_names else model_name
+    normalized_name = lookup_name.strip().lower().replace("_", "-")
     slug_match = session.scalar(
         select(Model)
         .join(Company, Company.id == Model.company_id)
@@ -476,7 +500,7 @@ def _resolve_catalog_model(
             .join(Company, Company.id == Model.company_id)
             .where(
                 Model.slug.ilike(f"%{normalized_name}%")
-                | Model.name.ilike(f"%{model_name.replace('-', '%')}%")
+                | Model.name.ilike(f"%{lookup_name.replace('-', '%')}%")
             )
             .limit(25)
         ).all()
@@ -505,7 +529,11 @@ def _resolve_leaderboard_license(
     if explicit:
         return explicit, "benchmark"
 
-    candidates = _scoped_catalog_candidates(model_name, organization, catalog_index)
+    candidates: list[tuple[Model, ModelProfile | None, str]] = []
+    for candidate_name in _catalog_model_name_candidates(model_name):
+        candidates = _scoped_catalog_candidates(candidate_name, organization, catalog_index)
+        if candidates:
+            break
     organization_key = canonical_model_name(organization)
     same_company = [
         candidate
@@ -1495,6 +1523,7 @@ def model_detail(model_id: UUID, session: DatabaseSession) -> dict[str, Any]:
     if model is None:
         raise HTTPException(status_code=404, detail="Model not found")
     company = session.get(Company, model.company_id)
+    profile = session.get(ModelProfile, model.id)
     snapshot = session.scalar(
         select(ModelSnapshot)
         .where(ModelSnapshot.model_id == model.id)
@@ -1509,7 +1538,11 @@ def model_detail(model_id: UUID, session: DatabaseSession) -> dict[str, Any]:
     ).all()
     src_ids: list[Any] = [
         sid
-        for sid in ([snapshot.source_id] if snapshot else []) + [p.source_id for p in prices]
+        for sid in (
+            ([snapshot.source_id] if snapshot else [])
+            + ([profile.source_id] if profile else [])
+            + [p.source_id for p in prices]
+        )
         if sid is not None
     ]
     unique_source_ids = list(dict.fromkeys(src_ids))
@@ -1554,14 +1587,88 @@ def model_detail(model_id: UUID, session: DatabaseSession) -> dict[str, Any]:
         "slug": model.slug,
         "name": model.name,
         "family": model.family,
+        "version": model.version,
+        "release_date": model.release_date,
+        "parameter_count": model.parameter_count,
+        "active_parameter_count": model.active_parameter_count,
+        "status": model.status,
         "company": {"slug": company.slug, "name": company.name} if company else None,
-        "context_window": model.context_window,
+        "context_window": (
+            profile.context_window
+            if profile is not None and profile.context_window is not None
+            else model.context_window
+        ),
         "capabilities": model.capabilities,
+        "profile": (
+            {
+                "max_output_tokens": profile.max_output_tokens,
+                "modalities": profile.modalities or [],
+                "capabilities": profile.capabilities or [],
+                "tool_calling": profile.supports_tool_calling,
+                "structured_output": profile.supports_structured_output,
+                "reasoning": profile.supports_reasoning,
+                "streaming": profile.supports_streaming,
+                "availability": _resolved_availability(model, profile),
+                "openness": (
+                    _resolved_compare_openness(model, company, profile)
+                    if company is not None
+                    else profile.openness
+                ),
+                "license": (
+                    _resolved_compare_license(model, company, profile)
+                    if company is not None
+                    else (profile.license or model.license)
+                ),
+                "commercial_use_status": profile.commercial_use_status,
+                "observed_at": profile.observed_at,
+            }
+            if profile is not None
+            else {
+                "max_output_tokens": None,
+                "modalities": [],
+                "capabilities": [],
+                "tool_calling": None,
+                "structured_output": None,
+                "reasoning": None,
+                "streaming": None,
+                "availability": _resolved_availability(model, None),
+                "openness": (
+                    _resolved_compare_openness(model, company, None)
+                    if company is not None
+                    else None
+                ),
+                "license": (
+                    _resolved_compare_license(model, company, None)
+                    if company is not None
+                    else model.license
+                ),
+                "commercial_use_status": None,
+                "observed_at": None,
+            }
+        ),
         "description": (
             _translate_to_turkish(snapshot.data.get("description")) if snapshot else None
         ),
         "tokenizer": snapshot.data.get("tokenizer") if snapshot else None,
         "created": snapshot.data.get("created") if snapshot else None,
+        "pricing": (
+            {
+                "input": str(prices[0].input_price) if prices[0].input_price is not None else None,
+                "output": (
+                    str(prices[0].output_price) if prices[0].output_price is not None else None
+                ),
+                "cache_read": (
+                    str(prices[0].cache_read_price)
+                    if prices[0].cache_read_price is not None
+                    else None
+                ),
+                "currency": prices[0].currency,
+                "unit": prices[0].unit,
+                "observed_at": prices[0].observed_at,
+            }
+            if prices
+            else None
+        ),
         "sources": (
             [
                 {

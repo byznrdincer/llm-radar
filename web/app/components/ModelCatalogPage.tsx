@@ -563,6 +563,13 @@ export default function ModelCatalogPage(props: Props) {
                 <button type="button" className={`catalog-more-btn${p.advancedOpen || p.advancedActive ? " on" : ""}`} onClick={p.onAdvancedToggle}>
                     Filtreler {p.advancedOpen ? "−" : "+"}
                 </button>
+                <button
+                    type="button"
+                    className="reset-filters"
+                    onClick={p.onResetFilters}
+                >
+                    Temizle
+                </button>
             </div>
 
             {p.advancedOpen && (

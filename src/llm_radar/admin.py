@@ -429,6 +429,14 @@ async def build_dashboard(request: Request) -> ColumnWidget:
 
 
 def create_admin() -> Admin:
+    from llm_radar.admin_analytics import (
+        build_discovery_page,
+        build_model_interest_page,
+        build_session_inspector,
+        build_sessions_page,
+        build_user_dashboard,
+    )
+
     admin = Admin(
         engine,
         title="LLM Radar Yönetim Paneli",
@@ -443,13 +451,72 @@ def create_admin() -> Admin:
         index_view=CustomView(
             menu_label="Genel Bakış",
             icon="fa-solid fa-chart-line",
-            widget=build_dashboard,
+            widget=build_user_dashboard,
         ),
+    )
+
+    event_view = build_view(
+        AnalyticsEvent,
+        "fa-solid fa-list",
+    )
+    event_view.menu_label = "Tüm Hareketler"
+    event_view.exclude_fields_from_list = ["id"]
+    event_view.fields_default_sort = [("created_at", True)]
+
+    admin.add_view(
+        DropDown(
+            "Kullanıcı Analitiği",
+            icon="fa-solid fa-users",
+            views=[
+                CustomView(
+                    menu_label="Oturumlar",
+                    icon="fa-solid fa-user-clock",
+                    path="/analytics/sessions",
+                    widget=build_sessions_page,
+                ),
+                CustomView(
+                    menu_label="Oturum İncele",
+                    icon="fa-solid fa-magnifying-glass",
+                    path="/analytics/session",
+                    widget=build_session_inspector,
+                ),
+                CustomView(
+                    menu_label="Model İlgisi",
+                    icon="fa-solid fa-heart",
+                    path="/analytics/model-interest",
+                    widget=build_model_interest_page,
+                ),
+                CustomView(
+                    menu_label="Aramalar ve Filtreler",
+                    icon="fa-solid fa-filter",
+                    path="/analytics/discovery",
+                    widget=build_discovery_page,
+                ),
+                event_view,
+            ],
+        )
     )
 
     admin.add_view(
         DropDown(
-            "Model Kataloğu",
+            "Talep ve Geri Bildirim",
+            icon="fa-solid fa-comments",
+            views=[
+                build_view(
+                    ModelDemand,
+                    "fa-solid fa-hand",
+                ),
+                build_view(
+                    Feedback,
+                    "fa-solid fa-comment",
+                ),
+            ],
+        )
+    )
+
+    admin.add_view(
+        DropDown(
+            "Model Verileri",
             icon="fa-solid fa-cubes",
             views=[
                 build_view(Model, "fa-solid fa-cube"),
@@ -463,8 +530,14 @@ def create_admin() -> Admin:
             "Performans ve Fiyat",
             icon="fa-solid fa-chart-column",
             views=[
-                build_view(PriceObservation, "fa-solid fa-tag"),
-                build_view(BenchmarkRun, "fa-solid fa-gauge-high"),
+                build_view(
+                    PriceObservation,
+                    "fa-solid fa-tag",
+                ),
+                build_view(
+                    BenchmarkRun,
+                    "fa-solid fa-gauge-high",
+                ),
             ],
         )
     )
@@ -472,24 +545,15 @@ def create_admin() -> Admin:
     admin.add_view(
         DropDown(
             "İstihbarat",
-            icon="fa-solid fa-radar",
+            icon="fa-solid fa-bolt",
             views=[
                 build_view(ChangeEvent, "fa-solid fa-bolt"),
                 build_view(ResearchPaper, "fa-solid fa-file-lines"),
-                build_view(TechnologySignal, "fa-solid fa-satellite-dish"),
+                build_view(
+                    TechnologySignal,
+                    "fa-solid fa-satellite-dish",
+                ),
                 build_view(Source, "fa-solid fa-database"),
-            ],
-        )
-    )
-
-    admin.add_view(
-        DropDown(
-            "Kullanıcı ve Talep",
-            icon="fa-solid fa-users",
-            views=[
-                build_view(AnalyticsEvent, "fa-solid fa-chart-simple"),
-                build_view(Feedback, "fa-solid fa-comment"),
-                build_view(ModelDemand, "fa-solid fa-hand"),
             ],
         )
     )

@@ -10,9 +10,9 @@ import EventsPage from "./components/EventsPage";
 import ResearchPage, { type ResearchBootstrap } from "./components/ResearchPage";
 import TechnologyRadarPage from "./components/TechnologyRadarPage";
 import SourcesPage from "./components/SourcesPage";
+import ModelDetailDrawer, { type ModelDetailData } from "./components/ModelDetailDrawer";
 import type { TurkishModel } from "./components/TurkishLLMPage";
 import { trackEvent } from "./lib/analytics";
-import { toPublicSourceUrl } from "./lib/publicSourceUrl";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const PAGE_SIZE = 20;
 const INITIAL_RESEARCH_LIMIT = 17;
@@ -255,28 +255,7 @@ type ComparedModel = {
         license: string | null;
     };
 };
-type BenchmarkScore = {
-    benchmark: string;
-    benchmark_slug: string;
-    rank: number;
-    score: number;
-    published_at: string;
-    source_url: string;
-};
-type SourceInfo = {
-    name: string;
-    url: string;
-    reliability: string;
-    source_class: string | null;
-};
-type ModelDetail = ModelItem & {
-    description: string | null;
-    tokenizer: string | null;
-    created: number | null;
-    sources: SourceInfo[];
-    price_history: Pricing[];
-    benchmarks: BenchmarkScore[];
-};
+type ModelDetail = ModelDetailData;
 type Stats = {
     companies: number;
     models: number;
@@ -364,6 +343,18 @@ function trModality(tag: string) {
 function normalizeModelKey(value: string) {
     return value.toLowerCase().trim().replace(/_/g, "-");
 }
+function leaderboardModelCandidates(value: string) {
+    const parts = value.split(/\s+\+\s+/).map(part => part.trim()).filter(Boolean);
+    const ordered = parts.length > 1 ? [...parts].reverse().concat(value.trim()) : parts;
+    const seen = new Set<string>();
+    return ordered.filter(candidate => {
+        const key = normalizeModelKey(candidate);
+        if (!key || seen.has(key))
+            return false;
+        seen.add(key);
+        return true;
+    });
+}
 function findLocalModel(modelName: string, organization: string, catalog: ModelItem[]) {
     const key = normalizeModelKey(modelName);
     const orgKey = organization.toLowerCase().trim();
@@ -377,25 +368,6 @@ function findLocalModel(modelName: string, organization: string, catalog: ModelI
     return candidates.find(model => model.company.name.toLowerCase() === orgKey || model.company.slug === orgKey) ?? candidates[0];
 }
 function daysAgoIso(days: number) { const d = new Date(); d.setDate(d.getDate() - days); return d.toISOString(); }
-function canOpenSourceUrl(url: string | null | undefined, sourceSlug?: string | null) {
-    const publicUrl = toPublicSourceUrl(url, { sourceSlug });
-    if (!publicUrl)
-        return false;
-    const value = publicUrl.toLowerCase();
-    if (!value.startsWith("http://") && !value.startsWith("https://"))
-        return false;
-    if (value.includes("datasets-server.huggingface.co/rows"))
-        return false;
-    // Block machine JSON/API payloads, but allow human docs under /api/docs/...
-    if (/\/api\/v\d+\//.test(value) || value.includes("/api/v1/models"))
-        return false;
-    if (value.endsWith(".json") || value.endsWith(".jsonl") || value.endsWith(".csv") || value.endsWith(".md"))
-        return false;
-    return true;
-}
-function publicHref(url: string | null | undefined, sourceSlug?: string | null) {
-    return toPublicSourceUrl(url, { sourceSlug }) ?? url ?? "";
-}
 const eventMeta: Record<string, {
     label: string;
     icon: string;
@@ -813,7 +785,24 @@ export default function Home() {
             return removing ? current.filter(item => item.id !== model.id) : current.length < 3 ? [...current, model] : current;
         });
     }
-    function resetAdvanced() { setMinContext(""); setMaxInputPrice(""); setMaxOutputPrice(""); setOpenness([]); setLicenses([]); setCommercialStatuses([]); setModalities([]); setCapabilities([]); setProviders([]); setDevelopers([]); setFamilies([]); setAdvancedness([]); setBenchmarkFocus("any"); setSortStack(DEFAULT_SORT_STACK); setPage(1); }
+    function resetAdvanced() {
+        setQuery("");
+        setMinContext("");
+        setMaxInputPrice("");
+        setMaxOutputPrice("");
+        setOpenness([]);
+        setLicenses([]);
+        setCommercialStatuses([]);
+        setModalities([]);
+        setCapabilities([]);
+        setProviders([]);
+        setDevelopers([]);
+        setFamilies([]);
+        setAdvancedness([]);
+        setBenchmarkFocus("any");
+        setSortStack(DEFAULT_SORT_STACK);
+        setPage(1);
+    }
     function toggleAdvancedness(value: string) { setAdvancedness(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]); setPage(1); }
     function toggleDeveloper(value: string) { setDevelopers(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]); setPage(1); }
     function toggleProvider(value: string) { setProviders(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]); setPage(1); }
@@ -891,32 +880,58 @@ export default function Home() {
             await openDetailById(item.catalog_model_id);
             return;
         }
-        const local = findLocalModel(item.model_name, item.organization, models);
-        if (local) {
-            await openDetailById(local.id);
-            return;
+        const rawCandidates = leaderboardModelCandidates(item.model_name);
+
+        // Benchmark kaynakları bazı model adlarına yayın durumu ekleyebiliyor:
+        // qwen3.7-max-preview -> qwen3.7-max
+        // xxx-latest -> xxx
+        // xxx-beta -> xxx
+        //
+        // Önce tam adı deneriz; eşleşmezse temel model adına geri düşeriz.
+        const baseBenchmarkName = item.model_name
+            .trim()
+            .replace(/[-_: ](?:preview|latest|beta|experimental|exp)$/i, "");
+
+        const modelCandidates = Array.from(
+            new Set([
+                ...rawCandidates,
+                ...(baseBenchmarkName !== item.model_name.trim()
+                    ? leaderboardModelCandidates(baseBenchmarkName)
+                    : []),
+                baseBenchmarkName,
+            ].filter(Boolean)),
+        );
+        for (const candidate of modelCandidates) {
+            const local = findLocalModel(candidate, item.organization, models);
+            if (local) {
+                await openDetailById(local.id);
+                return;
+            }
         }
         setDetailLoading(true);
         setDetail(null);
         setDetailMissing(null);
         try {
-            const params = new URLSearchParams({ name: item.model_name });
-            if (item.organization)
-                params.set("organization", item.organization);
-            const resolved = await fetch(`${API}/api/v1/models/resolve?${params}`);
-            if (resolved.ok) {
-                const data = await resolved.json() as { id: string };
-                await openDetailById(data.id);
-                return;
+            for (const candidate of modelCandidates) {
+                const params = new URLSearchParams({ name: candidate });
+                if (item.organization)
+                    params.set("organization", item.organization);
+                const resolved = await fetch(`${API}/api/v1/models/resolve?${params}`);
+                if (resolved.ok) {
+                    const data = await resolved.json() as { id: string };
+                    await openDetailById(data.id);
+                    return;
+                }
             }
-            const search = new URLSearchParams({ search: item.model_name, limit: "8", sort_by: "name" });
+            const primaryName = modelCandidates[0] ?? item.model_name;
+            const search = new URLSearchParams({ search: primaryName, limit: "8", sort_by: "name" });
             const response = await fetch(`${API}/api/v1/models/search?${search}`);
             if (!response.ok)
                 throw new Error("Arama başarısız");
             const data = await response.json() as { items?: SearchModelItem[] };
             const items = data.items ?? [];
             const orgKey = item.organization.toLowerCase().trim();
-            const key = normalizeModelKey(item.model_name);
+            const key = normalizeModelKey(primaryName);
             const match = items.find(entry => entry.developer.name.toLowerCase() === orgKey || entry.developer.slug === orgKey)
                 ?? items.find(entry => normalizeModelKey(entry.slug) === key || normalizeModelKey(entry.name) === key)
                 ?? items[0];
@@ -924,7 +939,7 @@ export default function Home() {
                 await openDetailById(match.id);
                 return;
             }
-            setDetailMissing(`${item.model_name} henüz model kataloğunda eşleşmedi. Collector güncellemesi sonrası tekrar deneyin.`);
+            setDetailMissing(`${item.model_name} için katalogda eşleşen temel model bulunamadı.`);
         }
         catch {
             setDetailMissing(`${item.model_name} için katalog bilgisi alınamadı.`);
@@ -1116,9 +1131,22 @@ export default function Home() {
     {benchmarkInfoOpen && <div className="benchmark-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget)
         setBenchmarkInfoOpen(false); }}><section className="benchmark-info-modal" role="dialog" aria-modal="true" aria-labelledby="benchmark-info-title"><button type="button" className="benchmark-modal-close" aria-label="Benchmark açıklamasını kapat" onClick={() => setBenchmarkInfoOpen(false)}>×</button><p className="kicker">BENCHMARK REHBERİ</p><h2 id="benchmark-info-title">{benchmarkInfo[leaderboardView].name}</h2><p>{benchmarkInfo[leaderboardView].summary}</p><dl><div><dt>Ne ölçüyor?</dt><dd>{benchmarkInfo[leaderboardView].measure}</dd></div><div><dt>Nasıl okunmalı?</dt><dd>{benchmarkInfo[leaderboardView].reading}</dd></div></dl></section></div>}
 
-    {(detailLoading || detail || detailMissing) && <div className="modal-backdrop" role="button" tabIndex={0} aria-label="Model ayrıntılarını kapat" onClick={e => { if (e.target === e.currentTarget)
-        closeDetail(); }} onKeyDown={e => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ")
-        closeDetail(); }}><aside className="detail-drawer">{detailLoading ? <div className="drawer-loading">Model ayrıntıları yükleniyor…</div> : detail ? <><button className="drawer-close" onClick={closeDetail}>×</button><p className="kicker">{detail.company.name}</p><h2>{detail.name}</h2><code>{detail.slug}</code><p className="description">{detail.description || "Bu model için açıklama bulunmuyor."}</p><div className="detail-stats"><div><span>Bağlam</span><strong>{detail.context_window?.toLocaleString("tr-TR") ?? "—"}</strong></div><div><span>Tokenlaştırıcı</span><strong>{detail.tokenizer || "—"}</strong></div><div><span>Girdi fiyatı</span><strong>{money(detail.price_history[0]?.input)}</strong></div><div><span>Çıktı fiyatı</span><strong>{money(detail.price_history[0]?.output)}</strong></div></div><h3>Benchmark karnesi</h3>{detail.benchmarks.length ? <div className="benchmark-list">{detail.benchmarks.map(score => <a key={score.benchmark_slug} href={score.source_url} target="_blank" rel="noreferrer"><span>{score.benchmark}</span><strong>#{score.rank} · {score.score.toFixed(1)}</strong></a>)}</div> : <p className="description">Bu model adıyla eşleşen resmî benchmark sonucu henüz yok.</p>}<h3>Modaliteler</h3><div className="tags">{[...(detail.capabilities.input_modalities || []), ...(detail.capabilities.output_modalities || [])].map((tag, i) => <span key={`${tag}-${i}`}>{trModality(tag)}</span>)}</div>{(() => { const srcs = detail.sources && detail.sources.length > 0 ? detail.sources : [{ name: "OpenRouter", url: `https://openrouter.ai/${detail.slug}`, reliability: "third_party", source_class: "independent" }]; return srcs.map((src, i) => { const rawUrl = src.url ?? ""; const isOpenRouterSource = src.name.toLowerCase().includes("openrouter") || rawUrl.includes("openrouter.ai/api/v1/models"); const href = isOpenRouterSource ? `https://openrouter.ai/${detail.slug}` : rawUrl; const canOpen = canOpenSourceUrl(href); const label = src.reliability === "official_api" ? "Resmî API verisi" : src.reliability === "official_document" ? "Resmî dokümantasyon" : src.reliability === "independent_measurement" ? "Bağımsız ölçüm" : src.reliability === "academic" ? "Akademik kaynak" : src.reliability === "third_party" ? "Üçüncü taraf sağlayıcı verisi" : "Topluluk verisi"; return <div className="source-card" key={i}><span>KAYNAK VE GÜVENİLİRLİK</span><strong>{src.name === "openrouter" ? "OpenRouter" : src.name}</strong><p>{label}</p>{canOpen ? <a href={href} target="_blank" rel="noreferrer">Kaynağı aç ↗</a> : <small className="source-link-disabled">Görüntülenebilir kaynak sayfası yok</small>}</div>; }); })()}</> : <><button className="drawer-close" onClick={closeDetail}>×</button><p className="kicker">MODEL KATALOĞU</p><h2>Model bulunamadı</h2><p className="description">{detailMissing}</p></>}</aside></div>}
+    <ModelDetailDrawer
+      loading={detailLoading}
+      model={detail}
+      missing={detailMissing}
+      isCompared={Boolean(detail && selected.some(item => item.id === detail.id))}
+      compareDisabled={Boolean(detail && selected.length >= 3 && !selected.some(item => item.id === detail.id))}
+      onClose={closeDetail}
+      onToggleCompare={() => { if (detail) toggle(detail); }}
+      onOpenCatalog={() => {
+        if (!detail) return;
+        setQuery(detail.name);
+        setPage(1);
+        closeDetail();
+        navigateToSection("models");
+      }}
+    />
     </main>
   </div>;
 }

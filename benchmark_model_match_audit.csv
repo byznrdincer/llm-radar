@@ -1,0 +1,1612 @@
+status,benchmark_model,organization,catalog_candidate,similarity,catalog_model_id
+REVIEW,4x Scaled,OpenHands,,,
+REVIEW,A.X-K2,SK Telecom,,,
+DIRECT,AMI Agent + Claude-4.5-Haiku,Anthropic,AMI Agent + Claude-4.5-Haiku,1.000,c8321f66-adaf-4c13-a886-565950a48c78
+DIRECT,AMI Agent + Claude-4.6-Opus,Anthropic,AMI Agent + Claude-4.6-Opus,1.000,51e215f4-ad75-4b67-af7c-ee79166f6938
+DIRECT,AMI Agent + Claude-4.6-Sonnet,Anthropic,AMI Agent + Claude-4.6-Sonnet,1.000,bfe6c6b2-21e6-4754-8a47-d28978aefde1
+DIRECT,AMI Agent + Gemini-3.1-Pro,Google,AMI Agent + Gemini-3.1-Pro,1.000,58d66f23-4c5e-40eb-9c58-34cad329aa71
+DIRECT,AMI Agent + Gemini-3.6-flash,Google,AMI Agent + Gemini-3.6-flash,1.000,fc58c264-b7c7-4c94-818f-3c934e86071b
+NON_MODEL,Agentless + Claude 3.7 Sonnet,Anthropic,,,
+DIRECT,Agentless + DeepSeek V3,DeepSeek,Agentless + DeepSeek V3,1.000,e7622b6c-2c65-45cf-8e20-4e1935027553
+DIRECT,Agentless + GPT 4.1,OpenAI,Agentless + GPT 4.1,1.000,3ffbfd31-3137-44a3-9936-adda7cfb6846
+DIRECT,Agentless + GPT 4o,OpenAI,Agentless + GPT 4o,1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+REVIEW,Agnes 2.5 Pro Alpha,Sapiens AI,,,
+REVIEW,Agnes 2.5 Pro Beta,Sapiens AI,,,
+REVIEW,Amazon.nova Premier v1:0,Amazon Nova,,,
+REVIEW,Apertus 70B Instruct,Swiss AI Initiative,,,
+REVIEW,Apertus 8B Instruct,Swiss AI Initiative,,,
+REVIEW,Apodex 1.1,Apodex,,,
+REVIEW,Apriel-v1.5-15B-Thinker,ServiceNow,,,
+REVIEW,Apriel-v1.6-15B-Thinker,ServiceNow,,,
+REVIEW,Arctic Instruct,Snowflake,,,
+REVIEW,Athene-V2-Chat,Unknown,,,
+REVIEW,Athene-V2-Chat (0-shot),Unknown,,,
+REVIEW,Aya-Expanse-32B,Unknown,,,
+REVIEW,Aya-Expanse-8B,Unknown,,,
+DIRECT,Brokk + GPT5.2 (Medium) + Flash3 (Minimal),OpenAI,Brokk + GPT5.2 (Medium) + Flash3 (Minimal),1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,Brokk + GPT5.2 (Medium) + Gemini-flash3 (Minimal),OpenAI,Brokk + GPT5.2 (Medium) + Gemini-flash3 (Minimal),1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+NON_MODEL,Brokk + Sonnet4.5 (Standard) + Flash3 (Minimal),Unknown,,,
+NON_MODEL,Brokk + Sonnet4.5 (Standard) + Gemini-flash3 (Minimal),Google,,,
+NON_MODEL,Cascaded baseline,Multiple providers,,,
+DIRECT,Celeris-1,Celeris,Celeris-1,1.000,99d35446-1836-4bb8-bd61-c4d65cb9ac8d
+REVIEW,Claude 2,Anthropic,Claude 4 Opus,0.747,fd25c868-f733-4074-8da8-dee6fb2e7be2
+REVIEW,Claude 2.0,Anthropic,,,
+REVIEW,Claude 2.1,Anthropic,,,
+DIRECT,Claude 3 Haiku,Anthropic,Claude 3 Haiku,1.000,0b5a39d7-f24a-470e-a6ff-b08e01cc2ddd
+DIRECT,Claude 3 Opus,Anthropic,Claude 3 Opus,1.000,fbdb9829-ac51-4946-9253-4857a03a7fc1
+LIKELY_ALIAS,Claude 3 Sonnet,Anthropic,claude-3-7-sonnet,1.000,3cf0b7ef-f66c-4d1f-980a-cfaaa564cf09
+REVIEW,Claude 3.5 Haiku,Anthropic,,,
+REVIEW,Claude 3.5 Sonnet,Anthropic,,,
+REVIEW,Claude 3.5 Sonnet (June '24),Anthropic,,,
+REVIEW,Claude 3.5 Sonnet (Oct '24),Anthropic,,,
+REVIEW,Claude 3.5-Sonnet-20241022,Anthropic,,,
+REVIEW,Claude 3.7 Sonnet,Anthropic,,,
+REVIEW,Claude 3.7 Sonnet (Non-reasoning),Anthropic,,,
+REVIEW,Claude 3.7 Sonnet (Reasoning),Anthropic,,,
+NON_MODEL,Claude 3.7 Sonnet w/ Review Heavy,Anthropic,,,
+DIRECT,Claude 4 Opus,Anthropic,Claude 4 Opus,1.000,60779b55-9a09-4282-b39a-14518292785b
+DIRECT,Claude 4 Opus (Non-reasoning),Anthropic,Claude 4 Opus (Non-reasoning),1.000,60779b55-9a09-4282-b39a-14518292785b
+DIRECT,Claude 4 Opus (Reasoning),Anthropic,Claude 4 Opus (Reasoning),1.000,60779b55-9a09-4282-b39a-14518292785b
+DIRECT,Claude 4 Sonnet,Anthropic,Claude 4 Sonnet,1.000,2fa2cd59-8361-438c-93c4-5ee7c330de62
+DIRECT,Claude 4 Sonnet (Non-reasoning),Anthropic,Claude 4 Sonnet (Non-reasoning),1.000,2fa2cd59-8361-438c-93c4-5ee7c330de62
+DIRECT,Claude 4 Sonnet (Reasoning),Anthropic,Claude 4 Sonnet (Reasoning),1.000,2fa2cd59-8361-438c-93c4-5ee7c330de62
+DIRECT,Claude 4.1 Opus (Non-reasoning),Anthropic,Claude 4.1 Opus (Non-reasoning),1.000,6001dd1e-5fd3-4d6b-8605-84e7a9aeffa0
+DIRECT,Claude 4.1 Opus (Reasoning),Anthropic,Claude 4.1 Opus (Reasoning),1.000,6001dd1e-5fd3-4d6b-8605-84e7a9aeffa0
+DIRECT,Claude 4.5 Haiku,Anthropic,Claude 4.5 Haiku,1.000,c8321f66-adaf-4c13-a886-565950a48c78
+DIRECT,Claude 4.5 Haiku (Non-reasoning),Anthropic,Claude 4.5 Haiku (Non-reasoning),1.000,c8321f66-adaf-4c13-a886-565950a48c78
+DIRECT,Claude 4.5 Haiku (Reasoning),Anthropic,Claude 4.5 Haiku (Reasoning),1.000,c8321f66-adaf-4c13-a886-565950a48c78
+DIRECT,Claude 4.5 Opus,Anthropic,Claude 4.5 Opus,1.000,0a3fc781-c5de-4e41-bd04-32c7ca6a7265
+DIRECT,Claude 4.5 Sonnet,Anthropic,Claude 4.5 Sonnet,1.000,c6d53b8c-3ac5-4bc4-96c7-e4b05547c131
+DIRECT,Claude 4.5 Sonnet (Non-reasoning),Anthropic,Claude 4.5 Sonnet (Non-reasoning),1.000,c6d53b8c-3ac5-4bc4-96c7-e4b05547c131
+DIRECT,Claude 4.5 Sonnet (Reasoning),Anthropic,Claude 4.5 Sonnet (Reasoning),1.000,c6d53b8c-3ac5-4bc4-96c7-e4b05547c131
+DIRECT,Claude 4.6 Opus,Anthropic,Claude 4.6 Opus,1.000,51e215f4-ad75-4b67-af7c-ee79166f6938
+DIRECT,Claude Code + Claude-4.5-Sonnet,Anthropic,Claude Code + Claude-4.5-Sonnet,1.000,c6d53b8c-3ac5-4bc4-96c7-e4b05547c131
+DIRECT,Claude Code + DeepSeek-V3.1-Terminus,Anthropic,Claude Code + DeepSeek-V3.1-Terminus,1.000,c24eaa21-5caf-48a9-b258-543012e526f7
+DIRECT,Claude Code + Deepseek-v4-Pro,Anthropic,Claude Code + Deepseek-v4-Pro,1.000,6ef66d49-95de-4b3e-be95-54a45c5b35c9
+DIRECT,Claude Code + GPT-5.5 (Medium),Anthropic,Claude Code + GPT-5.5 (Medium),1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,Claude Code + GPT5.2-Thinking (Medium),Anthropic,Claude Code + GPT5.2-Thinking (Medium),1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,"Claude Fable 5 (Adaptive Reasoning, Max Effort, Opus 4.8 Fallback)",Anthropic,"Claude Fable 5 (Adaptive Reasoning, Max Effort, Opus 4.8 Fallback)",1.000,0e4afcba-b7af-4e47-ba7c-e3f7986cceaa
+DIRECT,Claude Fable 5 (max),Anthropic,Claude Fable 5 (max),1.000,0e4afcba-b7af-4e47-ba7c-e3f7986cceaa
+DIRECT,"Claude Fable 5.1 (Adaptive Reasoning, High Effort, Default Fallback)",Anthropic,"Claude Fable 5.1 (Adaptive Reasoning, High Effort, Default Fallback)",1.000,d75d99ae-e025-4284-9b19-058c5168ba45
+DIRECT,"Claude Fable 5.1 (Adaptive Reasoning, Low Effort, Default Fallback)",Anthropic,"Claude Fable 5.1 (Adaptive Reasoning, Low Effort, Default Fallback)",1.000,d75d99ae-e025-4284-9b19-058c5168ba45
+DIRECT,"Claude Fable 5.1 (Adaptive Reasoning, Max Effort, Default Fallback)",Anthropic,"Claude Fable 5.1 (Adaptive Reasoning, Max Effort, Default Fallback)",1.000,d75d99ae-e025-4284-9b19-058c5168ba45
+DIRECT,"Claude Fable 5.1 (Adaptive Reasoning, Medium Effort, Default Fallback)",Anthropic,"Claude Fable 5.1 (Adaptive Reasoning, Medium Effort, Default Fallback)",1.000,d75d99ae-e025-4284-9b19-058c5168ba45
+DIRECT,"Claude Fable 5.1 (Adaptive Reasoning, Xhigh Effort, Default Fallback)",Anthropic,"Claude Fable 5.1 (Adaptive Reasoning, Xhigh Effort, Default Fallback)",1.000,d75d99ae-e025-4284-9b19-058c5168ba45
+REVIEW,Claude Instant,Anthropic,,,
+DIRECT,Claude Opus 4,Anthropic,Claude Opus 4,1.000,60779b55-9a09-4282-b39a-14518292785b
+DIRECT,Claude Opus 4.1,Anthropic,Claude Opus 4.1,1.000,6001dd1e-5fd3-4d6b-8605-84e7a9aeffa0
+DIRECT,Claude Opus 4.5 (Non-reasoning),Anthropic,Claude Opus 4.5 (Non-reasoning),1.000,0a3fc781-c5de-4e41-bd04-32c7ca6a7265
+DIRECT,Claude Opus 4.5 (Reasoning),Anthropic,Claude Opus 4.5 (Reasoning),1.000,0a3fc781-c5de-4e41-bd04-32c7ca6a7265
+DIRECT,Claude Opus 4.5 (high),Anthropic,Claude Opus 4.5 (high),1.000,0a3fc781-c5de-4e41-bd04-32c7ca6a7265
+DIRECT,"Claude Opus 4.6 (Adaptive Reasoning, Max Effort)",Anthropic,"Claude Opus 4.6 (Adaptive Reasoning, Max Effort)",1.000,51e215f4-ad75-4b67-af7c-ee79166f6938
+DIRECT,"Claude Opus 4.6 (Non-reasoning, High Effort)",Anthropic,"Claude Opus 4.6 (Non-reasoning, High Effort)",1.000,51e215f4-ad75-4b67-af7c-ee79166f6938
+DIRECT,Claude Opus 4.6 (max),Anthropic,Claude Opus 4.6 (max),1.000,51e215f4-ad75-4b67-af7c-ee79166f6938
+DIRECT,"Claude Opus 4.7 (Adaptive Reasoning, Max Effort)",Anthropic,"Claude Opus 4.7 (Adaptive Reasoning, Max Effort)",1.000,461b97a5-5cc5-4264-8419-762c04c5776f
+DIRECT,"Claude Opus 4.7 (Non-reasoning, High Effort)",Anthropic,"Claude Opus 4.7 (Non-reasoning, High Effort)",1.000,461b97a5-5cc5-4264-8419-762c04c5776f
+DIRECT,Claude Opus 4.7 (max),Anthropic,Claude Opus 4.7 (max),1.000,461b97a5-5cc5-4264-8419-762c04c5776f
+DIRECT,"Claude Opus 4.8 (Adaptive Reasoning, Max Effort)",Anthropic,"Claude Opus 4.8 (Adaptive Reasoning, Max Effort)",1.000,a688076b-bf70-4e8d-99f6-a1a343e9d458
+DIRECT,Claude Opus 4.8 (max),Anthropic,Claude Opus 4.8 (max),1.000,a688076b-bf70-4e8d-99f6-a1a343e9d458
+DIRECT,"Claude Opus 5 (Adaptive Reasoning, High Effort)",Anthropic,"Claude Opus 5 (Adaptive Reasoning, High Effort)",1.000,a2053a3a-8e6d-438d-baec-baa519d6575c
+DIRECT,"Claude Opus 5 (Adaptive Reasoning, Low Effort)",Anthropic,"Claude Opus 5 (Adaptive Reasoning, Low Effort)",1.000,a2053a3a-8e6d-438d-baec-baa519d6575c
+DIRECT,"Claude Opus 5 (Adaptive Reasoning, Max Effort)",Anthropic,"Claude Opus 5 (Adaptive Reasoning, Max Effort)",1.000,a2053a3a-8e6d-438d-baec-baa519d6575c
+DIRECT,"Claude Opus 5 (Adaptive Reasoning, Medium Effort)",Anthropic,"Claude Opus 5 (Adaptive Reasoning, Medium Effort)",1.000,a2053a3a-8e6d-438d-baec-baa519d6575c
+DIRECT,"Claude Opus 5 (Adaptive Reasoning, Xhigh Effort)",Anthropic,"Claude Opus 5 (Adaptive Reasoning, Xhigh Effort)",1.000,a2053a3a-8e6d-438d-baec-baa519d6575c
+DIRECT,Claude Opus 5 (max),Anthropic,Claude Opus 5 (max),1.000,a2053a3a-8e6d-438d-baec-baa519d6575c
+DIRECT,Claude Sonnet 4,Anthropic,Claude Sonnet 4,1.000,2fa2cd59-8361-438c-93c4-5ee7c330de62
+DIRECT,Claude Sonnet 4.5 (enabled),Anthropic,Claude Sonnet 4.5 (enabled),1.000,c6d53b8c-3ac5-4bc4-96c7-e4b05547c131
+DIRECT,"Claude Sonnet 4.6 (Adaptive Reasoning, Max Effort)",Anthropic,"Claude Sonnet 4.6 (Adaptive Reasoning, Max Effort)",1.000,bfe6c6b2-21e6-4754-8a47-d28978aefde1
+DIRECT,"Claude Sonnet 4.6 (Non-reasoning, High Effort)",Anthropic,"Claude Sonnet 4.6 (Non-reasoning, High Effort)",1.000,bfe6c6b2-21e6-4754-8a47-d28978aefde1
+DIRECT,"Claude Sonnet 4.6 (Non-reasoning, Low Effort)",Anthropic,"Claude Sonnet 4.6 (Non-reasoning, Low Effort)",1.000,bfe6c6b2-21e6-4754-8a47-d28978aefde1
+DIRECT,"Claude Sonnet 5 (Adaptive Reasoning, Max Effort)",Anthropic,"Claude Sonnet 5 (Adaptive Reasoning, Max Effort)",1.000,3a54c886-8085-42c4-af0a-54e6ceab55a7
+DIRECT,"Claude Sonnet 5 (Non-reasoning, High Effort)",Anthropic,"Claude Sonnet 5 (Non-reasoning, High Effort)",1.000,3a54c886-8085-42c4-af0a-54e6ceab55a7
+REVIEW,Claude-3-5-Haiku-20241022,Anthropic,,,
+DIRECT,Claude-3-Haiku,Anthropic,Claude-3-Haiku,1.000,0b5a39d7-f24a-470e-a6ff-b08e01cc2ddd
+DIRECT,Claude-3-Haiku-20240307,Anthropic,Claude-3-Haiku-20240307,1.000,0b5a39d7-f24a-470e-a6ff-b08e01cc2ddd
+DIRECT,Claude-3-Opus,Anthropic,Claude-3-Opus,1.000,fbdb9829-ac51-4946-9253-4857a03a7fc1
+DIRECT,Claude-3-Sonnet,Anthropic,Claude-3-Sonnet,1.000,9f06962b-b473-44d0-a5b2-9990d94d0e2f
+REVIEW,Claude-3.5-Sonnet (2024-06-20),Anthropic,,,
+REVIEW,Claude-3.5-Sonnet (2024-10-22),Anthropic,,,
+REVIEW,Claude-3.5-Sonnet-20241022,Anthropic,,,
+REVIEW,Claude-3.7-Sonnet,Anthropic,,,
+REVIEW,Claude-3.7-Sonnet-Thinking,Anthropic,,,
+DIRECT,Claude-4-Opus-Thinking,Anthropic,Claude-4-Opus-Thinking,1.000,60779b55-9a09-4282-b39a-14518292785b
+DIRECT,Claude-4-Sonnet,Anthropic,Claude-4-Sonnet,1.000,2fa2cd59-8361-438c-93c4-5ee7c330de62
+DIRECT,Claude-4.5-Opus(Thinking),Anthropic,Claude-4.5-Opus(Thinking),1.000,0a3fc781-c5de-4e41-bd04-32c7ca6a7265
+DIRECT,Claude-4.5-Sonnet(Thinking),Anthropic,Claude-4.5-Sonnet(Thinking),1.000,c6d53b8c-3ac5-4bc4-96c7-e4b05547c131
+DIRECT,Claude-4.6-Opus(Thinking),Anthropic,Claude-4.6-Opus(Thinking),1.000,51e215f4-ad75-4b67-af7c-ee79166f6938
+DIRECT,Claude-4.6-Sonnet(Thinking),Anthropic,Claude-4.6-Sonnet(Thinking),1.000,bfe6c6b2-21e6-4754-8a47-d28978aefde1
+DIRECT,Claude-Opus-4,Anthropic,Claude-Opus-4,1.000,60779b55-9a09-4282-b39a-14518292785b
+DIRECT,Claude-Opus-4 (Thinking),Anthropic,Claude-Opus-4 (Thinking),1.000,60779b55-9a09-4282-b39a-14518292785b
+DIRECT,Claude-Sonnet-4,Anthropic,Claude-Sonnet-4,1.000,2fa2cd59-8361-438c-93c4-5ee7c330de62
+DIRECT,Claude-Sonnet-4 (Thinking),Anthropic,Claude-Sonnet-4 (Thinking),1.000,2fa2cd59-8361-438c-93c4-5ee7c330de62
+DIRECT,Claude-Sonnet-4.5,Anthropic,Claude-Sonnet-4.5,1.000,c6d53b8c-3ac5-4bc4-96c7-e4b05547c131
+REVIEW,Co-PatcheR,Unknown,,,
+NON_MODEL,CodeAct v2.1 (claude-3-5-sonnet-20241022),Anthropic,,,
+REVIEW,Cohere-Aya-Vision,Unknown,,,
+DIRECT,Command A,Cohere,Command A,1.000,cdb50876-b468-481b-ab48-0a9b39d72451
+DIRECT,Command A+,Cohere,Command A+,1.000,cdb50876-b468-481b-ab48-0a9b39d72451
+DIRECT,Command-R (Mar '24),Cohere,Command-R (Mar '24),1.000,b063fef6-1cb0-4a0e-b593-1e5e95fb1a02
+DIRECT,Command-R+ (Apr '24),Cohere,Command-R+ (Apr '24),1.000,b063fef6-1cb0-4a0e-b593-1e5e95fb1a02
+REVIEW,DBRX Instruct,Databricks,,,
+REVIEW,DeepHermes 3 - Llama-3.1 8B Preview (Non-reasoning),Nous Research,,,
+REVIEW,DeepHermes 3 - Mistral 24B Preview (Non-reasoning),Nous Research,,,
+REVIEW,DeepSWE-Preview,Agentica,,,
+DIRECT,DeepSeek Coder V2 Lite Instruct,DeepSeek,DeepSeek Coder V2 Lite Instruct,1.000,c422ab24-6d28-40d9-a431-8b91aa7ba394
+REVIEW,DeepSeek LLM 67B Chat (V1),DeepSeek,,,
+DIRECT,DeepSeek R1 (Jan '25),DeepSeek,DeepSeek R1 (Jan '25),1.000,9211955e-3961-40a5-ae1e-3b7559a6b7f5
+REVIEW,DeepSeek R1 0528 (May '25),DeepSeek,,,
+DIRECT,DeepSeek R1 0528 Qwen3 8B,DeepSeek,DeepSeek R1 0528 Qwen3 8B,1.000,dc7ec8e7-1cf0-4bd1-a9d4-9756cf980047
+DIRECT,DeepSeek R1 Distill Llama 70B,DeepSeek,DeepSeek R1 Distill Llama 70B,1.000,8f995237-2b15-4c21-b949-f7c02978c1d3
+DIRECT,DeepSeek R1 Distill Llama 8B,DeepSeek,DeepSeek R1 Distill Llama 8B,1.000,e8cb2732-c950-4cd9-834c-889e8bda7ad4
+DIRECT,DeepSeek R1 Distill Qwen 1.5B,DeepSeek,DeepSeek R1 Distill Qwen 1.5B,1.000,e8b3cede-4d8d-4144-a78d-bbaa457b084b
+DIRECT,DeepSeek R1 Distill Qwen 14B,DeepSeek,DeepSeek R1 Distill Qwen 14B,1.000,ba66b8eb-abd8-48fe-9c0b-5d41ee132843
+DIRECT,DeepSeek R1 Distill Qwen 32B,DeepSeek,DeepSeek R1 Distill Qwen 32B,1.000,b1560bc4-ff05-49ef-81d4-9aa7f6797141
+DIRECT,DeepSeek V3 (Dec '24),DeepSeek,DeepSeek V3 (Dec '24),1.000,e7622b6c-2c65-45cf-8e20-4e1935027553
+DIRECT,DeepSeek V3 0324,DeepSeek,DeepSeek V3 0324,1.000,c15cb69f-17c1-4ce2-8a45-99f05c9d0d79
+DIRECT,DeepSeek V3.1 (Non-reasoning),DeepSeek,DeepSeek V3.1 (Non-reasoning),1.000,dd5e4daa-bc8b-442c-810c-0b0afc82d5c9
+DIRECT,DeepSeek V3.1 (Reasoning),DeepSeek,DeepSeek V3.1 (Reasoning),1.000,dd5e4daa-bc8b-442c-810c-0b0afc82d5c9
+DIRECT,DeepSeek V3.1 Terminus (Non-reasoning),DeepSeek,DeepSeek V3.1 Terminus (Non-reasoning),1.000,c24eaa21-5caf-48a9-b258-543012e526f7
+DIRECT,DeepSeek V3.1 Terminus (Reasoning),DeepSeek,DeepSeek V3.1 Terminus (Reasoning),1.000,c24eaa21-5caf-48a9-b258-543012e526f7
+DIRECT,DeepSeek V3.2,DeepSeek,DeepSeek V3.2,1.000,977c4e83-0e21-4fb8-aa46-435bcf21676c
+DIRECT,DeepSeek V3.2 (Non-reasoning),DeepSeek,DeepSeek V3.2 (Non-reasoning),1.000,977c4e83-0e21-4fb8-aa46-435bcf21676c
+DIRECT,DeepSeek V3.2 (Reasoning),DeepSeek,DeepSeek V3.2 (Reasoning),1.000,977c4e83-0e21-4fb8-aa46-435bcf21676c
+DIRECT,DeepSeek V3.2 Exp (Non-reasoning),DeepSeek,DeepSeek V3.2 Exp (Non-reasoning),1.000,1385a7eb-3faa-4ef3-bfe7-0a52d31ed3fd
+DIRECT,DeepSeek V3.2 Exp (Reasoning),DeepSeek,DeepSeek V3.2 Exp (Reasoning),1.000,1385a7eb-3faa-4ef3-bfe7-0a52d31ed3fd
+REVIEW,DeepSeek V3.2 Reasoner,deepseek,,,
+DIRECT,DeepSeek V3.2 Speciale,DeepSeek,DeepSeek V3.2 Speciale,1.000,177bbd9b-8984-487a-a7ae-ba92e5511cfb
+DIRECT,DeepSeek V4 Flash (Non-reasoning),DeepSeek,DeepSeek V4 Flash (Non-reasoning),1.000,dcafae1e-ad3f-4aff-b92b-58f1a100019c
+DIRECT,"DeepSeek V4 Flash (Reasoning, High Effort)",DeepSeek,"DeepSeek V4 Flash (Reasoning, High Effort)",1.000,dcafae1e-ad3f-4aff-b92b-58f1a100019c
+DIRECT,"DeepSeek V4 Flash (Reasoning, Max Effort)",DeepSeek,"DeepSeek V4 Flash (Reasoning, Max Effort)",1.000,dcafae1e-ad3f-4aff-b92b-58f1a100019c
+DIRECT,"DeepSeek V4 Flash 0731 (Reasoning, Max Effort)",DeepSeek,"DeepSeek V4 Flash 0731 (Reasoning, Max Effort)",1.000,572b1805-2c5f-4f88-8780-23436dd47416
+REVIEW,"DeepSeek V4 Flash Vision (Reasoning, Max Effort)",DeepSeek,,,
+DIRECT,DeepSeek V4 Pro (Non-reasoning),DeepSeek,DeepSeek V4 Pro (Non-reasoning),1.000,0dae45bf-ac1a-47b6-b174-c1dd0437b2c5
+DIRECT,"DeepSeek V4 Pro (Reasoning, High Effort)",DeepSeek,"DeepSeek V4 Pro (Reasoning, High Effort)",1.000,0dae45bf-ac1a-47b6-b174-c1dd0437b2c5
+DIRECT,"DeepSeek V4 Pro (Reasoning, Max Effort)",DeepSeek,"DeepSeek V4 Pro (Reasoning, Max Effort)",1.000,0dae45bf-ac1a-47b6-b174-c1dd0437b2c5
+DIRECT,"DeepSeek V4 Pro 0813 (Reasoning, Max Effort)",DeepSeek,"DeepSeek V4 Pro 0813 (Reasoning, Max Effort)",1.000,34521ca9-daff-4509-ad5b-41f00e4483aa
+REVIEW,DeepSeek-Chat-V2_5,DeepSeek,,,
+DIRECT,DeepSeek-Coder-V2,DeepSeek,DeepSeek-Coder-V2,1.000,6afa0155-a0b2-4344-8989-e6c45b3cbfe6
+DIRECT,DeepSeek-Coder-V2-Instruct,DeepSeek,DeepSeek-Coder-V2-Instruct,1.000,c422ab24-6d28-40d9-a431-8b91aa7ba394
+DIRECT,DeepSeek-Coder-V2-Lite-Base,DeepSeek,DeepSeek-Coder-V2-Lite-Base,1.000,d8875e28-3382-434e-a361-f955b6f5acad
+DIRECT,DeepSeek-Coder-V2-Lite-Instruct,DeepSeek,DeepSeek-Coder-V2-Lite-Instruct,1.000,c422ab24-6d28-40d9-a431-8b91aa7ba394
+DIRECT,DeepSeek-R1,DeepSeek,DeepSeek-R1,1.000,9211955e-3961-40a5-ae1e-3b7559a6b7f5
+DIRECT,DeepSeek-R1-0528,DeepSeek,DeepSeek-R1-0528,1.000,bd1fff12-92e8-4986-a9ff-d83e1561182e
+DIRECT,DeepSeek-V2-Chat,DeepSeek,DeepSeek-V2-Chat,1.000,0779f92a-e8a0-4633-bdcc-196a7dc50557
+DIRECT,DeepSeek-V2.5,DeepSeek,DeepSeek-V2.5,1.000,6067766a-b11a-4be9-b671-a16bb8020f0c
+DIRECT,DeepSeek-V2.5 (Dec '24),DeepSeek,DeepSeek-V2.5 (Dec '24),1.000,6067766a-b11a-4be9-b671-a16bb8020f0c
+DIRECT,DeepSeek-V3,DeepSeek,DeepSeek-V3,1.000,e7622b6c-2c65-45cf-8e20-4e1935027553
+DIRECT,DeepSeek-V3.1-NonThinking,DeepSeek,DeepSeek-V3.1-NonThinking,1.000,dd5e4daa-bc8b-442c-810c-0b0afc82d5c9
+DIRECT,DeepSeek-V3.1-Thinking,DeepSeek,DeepSeek-V3.1-Thinking,1.000,dd5e4daa-bc8b-442c-810c-0b0afc82d5c9
+DIRECT,DeepSeek-V3.2,DeepSeek,DeepSeek-V3.2,1.000,977c4e83-0e21-4fb8-aa46-435bcf21676c
+DIRECT,DeepSeek-V3.2-Thinking,DeepSeek,DeepSeek-V3.2-Thinking,1.000,977c4e83-0e21-4fb8-aa46-435bcf21676c
+DIRECT,Deepseek-V2-Chat,DeepSeek,Deepseek-V2-Chat,1.000,0779f92a-e8a0-4633-bdcc-196a7dc50557
+DIRECT,Deepseek-V3,DeepSeek,Deepseek-V3,1.000,e7622b6c-2c65-45cf-8e20-4e1935027553
+DIRECT,Deepseek-V3-0324,DeepSeek,Deepseek-V3-0324,1.000,c15cb69f-17c1-4ce2-8a45-99f05c9d0d79
+REVIEW,DeepseekMath-7B-Instruct,DeepSeek,,,
+DIRECT,DevStral Small 2505,Mistral,DevStral Small 2505,1.000,e2a2ec89-4291-4f9e-98cb-9a88a625bfa9
+DIRECT,DevStral Small 2507,Mistral,DevStral Small 2507,1.000,821aa694-f03a-454b-b06c-2d0738fbba49
+DIRECT,Devstral (2512),mistral,Devstral (2512),1.000,58523aa5-ae90-4033-b798-50848b7b8c1b
+DIRECT,Devstral 2,Mistral,Devstral 2,1.000,66e28eb9-22e7-4415-8698-fdbfc042b2e2
+DIRECT,Devstral Medium,Mistral,Devstral Medium,1.000,58523aa5-ae90-4033-b798-50848b7b8c1b
+DIRECT,Devstral Small (2512),mistral,Devstral Small (2512),1.000,96381411-9db8-44f8-82e5-3621adcc4fa3
+DIRECT,Devstral Small (Jul '25),Mistral,Devstral Small (Jul '25),1.000,96381411-9db8-44f8-82e5-3621adcc4fa3
+DIRECT,Devstral Small (May '25),Mistral,Devstral Small (May '25),1.000,96381411-9db8-44f8-82e5-3621adcc4fa3
+DIRECT,Devstral Small 2,Mistral,Devstral Small 2,1.000,a1100d14-f182-43d4-9e33-d9bd77504771
+REVIEW,DiffusionGemma 26B A4B,Google,,,
+REVIEW,Distyl ButtonAgent (high),Distyl AI,,,
+LIKELY_ALIAS,Doubao Seed Code,ByteDance Seed,Doubao Seed 2.0 Code Preview,0.933,66023d62-8824-4197-b1a5-786c3fcfa892
+DIRECT,Doubao-1.5-Pro,Unknown,Doubao-1.5-Pro,1.000,b0260b53-5fbe-417c-8434-48882b9cbf42
+DIRECT,Doubao-Seed-Code,ByteDance,Doubao-Seed-Code,1.000,66023d62-8824-4197-b1a5-786c3fcfa892
+REVIEW,ECHO_Ego_v2_14B,Unknown,,,
+LIKELY_ALIAS,ERNIE 4.5 300B A47B,Baidu,ERNIE-4.5-300B-A47B-PT,1.000,23d7ca53-6088-48f9-929f-8fdce85f7a03
+DIRECT,ERNIE 5.0 Thinking Preview,Baidu,ERNIE 5.0 Thinking Preview,1.000,050e0482-9ca4-44a6-a691-fcab4a91deb7
+REVIEW,ERNIE-4.5-21B-A3B-Base,Unknown,,,
+DIRECT,ERNIE-4.5-300B-A47B,Unknown,ERNIE-4.5-300B-A47B,1.000,23d7ca53-6088-48f9-929f-8fdce85f7a03
+REVIEW,ERNIE-4.5-300B-A47B-Base,Unknown,,,
+REVIEW,EXAONE 4.0 32B (Non-reasoning),LG AI Research,,,
+REVIEW,EXAONE 4.0 32B (Reasoning),LG AI Research,,,
+REVIEW,EXAONE 4.5 33B,LG AI Research,,,
+REVIEW,EXAONE-3.5-2.4B-Instruct,Unknown,,,
+REVIEW,EXAONE-3.5-32B-Instruct,Unknown,,,
+REVIEW,EXAONE-3.5-7.8B-Instruct,Unknown,,,
+REVIEW,EXAONE-4.0-32B,Unknown,,,
+REVIEW,Exaone 4.0 1.2B (Non-reasoning),LG AI Research,,,
+REVIEW,Exaone 4.0 1.2B (Reasoning),LG AI Research,,,
+REVIEW,Falcon-H1R-7B,TII UAE,,,
+REVIEW,Frogboss 32B 2510,Microsoft,,,
+REVIEW,Frogmini 14B 2510,Microsoft,,,
+REVIEW,G9v3-39A5B,AI9Stars,,,
+REVIEW,G9v3-3B,AI9Stars,,,
+DIRECT,GLM 4.5,Z.ai,GLM 4.5,1.000,01939a07-c94d-4a30-94b2-4b0290cf2a31
+DIRECT,GLM 4.6,Z.ai,GLM 4.6,1.000,e62a4268-8037-4a5b-8193-3cf64158abaa
+DIRECT,GLM 5,Z-AI,GLM 5,1.000,0a80c144-3a91-4b90-a2c7-08d2c38d58ae
+DIRECT,GLM 5V Turbo (Reasoning),Z AI,GLM 5V Turbo (Reasoning),1.000,1c448a67-0524-427b-95dd-c865b5f91cc1
+DIRECT,GLM-4-9B,Z AI,GLM-4-9B,1.000,4b38d949-dbab-41dd-8c72-0d703c9bde0a
+REVIEW,GLM-4-9B-Chat,Z AI,,,
+DIRECT,GLM-4.5,Z AI,GLM-4.5,1.000,01939a07-c94d-4a30-94b2-4b0290cf2a31
+DIRECT,GLM-4.5,Z.ai,GLM-4.5,1.000,01939a07-c94d-4a30-94b2-4b0290cf2a31
+DIRECT,GLM-4.5 (Reasoning),Z AI,GLM-4.5 (Reasoning),1.000,01939a07-c94d-4a30-94b2-4b0290cf2a31
+DIRECT,GLM-4.5-Air,Z AI,GLM-4.5-Air,1.000,ec3caa5b-328a-4d8d-8154-e3a42783c764
+DIRECT,GLM-4.5V (Non-reasoning),Z AI,GLM-4.5V (Non-reasoning),1.000,ca6c4f81-c021-4edd-9596-b52e97c0d880
+DIRECT,GLM-4.5V (Reasoning),Z AI,GLM-4.5V (Reasoning),1.000,ca6c4f81-c021-4edd-9596-b52e97c0d880
+DIRECT,GLM-4.6,Z.ai,GLM-4.6,1.000,e62a4268-8037-4a5b-8193-3cf64158abaa
+DIRECT,GLM-4.6 (Non-reasoning),Z AI,GLM-4.6 (Non-reasoning),1.000,e62a4268-8037-4a5b-8193-3cf64158abaa
+DIRECT,GLM-4.6 (Reasoning),Z AI,GLM-4.6 (Reasoning),1.000,e62a4268-8037-4a5b-8193-3cf64158abaa
+DIRECT,GLM-4.6V (Non-reasoning),Z AI,GLM-4.6V (Non-reasoning),1.000,4f7a5318-35de-4e43-9012-d01cf67f0215
+DIRECT,GLM-4.6V (Reasoning),Z AI,GLM-4.6V (Reasoning),1.000,4f7a5318-35de-4e43-9012-d01cf67f0215
+DIRECT,GLM-4.7 (Non-reasoning),Z AI,GLM-4.7 (Non-reasoning),1.000,26f89669-7287-4dfd-8f7a-bd152e0f53a2
+DIRECT,GLM-4.7 (Reasoning),Z AI,GLM-4.7 (Reasoning),1.000,26f89669-7287-4dfd-8f7a-bd152e0f53a2
+DIRECT,GLM-4.7-Flash (Non-reasoning),Z AI,GLM-4.7-Flash (Non-reasoning),1.000,3ad52a9a-0303-46f6-9790-eb3e6b506b6c
+DIRECT,GLM-4.7-Flash (Reasoning),Z AI,GLM-4.7-Flash (Reasoning),1.000,3ad52a9a-0303-46f6-9790-eb3e6b506b6c
+DIRECT,GLM-5,Z AI,GLM-5,1.000,0a80c144-3a91-4b90-a2c7-08d2c38d58ae
+DIRECT,GLM-5 (Non-reasoning),Z AI,GLM-5 (Non-reasoning),1.000,0a80c144-3a91-4b90-a2c7-08d2c38d58ae
+DIRECT,GLM-5 (Reasoning),Z AI,GLM-5 (Reasoning),1.000,0a80c144-3a91-4b90-a2c7-08d2c38d58ae
+DIRECT,GLM-5 (enabled),Zhipu AI,GLM-5 (enabled),1.000,8b7b733c-5c4a-4888-8111-5f3f699c6183
+DIRECT,GLM-5-Turbo,Z AI,GLM-5-Turbo,1.000,03e4072f-5836-43b5-b88e-0457b497c0b9
+DIRECT,GLM-5.1 (Non-reasoning),Z AI,GLM-5.1 (Non-reasoning),1.000,5333f970-a8c6-48cc-8282-2ab62ad4b165
+DIRECT,GLM-5.1 (Reasoning),Z AI,GLM-5.1 (Reasoning),1.000,5333f970-a8c6-48cc-8282-2ab62ad4b165
+DIRECT,GLM-5.2 (Non-reasoning),Z AI,GLM-5.2 (Non-reasoning),1.000,d2206d1e-6813-43b3-a6d4-89857a8363ec
+DIRECT,GLM-5.2 (max),Z AI,GLM-5.2 (max),1.000,d2206d1e-6813-43b3-a6d4-89857a8363ec
+DIRECT,GLM-5.2 (xhigh),Z.ai,GLM-5.2 (xhigh),1.000,d2206d1e-6813-43b3-a6d4-89857a8363ec
+DIRECT,GLM-5.3 (max),Z AI,GLM-5.3 (max),1.000,1b863b93-7712-499b-a9e2-82567603fb76
+DIRECT,GLM-5.3-Flash,Z AI,GLM-5.3-Flash,1.000,cd0aceed-903b-431a-a797-81cad48add30
+DIRECT,GPT 4.1,OpenAI,GPT 4.1,1.000,3ffbfd31-3137-44a3-9936-adda7cfb6846
+DIRECT,GPT 4.1 mini,OpenAI,GPT 4.1 mini,1.000,dad49240-6544-4c6b-bc0f-50b5af3f122c
+DIRECT,GPT 4o,OpenAI,GPT 4o,1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+DIRECT,GPT 5,OpenAI,GPT 5,1.000,47893569-7a4c-4dcd-b63d-1ce9730536d2
+DIRECT,GPT 5 mini,OpenAI,GPT 5 mini,1.000,79e2d7c6-1dbf-4e4f-a978-7ca98553e046
+DIRECT,GPT 5 nano,OpenAI,GPT 5 nano,1.000,70ad0b3a-67b3-4f3e-ac08-668a638cfde1
+DIRECT,GPT 5.1,OpenAI,GPT 5.1,1.000,a1d80be8-84ba-49eb-9cc4-89c93d5d100e
+DIRECT,GPT 5.1 Codex,OpenAI,GPT 5.1 Codex,1.000,03792d62-f763-4159-b948-07e47475d4a4
+DIRECT,GPT 5.2,OpenAI,GPT 5.2,1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,GPT 5.2 Codex,OpenAI,GPT 5.2 Codex,1.000,42c47664-c838-4514-8f27-7c36f5f9162e
+DIRECT,GPT-3.5,OpenAI,GPT-3.5,1.000,32c16fb3-5bb8-4ba2-854e-8ea8bcff7c46
+DIRECT,GPT-3.5 Turbo,OpenAI,GPT-3.5 Turbo,1.000,57f94516-2895-4cfa-9cbc-23529f462460
+DIRECT,GPT-4,OpenAI,GPT-4,1.000,23fdd5ed-fe96-43d1-8011-5a3de97a93e5
+DIRECT,GPT-4 (1106),OpenAI,GPT-4 (1106),1.000,23fdd5ed-fe96-43d1-8011-5a3de97a93e5
+DIRECT,GPT-4 Turbo,OpenAI,GPT-4 Turbo,1.000,350fee08-5c43-4d73-a8af-2fdf36715f58
+DIRECT,GPT-4-Turbo,OpenAI,GPT-4-Turbo,1.000,350fee08-5c43-4d73-a8af-2fdf36715f58
+DIRECT,GPT-4-Turbo-2024-04-09,OpenAI,GPT-4-Turbo-2024-04-09,1.000,fd32cd11-156b-495e-9cb7-a8ad850ee762
+FALLBACK,GPT-4-mini (high),OpenAI,GPT-4-mini,1.000,1c7e1fcb-5c1c-4f2c-8273-00dd4fdb4279
+DIRECT,GPT-4.1,OpenAI,GPT-4.1,1.000,3ffbfd31-3137-44a3-9936-adda7cfb6846
+DIRECT,GPT-4.1 mini,OpenAI,GPT-4.1 mini,1.000,dad49240-6544-4c6b-bc0f-50b5af3f122c
+DIRECT,GPT-4.1 nano,OpenAI,GPT-4.1 nano,1.000,82da8b5c-61a3-48bd-a2d5-7475a2e443ae
+DIRECT,GPT-4.1-mini,OpenAI,GPT-4.1-mini,1.000,dad49240-6544-4c6b-bc0f-50b5af3f122c
+REVIEW,GPT-4.5,OpenAI,,,
+REVIEW,GPT-4.5 (Preview),OpenAI,,,
+DIRECT,GPT-4O-2024-08-06,OpenAI,GPT-4O-2024-08-06,1.000,1dca9d3e-51a2-42e7-b2f9-c4bb5b5ccc12
+DIRECT,GPT-4O-mini-2024-07-18,OpenAI,GPT-4O-mini-2024-07-18,1.000,5ceb499f-97f3-4abb-82a6-16001beccd79
+DIRECT,GPT-4o,OpenAI,GPT-4o,1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+DIRECT,GPT-4o (2024-05-13),OpenAI,GPT-4o (2024-05-13),1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+DIRECT,GPT-4o (2024-08-06),OpenAI,GPT-4o (2024-08-06),1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+DIRECT,GPT-4o (2024-11-20),OpenAI,GPT-4o (2024-11-20),1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+DIRECT,GPT-4o (Aug '24),OpenAI,GPT-4o (Aug '24),1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+DIRECT,GPT-4o (ChatGPT),OpenAI,GPT-4o (ChatGPT),1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+DIRECT,"GPT-4o (March 2025, chatgpt-4o-latest)",OpenAI,"GPT-4o (March 2025, chatgpt-4o-latest)",1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+DIRECT,GPT-4o (May '24),OpenAI,GPT-4o (May '24),1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+DIRECT,GPT-4o (Nov '24),OpenAI,GPT-4o (Nov '24),1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+DIRECT,GPT-4o mini,OpenAI,GPT-4o mini,1.000,5b47c6b5-586f-466a-bd4f-f5c18bff9a00
+DIRECT,GPT-4o-mini,OpenAI,GPT-4o-mini,1.000,5b47c6b5-586f-466a-bd4f-f5c18bff9a00
+DIRECT,GPT-5,OpenAI,GPT-5,1.000,47893569-7a4c-4dcd-b63d-1ce9730536d2
+DIRECT,GPT-5 (ChatGPT),OpenAI,GPT-5 (ChatGPT),1.000,47893569-7a4c-4dcd-b63d-1ce9730536d2
+DIRECT,GPT-5 (high),OpenAI,GPT-5 (high),1.000,47893569-7a4c-4dcd-b63d-1ce9730536d2
+DIRECT,GPT-5 (low),OpenAI,GPT-5 (low),1.000,47893569-7a4c-4dcd-b63d-1ce9730536d2
+DIRECT,GPT-5 (medium),OpenAI,GPT-5 (medium),1.000,47893569-7a4c-4dcd-b63d-1ce9730536d2
+DIRECT,GPT-5 (minimal),OpenAI,GPT-5 (minimal),1.000,47893569-7a4c-4dcd-b63d-1ce9730536d2
+DIRECT,GPT-5 Codex (high),OpenAI,GPT-5 Codex (high),1.000,632cf95c-f027-4327-98ac-d44edd8d14c4
+DIRECT,GPT-5 mini (high),OpenAI,GPT-5 mini (high),1.000,79e2d7c6-1dbf-4e4f-a978-7ca98553e046
+DIRECT,GPT-5 mini (medium),OpenAI,GPT-5 mini (medium),1.000,79e2d7c6-1dbf-4e4f-a978-7ca98553e046
+DIRECT,GPT-5 mini (minimal),OpenAI,GPT-5 mini (minimal),1.000,79e2d7c6-1dbf-4e4f-a978-7ca98553e046
+DIRECT,GPT-5 nano (high),OpenAI,GPT-5 nano (high),1.000,70ad0b3a-67b3-4f3e-ac08-668a638cfde1
+DIRECT,GPT-5 nano (medium),OpenAI,GPT-5 nano (medium),1.000,70ad0b3a-67b3-4f3e-ac08-668a638cfde1
+DIRECT,GPT-5 nano (minimal),OpenAI,GPT-5 nano (minimal),1.000,70ad0b3a-67b3-4f3e-ac08-668a638cfde1
+DIRECT,GPT-5(high),OpenAI,GPT-5(high),1.000,47893569-7a4c-4dcd-b63d-1ce9730536d2
+DIRECT,GPT-5.1,OpenAI,GPT-5.1,1.000,a1d80be8-84ba-49eb-9cc4-89c93d5d100e
+DIRECT,GPT-5.1 (Non-reasoning),OpenAI,GPT-5.1 (Non-reasoning),1.000,a1d80be8-84ba-49eb-9cc4-89c93d5d100e
+DIRECT,GPT-5.1 (high),OpenAI,GPT-5.1 (high),1.000,a1d80be8-84ba-49eb-9cc4-89c93d5d100e
+DIRECT,GPT-5.1 Codex (high),OpenAI,GPT-5.1 Codex (high),1.000,03792d62-f763-4159-b948-07e47475d4a4
+DIRECT,GPT-5.1 Codex mini (high),OpenAI,GPT-5.1 Codex mini (high),1.000,995ba8b5-6c3f-4c5c-bcbb-44a45d23e3de
+DIRECT,GPT-5.2,OpenAI,GPT-5.2,1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,GPT-5.2 (Non-reasoning),OpenAI,GPT-5.2 (Non-reasoning),1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,GPT-5.2 (high),OpenAI,GPT-5.2 (high),1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,GPT-5.2 (medium),OpenAI,GPT-5.2 (medium),1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,GPT-5.2 (none),OpenAI,GPT-5.2 (none),1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,GPT-5.2 (xhigh),OpenAI,GPT-5.2 (xhigh),1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,GPT-5.2 Codex (xhigh),OpenAI,GPT-5.2 Codex (xhigh),1.000,42c47664-c838-4514-8f27-7c36f5f9162e
+DIRECT,GPT-5.3 Codex (xhigh),OpenAI,GPT-5.3 Codex (xhigh),1.000,4e3e611e-7ee7-4a2b-9cc7-bf50e4221200
+DIRECT,GPT-5.4,OpenAI,GPT-5.4,1.000,718a98fe-6aa1-43db-a916-4dbf786c13a8
+DIRECT,GPT-5.4 (Non-reasoning),OpenAI,GPT-5.4 (Non-reasoning),1.000,718a98fe-6aa1-43db-a916-4dbf786c13a8
+DIRECT,GPT-5.4 (low),OpenAI,GPT-5.4 (low),1.000,718a98fe-6aa1-43db-a916-4dbf786c13a8
+DIRECT,GPT-5.4 (xhigh),OpenAI,GPT-5.4 (xhigh),1.000,718a98fe-6aa1-43db-a916-4dbf786c13a8
+DIRECT,GPT-5.4 mini (Non-Reasoning),OpenAI,GPT-5.4 mini (Non-Reasoning),1.000,c2a9f2b3-2e0e-41c6-86a2-a0369ccd85ef
+DIRECT,GPT-5.4 mini (medium),OpenAI,GPT-5.4 mini (medium),1.000,c2a9f2b3-2e0e-41c6-86a2-a0369ccd85ef
+DIRECT,GPT-5.4 mini (xhigh),OpenAI,GPT-5.4 mini (xhigh),1.000,c2a9f2b3-2e0e-41c6-86a2-a0369ccd85ef
+DIRECT,GPT-5.4 nano (Non-Reasoning),OpenAI,GPT-5.4 nano (Non-Reasoning),1.000,e53ed681-6431-4368-9183-eb41e5973f3a
+DIRECT,GPT-5.4 nano (medium),OpenAI,GPT-5.4 nano (medium),1.000,e53ed681-6431-4368-9183-eb41e5973f3a
+DIRECT,GPT-5.4 nano (xhigh),OpenAI,GPT-5.4 nano (xhigh),1.000,e53ed681-6431-4368-9183-eb41e5973f3a
+DIRECT,GPT-5.5 (Non-reasoning),OpenAI,GPT-5.5 (Non-reasoning),1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,GPT-5.5 (high),OpenAI,GPT-5.5 (high),1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,GPT-5.5 (low),OpenAI,GPT-5.5 (low),1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,GPT-5.5 (medium),OpenAI,GPT-5.5 (medium),1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,GPT-5.5 (xhigh),OpenAI,GPT-5.5 (xhigh),1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+REVIEW,GPT-5.5 Instant (June 2026),OpenAI,,,
+REVIEW,GPT-5.5 Instant (May 2026),OpenAI,,,
+DIRECT,GPT-5.6 Luna (Non-reasoning),OpenAI,GPT-5.6 Luna (Non-reasoning),1.000,a3715a7d-f570-407c-90fe-13ccfd476be0
+DIRECT,GPT-5.6 Luna (high),OpenAI,GPT-5.6 Luna (high),1.000,a3715a7d-f570-407c-90fe-13ccfd476be0
+DIRECT,GPT-5.6 Luna (low),OpenAI,GPT-5.6 Luna (low),1.000,a3715a7d-f570-407c-90fe-13ccfd476be0
+DIRECT,GPT-5.6 Luna (max),OpenAI,GPT-5.6 Luna (max),1.000,a3715a7d-f570-407c-90fe-13ccfd476be0
+DIRECT,GPT-5.6 Luna (medium),OpenAI,GPT-5.6 Luna (medium),1.000,a3715a7d-f570-407c-90fe-13ccfd476be0
+DIRECT,GPT-5.6 Luna (xhigh),OpenAI,GPT-5.6 Luna (xhigh),1.000,a3715a7d-f570-407c-90fe-13ccfd476be0
+DIRECT,GPT-5.6 Sol (Non-reasoning),OpenAI,GPT-5.6 Sol (Non-reasoning),1.000,7672da2a-cb1d-4bbb-9ce5-41bf6504a3f1
+DIRECT,GPT-5.6 Sol (high),OpenAI,GPT-5.6 Sol (high),1.000,7672da2a-cb1d-4bbb-9ce5-41bf6504a3f1
+DIRECT,GPT-5.6 Sol (low),OpenAI,GPT-5.6 Sol (low),1.000,7672da2a-cb1d-4bbb-9ce5-41bf6504a3f1
+DIRECT,GPT-5.6 Sol (max),OpenAI,GPT-5.6 Sol (max),1.000,7672da2a-cb1d-4bbb-9ce5-41bf6504a3f1
+DIRECT,GPT-5.6 Sol (medium),OpenAI,GPT-5.6 Sol (medium),1.000,7672da2a-cb1d-4bbb-9ce5-41bf6504a3f1
+DIRECT,GPT-5.6 Sol (xhigh),OpenAI,GPT-5.6 Sol (xhigh),1.000,7672da2a-cb1d-4bbb-9ce5-41bf6504a3f1
+DIRECT,GPT-5.6 Terra (Non-reasoning),OpenAI,GPT-5.6 Terra (Non-reasoning),1.000,600fb834-8e5c-4579-b714-e3fcfaa1d45b
+DIRECT,GPT-5.6 Terra (high),OpenAI,GPT-5.6 Terra (high),1.000,600fb834-8e5c-4579-b714-e3fcfaa1d45b
+DIRECT,GPT-5.6 Terra (low),OpenAI,GPT-5.6 Terra (low),1.000,600fb834-8e5c-4579-b714-e3fcfaa1d45b
+DIRECT,GPT-5.6 Terra (max),OpenAI,GPT-5.6 Terra (max),1.000,600fb834-8e5c-4579-b714-e3fcfaa1d45b
+DIRECT,GPT-5.6 Terra (medium),OpenAI,GPT-5.6 Terra (medium),1.000,600fb834-8e5c-4579-b714-e3fcfaa1d45b
+DIRECT,GPT-5.6 Terra (xhigh),OpenAI,GPT-5.6 Terra (xhigh),1.000,600fb834-8e5c-4579-b714-e3fcfaa1d45b
+DIRECT,GPT-5.6-sol (xhigh),OpenAI,GPT-5.6-sol (xhigh),1.000,7672da2a-cb1d-4bbb-9ce5-41bf6504a3f1
+REVIEW,GPT-o1,OpenAI,,,
+REVIEW,GPT-o1-mini,OpenAI,,,
+REVIEW,GPT-o3-high,OpenAI,,,
+REVIEW,GPT-o3-mini,OpenAI,,,
+DIRECT,GPT-oss-120B(high),OpenAI,GPT-oss-120B(high),1.000,ea0abefd-ba7c-4713-86ca-729414d51979
+DIRECT,GPT-oss-20B(high),OpenAI,GPT-oss-20B(high),1.000,4f39df5b-7c02-4bc9-865c-10b05bbc9694
+DIRECT,GPT-oss-20B(medium),OpenAI,GPT-oss-20B(medium),1.000,4f39df5b-7c02-4bc9-865c-10b05bbc9694
+REVIEW,Gemini 1.0 Pro,Google,,,
+REVIEW,Gemini 1.0 Ultra,Google,,,
+REVIEW,Gemini 1.5 Flash (May '24),Google,,,
+REVIEW,Gemini 1.5 Flash (Sep '24),Google,,,
+REVIEW,Gemini 1.5 Flash-8B,Google,,,
+REVIEW,Gemini 1.5 Pro (May '24),Google,,,
+REVIEW,Gemini 1.5 Pro (Sep '24),Google,,,
+DIRECT,Gemini 2.0 Flash,Google DeepMind,Gemini 2.0 Flash,1.000,4740cb7d-3376-444a-abbf-5b3e8542ced9
+DIRECT,Gemini 2.0 Flash (Experimental),Google DeepMind,Gemini 2.0 Flash (Experimental),1.000,4740cb7d-3376-444a-abbf-5b3e8542ced9
+DIRECT,Gemini 2.0 Flash (Feb '25),Google,Gemini 2.0 Flash (Feb '25),1.000,4740cb7d-3376-444a-abbf-5b3e8542ced9
+DIRECT,Gemini 2.0 Flash (experimental),Google,Gemini 2.0 Flash (experimental),1.000,4740cb7d-3376-444a-abbf-5b3e8542ced9
+DIRECT,Gemini 2.0 Flash (v20241212-experimental),Google DeepMind,Gemini 2.0 Flash (v20241212-experimental),1.000,4740cb7d-3376-444a-abbf-5b3e8542ced9
+REVIEW,Gemini 2.0 Flash Thinking Experimental (Dec '24),Google,,,
+REVIEW,Gemini 2.0 Flash Thinking Experimental (Jan '25),Google,,,
+DIRECT,Gemini 2.0 Flash-Lite (Feb '25),Google,Gemini 2.0 Flash-Lite (Feb '25),1.000,d714392f-f5c3-4bf1-858a-807c97bebb44
+DIRECT,Gemini 2.0 Flash-Lite (Preview),Google,Gemini 2.0 Flash-Lite (Preview),1.000,d714392f-f5c3-4bf1-858a-807c97bebb44
+REVIEW,Gemini 2.0 Pro Experimental (Feb '25),Google,,,
+DIRECT,Gemini 2.5 Flash,Google DeepMind,Gemini 2.5 Flash,1.000,0641bfd7-e04a-4e6a-92d0-e9ddfdea0c16
+DIRECT,Gemini 2.5 Flash (Non-reasoning),Google,Gemini 2.5 Flash (Non-reasoning),1.000,7aadb3c7-8d10-4f00-84e4-f9b1078f1609
+DIRECT,Gemini 2.5 Flash (Reasoning),Google,Gemini 2.5 Flash (Reasoning),1.000,7aadb3c7-8d10-4f00-84e4-f9b1078f1609
+DIRECT,Gemini 2.5 Flash Preview (Non-reasoning),Google,Gemini 2.5 Flash Preview (Non-reasoning),1.000,dc83d90a-87ca-4d97-9ec5-9084b5ddd23f
+DIRECT,Gemini 2.5 Flash Preview (Reasoning),Google,Gemini 2.5 Flash Preview (Reasoning),1.000,dc83d90a-87ca-4d97-9ec5-9084b5ddd23f
+DIRECT,Gemini 2.5 Flash Preview (Sep '25) (Non-reasoning),Google,Gemini 2.5 Flash Preview (Sep '25) (Non-reasoning),1.000,dc83d90a-87ca-4d97-9ec5-9084b5ddd23f
+DIRECT,Gemini 2.5 Flash Preview (Sep '25) (Reasoning),Google,Gemini 2.5 Flash Preview (Sep '25) (Reasoning),1.000,dc83d90a-87ca-4d97-9ec5-9084b5ddd23f
+DIRECT,Gemini 2.5 Flash-Lite (Non-reasoning),Google,Gemini 2.5 Flash-Lite (Non-reasoning),1.000,4beb3189-a5ef-4089-afba-3ff2626d74d9
+DIRECT,Gemini 2.5 Flash-Lite (Reasoning),Google,Gemini 2.5 Flash-Lite (Reasoning),1.000,4beb3189-a5ef-4089-afba-3ff2626d74d9
+DIRECT,Gemini 2.5 Flash-Lite Preview (Sep '25) (Non-reasoning),Google,Gemini 2.5 Flash-Lite Preview (Sep '25) (Non-reasoning),1.000,0b5c26c9-1a61-4bb4-8a45-40cb66395357
+DIRECT,Gemini 2.5 Flash-Lite Preview (Sep '25) (Reasoning),Google,Gemini 2.5 Flash-Lite Preview (Sep '25) (Reasoning),1.000,0b5c26c9-1a61-4bb4-8a45-40cb66395357
+DIRECT,Gemini 2.5 Pro,Google,Gemini 2.5 Pro,1.000,26d0c47c-9372-45d1-8182-f9c3c22d6be4
+DIRECT,Gemini 2.5 Pro,Google DeepMind,Gemini 2.5 Pro,1.000,0931298c-c204-4204-b752-51a034d7ed6d
+DIRECT,Gemini 2.5 Pro (high),Google,Gemini 2.5 Pro (high),1.000,26d0c47c-9372-45d1-8182-f9c3c22d6be4
+REVIEW,Gemini 2.5 Pro Preview (Mar' 25),Google,,,
+REVIEW,Gemini 2.5 Pro Preview (May' 25),Google,,,
+DIRECT,Gemini 3 Flash,Google DeepMind,Gemini 3 Flash,1.000,33b5e99e-452c-4e46-9a2e-752cbcb19c1d
+DIRECT,Gemini 3 Flash (high),Google,Gemini 3 Flash (high),1.000,33b5e99e-452c-4e46-9a2e-752cbcb19c1d
+DIRECT,Gemini 3 Flash Preview (Non-reasoning),Google,Gemini 3 Flash Preview (Non-reasoning),1.000,f14f0b8f-66a2-4fa4-9645-6d900ac1a565
+DIRECT,Gemini 3 Flash Preview (Reasoning),Google,Gemini 3 Flash Preview (Reasoning),1.000,f14f0b8f-66a2-4fa4-9645-6d900ac1a565
+DIRECT,Gemini 3 Pro,Google DeepMind,Gemini 3 Pro,1.000,e6d0deb3-ccd1-428d-9d87-4576fd9e4f43
+DIRECT,Gemini 3 Pro (high),Google,Gemini 3 Pro (high),1.000,2ee84a14-44ff-451e-b574-157f36ab7761
+FALLBACK,Gemini 3 Pro Preview,Google DeepMind,Gemini 3 Pro,1.000,e6d0deb3-ccd1-428d-9d87-4576fd9e4f43
+LIKELY_ALIAS,Gemini 3 Pro Preview (high),Google,Gemini 3.1 Pro (Preview Custom Tools),1.000,d0a40e58-f4a6-4144-9969-92c2e7be2a31
+LIKELY_ALIAS,Gemini 3 Pro Preview (low),Google,Gemini 3.1 Pro (Preview Custom Tools),1.000,d0a40e58-f4a6-4144-9969-92c2e7be2a31
+REVIEW,Gemini 3.0 Pro,Google,,,
+DIRECT,Gemini 3.1 Flash-Lite,Google,Gemini 3.1 Flash-Lite,1.000,16d44669-3cfa-4448-af7e-ea48b1279c0d
+DIRECT,Gemini 3.1 Pro Preview,Google,Gemini 3.1 Pro Preview,1.000,8d770833-7198-4b0d-be8d-16f32561909e
+DIRECT,Gemini 3.1 Pro Preview (high),Google,Gemini 3.1 Pro Preview (high),1.000,8d770833-7198-4b0d-be8d-16f32561909e
+DIRECT,Gemini 3.5 Flash (high),Google,Gemini 3.5 Flash (high),1.000,31343e73-b2ba-4daf-97bd-1375da36cc89
+DIRECT,Gemini 3.5 Flash (medium),Google,Gemini 3.5 Flash (medium),1.000,31343e73-b2ba-4daf-97bd-1375da36cc89
+DIRECT,Gemini 3.5 Flash (minimal),Google,Gemini 3.5 Flash (minimal),1.000,31343e73-b2ba-4daf-97bd-1375da36cc89
+DIRECT,Gemini 3.5 Flash-Lite,Google,Gemini 3.5 Flash-Lite,1.000,1313f073-7487-4944-ae2b-5658ba169568
+DIRECT,Gemini 3.6 Flash (high),Google,Gemini 3.6 Flash (high),1.000,fc58c264-b7c7-4c94-818f-3c934e86071b
+DIRECT,Gemini 3.7 Flash (high),Google,Gemini 3.7 Flash (high),1.000,6c096f02-911b-44d7-8b93-fbd2d60f2e88
+DIRECT,Gemini 3.7 Flash (low),Google,Gemini 3.7 Flash (low),1.000,6c096f02-911b-44d7-8b93-fbd2d60f2e88
+DIRECT,Gemini 3.7 Flash (medium),Google,Gemini 3.7 Flash (medium),1.000,6c096f02-911b-44d7-8b93-fbd2d60f2e88
+REVIEW,Gemini-1.5-Flash,Google,,,
+REVIEW,Gemini-1.5-Flash-002,Google,,,
+DIRECT,Gemini-1.5-Pro,Google,Gemini-1.5-Pro,1.000,d2b45dac-17ee-439b-aad9-75e747fb41a3
+REVIEW,Gemini-1.5-Pro-002,Google,,,
+DIRECT,Gemini-2.0-Flash,Google,Gemini-2.0-Flash,1.000,4740cb7d-3376-444a-abbf-5b3e8542ced9
+DIRECT,Gemini-2.0-Flash-Lite,Google,Gemini-2.0-Flash-Lite,1.000,d714392f-f5c3-4bf1-858a-807c97bebb44
+FALLBACK,Gemini-2.0-Flash-exp,Google,Gemini-2.0-Flash,1.000,4740cb7d-3376-444a-abbf-5b3e8542ced9
+DIRECT,Gemini-2.0-Pro,Google,Gemini-2.0-Pro,1.000,4da3adea-fa7d-484c-9f01-0e2a3ba9be99
+REVIEW,Gemini-2.5-Flash-04-17,Google,,,
+DIRECT,Gemini-2.5-Flash-05-20,Google,Gemini-2.5-Flash-05-20,1.000,02eef6dc-b4f1-48af-ab13-68ddc97e5c1b
+DIRECT,Gemini-2.5-Pro,Google,Gemini-2.5-Pro,1.000,26d0c47c-9372-45d1-8182-f9c3c22d6be4
+DIRECT,Gemini-2.5-Pro-05-06,Google,Gemini-2.5-Pro-05-06,1.000,bd623553-b7ef-425d-86e8-b91c97f5e745
+DIRECT,Gemini-2.5-Pro-06-05,Google,Gemini-2.5-Pro-06-05,1.000,689f4c8f-9864-4781-b6e7-66fdb16526ef
+DIRECT,Gemini-2.5-Pro-Exp-03-25,Google,Gemini-2.5-Pro-Exp-03-25,1.000,b8c8c6af-6a6a-4e40-bbde-12725a522f0d
+DIRECT,Gemini-3-Flash(12/25),Google,Gemini-3-Flash(12/25),1.000,33b5e99e-452c-4e46-9a2e-752cbcb19c1d
+DIRECT,Gemini-3-Pro(11/25),Google,Gemini-3-Pro(11/25),1.000,2ee84a14-44ff-451e-b574-157f36ab7761
+DIRECT,Gemini-3.1-Flash-Lite-Preview,Google,Gemini-3.1-Flash-Lite-Preview,1.000,4bb5c559-97dd-4882-8dcd-6be05ef8a938
+DIRECT,Gemini-3.1-Pro,Google,Gemini-3.1-Pro,1.000,58d66f23-4c5e-40eb-9c58-34cad329aa71
+REVIEW,Gemma 3 12B Instruct,Google,,,
+DIRECT,Gemma 3 1B Instruct,Google,Gemma 3 1B Instruct,1.000,bcc790d9-bcbd-48c9-ae23-2b076fecbab8
+REVIEW,Gemma 3 270M,Google,,,
+DIRECT,Gemma 3 27B Instruct,Google,Gemma 3 27B Instruct,1.000,2071dc37-7bec-485e-a463-93b5d76f5a28
+DIRECT,Gemma 3 4B Instruct,Google,Gemma 3 4B Instruct,1.000,a99e6375-7e9e-4d06-8d03-5edd54b827b3
+REVIEW,Gemma 3n E2B Instruct,Google,,,
+REVIEW,Gemma 3n E4B Instruct,Google,,,
+REVIEW,Gemma 3n E4B Instruct Preview (May '25),Google,,,
+DIRECT,Gemma 4 12B (Non-reasoning),Google,Gemma 4 12B (Non-reasoning),1.000,d51d1570-7ff7-403b-8e43-8b42e64a80cc
+DIRECT,Gemma 4 12B (Reasoning),Google,Gemma 4 12B (Reasoning),1.000,d51d1570-7ff7-403b-8e43-8b42e64a80cc
+DIRECT,Gemma 4 26B A4B (Non-reasoning),Google,Gemma 4 26B A4B (Non-reasoning),1.000,d71dde5f-08a2-4455-8f55-898bc226b1d6
+DIRECT,Gemma 4 26B A4B (Reasoning),Google,Gemma 4 26B A4B (Reasoning),1.000,d71dde5f-08a2-4455-8f55-898bc226b1d6
+DIRECT,Gemma 4 31B (Non-reasoning),Google,Gemma 4 31B (Non-reasoning),1.000,5138cdbf-a864-4af6-a532-6fd69f9371be
+DIRECT,Gemma 4 31B (Reasoning),Google,Gemma 4 31B (Reasoning),1.000,5138cdbf-a864-4af6-a532-6fd69f9371be
+LIKELY_ALIAS,Gemma 4 E2B (Non-reasoning),Google,gemma-4-E2B-it,0.980,116ed6b5-ae9f-4c60-9a50-9df912449711
+LIKELY_ALIAS,Gemma 4 E2B (Reasoning),Google,gemma-4-E2B-it,0.980,116ed6b5-ae9f-4c60-9a50-9df912449711
+DIRECT,Gemma 4 E4B (Non-reasoning),Google,Gemma 4 E4B (Non-reasoning),1.000,20aaedb3-adf9-410e-b252-aca2c76eb5c8
+DIRECT,Gemma 4 E4B (Reasoning),Google,Gemma 4 E4B (Reasoning),1.000,20aaedb3-adf9-410e-b252-aca2c76eb5c8
+DIRECT,Gemma-2-27B-it,Unknown,Gemma-2-27B-it,1.000,f2d335c5-d492-4279-ba2b-236136727ca2
+REVIEW,Gemma-2-2B-it,Unknown,,,
+DIRECT,Gemma-2-9B,Unknown,Gemma-2-9B,1.000,b7594f60-6e84-426d-80b4-ab6cda73b80c
+DIRECT,Gemma-2-9B-it,Unknown,Gemma-2-9B-it,1.000,3e4d57f4-0649-4ead-bec1-8f5a3e157c4c
+DIRECT,Gemma-2B,Unknown,Gemma-2B,1.000,962ba051-f738-4978-a00a-8a5d03174420
+DIRECT,Gemma-3-12B-it,Unknown,Gemma-3-12B-it,1.000,4144f446-3e8e-419c-a847-7345c9e6844c
+DIRECT,Gemma-3-1B-it,Unknown,Gemma-3-1B-it,1.000,bcc790d9-bcbd-48c9-ae23-2b076fecbab8
+DIRECT,Gemma-3-27B-it,Unknown,Gemma-3-27B-it,1.000,dfd3dbdf-8978-4b21-9175-45492437a45c
+DIRECT,Gemma-3-4B-it,Unknown,Gemma-3-4B-it,1.000,310edca8-5555-4b31-9c41-997a0ceba0c8
+DIRECT,Gemma-7B,Unknown,Gemma-7B,1.000,c4c03aa5-9c79-4973-8c1d-a8a068ece66e
+REVIEW,General-Reasoner-14B,Unknown,,,
+REVIEW,General-Reasoner-7B,Unknown,,,
+REVIEW,Granite 3.3 8B (Non-reasoning),IBM,,,
+REVIEW,Granite 4.0 1B,IBM,,,
+REVIEW,Granite 4.0 350M,IBM,,,
+REVIEW,Granite 4.0 H 1B,IBM,,,
+REVIEW,Granite 4.0 H 350M,IBM,,,
+REVIEW,Granite 4.0 H Small,IBM,,,
+DIRECT,Granite 4.0 Micro,IBM,Granite 4.0 Micro,1.000,0eddb8fe-9800-48e1-9c18-d38b5fe8b8a3
+REVIEW,Granite 4.1 30B,IBM,,,
+REVIEW,Granite 4.1 3B,IBM,,,
+DIRECT,Granite 4.1 8B,IBM,Granite 4.1 8B,1.000,d27256c5-24c2-437f-9847-8fe9d3fa808d
+REVIEW,Granite 4.2 30B,IBM,ibm-granite/granite-4.2-30b,0.786,ba17f94f-59f2-42ed-8cce-98482f1980ba
+REVIEW,Granite 4.2 3B,IBM,ibm-granite/granite-4.2-3b,0.767,e3ce8a06-4611-497a-8ebc-41b48dff57b8
+REVIEW,Granite 4.2 8B,IBM,ibm-granite/granite-4.2-8b,0.767,f00ef34d-5485-4fbe-adb0-824b8f600451
+REVIEW,Granite-3.0-2B-Base,Unknown,,,
+REVIEW,Granite-3.0-8B-Base,Unknown,,,
+REVIEW,Granite-3.1-1B-A400M-Base,Unknown,,,
+REVIEW,Granite-3.1-1B-A400M-Instruct,Unknown,,,
+REVIEW,Granite-3.1-2B-Base,Unknown,,,
+REVIEW,Granite-3.1-2B-Instruct,Unknown,,,
+REVIEW,Granite-3.1-3B-A800M-Base,Unknown,,,
+REVIEW,Granite-3.1-3B-A800M-Instruct,Unknown,,,
+REVIEW,Granite-3.1-8B-Base,Unknown,,,
+REVIEW,Granite-3.1-8B-Instruct,Unknown,,,
+REVIEW,Grok 2 (Dec '24),SpaceXAI,,,
+DIRECT,Grok 3,SpaceXAI,Grok 3,1.000,51f0d9f6-43a0-42bb-b95d-6952abf5d577
+FALLBACK,Grok 3 Reasoning Beta,SpaceXAI,Grok 3 Reasoning,1.000,51f0d9f6-43a0-42bb-b95d-6952abf5d577
+DIRECT,Grok 3 mini Reasoning (high),SpaceXAI,Grok 3 mini Reasoning (high),1.000,f6bb2c16-d39a-4259-b54e-49084aac36de
+DIRECT,Grok 4,SpaceXAI,Grok 4,1.000,19adadf3-4595-4b99-8609-9202300eabdf
+DIRECT,Grok 4 Fast (Non-reasoning),SpaceXAI,Grok 4 Fast (Non-reasoning),1.000,e68b6c3d-1e2f-4d7c-9530-17879011efbf
+DIRECT,Grok 4 Fast (Reasoning),SpaceXAI,Grok 4 Fast (Reasoning),1.000,e68b6c3d-1e2f-4d7c-9530-17879011efbf
+DIRECT,Grok 4 fast (high),xAI,Grok 4 fast (high),1.000,e68b6c3d-1e2f-4d7c-9530-17879011efbf
+DIRECT,Grok 4.1 Fast (Non-reasoning),SpaceXAI,Grok 4.1 Fast (Non-reasoning),1.000,cd1a7d89-fe69-4775-97b0-898406073b2d
+DIRECT,Grok 4.1 Fast (Reasoning),SpaceXAI,Grok 4.1 Fast (Reasoning),1.000,cd1a7d89-fe69-4775-97b0-898406073b2d
+DIRECT,Grok 4.1 fast (high),xAI,Grok 4.1 fast (high),1.000,cd1a7d89-fe69-4775-97b0-898406073b2d
+FALLBACK,Grok 4.2 (high),xAI,Grok 4.2,1.000,fc53e14b-4dbc-4077-a12b-3936820a8566
+DIRECT,Grok 4.20 0309 (Non-reasoning),SpaceXAI,Grok 4.20 0309 (Non-reasoning),1.000,8e1bed41-cfc0-4c07-a108-1af1e2f29ccf
+DIRECT,Grok 4.20 0309 (Reasoning),SpaceXAI,Grok 4.20 0309 (Reasoning),1.000,8e1bed41-cfc0-4c07-a108-1af1e2f29ccf
+REVIEW,Grok 4.20 0309 v2 (Non-reasoning),SpaceXAI,,,
+REVIEW,Grok 4.20 0309 v2 (Reasoning),SpaceXAI,,,
+DIRECT,Grok 4.3 (Non-reasoning),SpaceXAI,Grok 4.3 (Non-reasoning),1.000,78c78c0a-d12c-4be2-8efa-ef0b34cb8793
+DIRECT,Grok 4.3 (high),SpaceXAI,Grok 4.3 (high),1.000,78c78c0a-d12c-4be2-8efa-ef0b34cb8793
+DIRECT,Grok 4.3 (low),SpaceXAI,Grok 4.3 (low),1.000,78c78c0a-d12c-4be2-8efa-ef0b34cb8793
+DIRECT,Grok 4.3 (medium),SpaceXAI,Grok 4.3 (medium),1.000,78c78c0a-d12c-4be2-8efa-ef0b34cb8793
+DIRECT,Grok 4.5 (high),SpaceXAI,Grok 4.5 (high),1.000,da887c35-7859-4cd1-bf07-a0ea66c260c0
+DIRECT,Grok 4.5 (high),xAI,Grok 4.5 (high),1.000,3b9614c1-299f-4f5e-bf5f-a2e3835830ae
+DIRECT,Grok 4.6 (high),SpaceXAI,Grok 4.6 (high),1.000,973ee774-0be9-445c-8c74-3314db4d1f17
+DIRECT,Grok 4.6 (low),SpaceXAI,Grok 4.6 (low),1.000,973ee774-0be9-445c-8c74-3314db4d1f17
+DIRECT,Grok 4.6 (medium),SpaceXAI,Grok 4.6 (medium),1.000,973ee774-0be9-445c-8c74-3314db4d1f17
+DIRECT,Grok 4.6 (xhigh),SpaceXAI,Grok 4.6 (xhigh),1.000,973ee774-0be9-445c-8c74-3314db4d1f17
+FALLBACK,Grok Beta,SpaceXAI,Grok,1.000,3bf7c52b-ac86-4f7d-8e99-51f264bc2118
+REVIEW,Grok Build 0.1 0616,SpaceXAI,,,
+DIRECT,Grok Code Fast 1,SpaceXAI,Grok Code Fast 1,1.000,4933c392-92c5-42e5-b7bc-a24e9f154536
+DIRECT,Grok-1,SpaceXAI,Grok-1,1.000,3bf7c52b-ac86-4f7d-8e99-51f264bc2118
+DIRECT,Grok-2,SpaceXAI,Grok-2,1.000,f09144bd-c4ce-4a0d-afef-c5cfec94dbf6
+REVIEW,Grok-2-mini,SpaceXAI,,,
+DIRECT,Grok-3-Mini (High),SpaceXAI,Grok-3-Mini (High),1.000,f6bb2c16-d39a-4259-b54e-49084aac36de
+DIRECT,Grok-3-mini,SpaceXAI,Grok-3-mini,1.000,f6bb2c16-d39a-4259-b54e-49084aac36de
+DIRECT,Grok-4,SpaceXAI,Grok-4,1.000,19adadf3-4595-4b99-8609-9202300eabdf
+DIRECT,Grok-4.1-Fast(Non-Reasoning),SpaceXAI,Grok-4.1-Fast(Non-Reasoning),1.000,cd1a7d89-fe69-4775-97b0-898406073b2d
+DIRECT,Grok-4.1-Fast(Reasoning),SpaceXAI,Grok-4.1-Fast(Reasoning),1.000,cd1a7d89-fe69-4775-97b0-898406073b2d
+FALLBACK,Grok3-Beta,SpaceXAI,Grok3,1.000,51f0d9f6-43a0-42bb-b95d-6952abf5d577
+FALLBACK,Grok3-mini-Beta,SpaceXAI,Grok3-mini,1.000,f6bb2c16-d39a-4259-b54e-49084aac36de
+REVIEW,Hermes 3 - Llama-3.1 70B,Nous Research,NousResearch/Hermes-3-Llama-3.1-70B,0.739,160f2ef8-f9e4-4dfa-8699-2bd0845d424c
+REVIEW,Hermes 4 - Llama-3.1 405B (Non-reasoning),Nous Research,NousResearch/Hermes-3-Llama-3.1-405B,0.708,074accca-60e6-42dc-b52f-a23490333a20
+REVIEW,Hermes 4 - Llama-3.1 405B (Reasoning),Nous Research,NousResearch/Hermes-3-Llama-3.1-405B,0.708,074accca-60e6-42dc-b52f-a23490333a20
+REVIEW,Hermes 4 - Llama-3.1 70B (Non-reasoning),Nous Research,,,
+REVIEW,Hermes 4 - Llama-3.1 70B (Reasoning),Nous Research,,,
+REVIEW,Higgs-Llama-3-70B,Meta,,,
+DIRECT,Hunyuan-A13B,Unknown,Hunyuan-A13B,1.000,f5c950a0-3f46-4094-a616-653354850195
+REVIEW,Hunyuan-Large,Unknown,,,
+REVIEW,Hunyuan-T1,Unknown,,,
+REVIEW,HunyuanTurboS,Unknown,,,
+DIRECT,Hy3,Tencent,Hy3,1.000,466d943b-7e4c-430a-9600-fcce80d447a1
+DIRECT,Hy3-preview (Non-reasoning),Tencent,Hy3-preview (Non-reasoning),1.000,740809a6-9aa3-434f-afcb-0e0f57b03472
+DIRECT,Hy3-preview (Reasoning),Tencent,Hy3-preview (Reasoning),1.000,740809a6-9aa3-434f-afcb-0e0f57b03472
+REVIEW,HyperCLOVA X SEED Think (32B),Naver,,,
+REVIEW,HyperNova 60B 2605,Multiverse Computing,,,
+REVIEW,INTELLECT-3,Prime Intellect,,,
+DIRECT,Inkling (max),Thinking Machines Lab,Inkling (max),1.000,b330cbfa-e1b7-4761-83a4-d50634f265e0
+DIRECT,Inkling (xhigh),Thinking Machines,Inkling (xhigh),1.000,0eea000f-39cb-4c47-aa70-07bec46af568
+DIRECT,Inkling Small,Thinking Machines,Inkling Small,1.000,10868b5c-84e8-45e7-b0c5-e1507bb9d2d0
+DIRECT,Inkling Small,thinky,Inkling Small,1.000,10868b5c-84e8-45e7-b0c5-e1507bb9d2d0
+REVIEW,Intern-S1,Unknown,,,
+REVIEW,InternMath-20B-Plus,Unknown,,,
+REVIEW,InternMath-7B-Plus,Unknown,,,
+REVIEW,Internlm3-8B-Instruct,Unknown,,,
+REVIEW,JT-35B-Flash,China Mobile,,,
+REVIEW,JT-4.1 Flash 236B A21B,China Mobile,,,
+REVIEW,JT-MINI,China Mobile,,,
+DIRECT,Jamba 1.5 Large,AI21 Labs,Jamba 1.5 Large,1.000,1776beff-9c66-4351-ac37-c021ac4bad35
+DIRECT,Jamba 1.5 Mini,AI21 Labs,Jamba 1.5 Mini,1.000,7688fa69-1ccb-44e4-a746-bfc0e5aa12c8
+LIKELY_ALIAS,Jamba 1.6 Large,AI21 Labs,jamba-large-1.6,0.913,f199f8ef-27f5-47df-977b-a41e183eb558
+REVIEW,Jamba 1.6 Mini,AI21 Labs,jamba-mini-1.6,0.898,0a1c863c-4877-4da3-bf22-ce301d159be3
+LIKELY_ALIAS,Jamba 1.7 Large,AI21 Labs,jamba-large-1.7,0.913,93be7284-77af-429c-817a-81a4cd99ddeb
+REVIEW,Jamba 1.7 Mini,AI21 Labs,jamba-mini-1.7,0.898,d57d7cd1-b36a-4765-a4ff-8b476e1fca91
+REVIEW,Jamba Reasoning 3B,AI21 Labs,,,
+DIRECT,Jamba-1.5-Large,Unknown,Jamba-1.5-Large,1.000,1776beff-9c66-4351-ac37-c021ac4bad35
+REVIEW,K-EXAONE (Non-reasoning),LG AI Research,,,
+REVIEW,K-EXAONE (Reasoning),LG AI Research,,,
+REVIEW,K-EXAONE 2.0,LG AI Research,,,
+REVIEW,K-EXAONE 2.0 0803,LG AI Research,,,
+REVIEW,K2 Think V2,MBZUAI Institute of Foundation Models,,,
+REVIEW,K2-V2 (high),MBZUAI Institute of Foundation Models,,,
+REVIEW,K2-V2 (low),MBZUAI Institute of Foundation Models,,,
+REVIEW,K2-V2 (medium),MBZUAI Institute of Foundation Models,,,
+REVIEW,K2.5-1T-A32B,Unknown,,,
+DIRECT,KAT Coder Pro V2,KwaiKAT,KAT Coder Pro V2,1.000,1039bf79-7c34-4d8a-bedf-630ec9cb661c
+DIRECT,KAT-Coder-Pro V1,KwaiKAT,KAT-Coder-Pro V1,1.000,c40d0ffb-2d07-4a6a-8b99-f88a2541de92
+DIRECT,Kimi K2,Kimi,Kimi K2,1.000,f172cad0-f002-49d2-8de7-fbb4074671de
+DIRECT,Kimi K2,Moonshot AI,Kimi K2,1.000,f172cad0-f002-49d2-8de7-fbb4074671de
+DIRECT,Kimi K2 0905,Kimi,Kimi K2 0905,1.000,72ac195c-57a9-4387-aaed-2330645ca4c0
+DIRECT,Kimi K2 Instruct,Moonshot AI,Kimi K2 Instruct,1.000,13785294-6434-4b86-93d2-d7b4fd73e8b3
+DIRECT,Kimi K2 Thinking,Kimi,Kimi K2 Thinking,1.000,f172cad0-f002-49d2-8de7-fbb4074671de
+DIRECT,Kimi K2 Thinking,Moonshot AI,Kimi K2 Thinking,1.000,f172cad0-f002-49d2-8de7-fbb4074671de
+DIRECT,Kimi K2.5,Moonshot AI,Kimi K2.5,1.000,79a925fe-d7f7-4150-ae40-4a9252f0476d
+DIRECT,Kimi K2.5 (Non-reasoning),Kimi,Kimi K2.5 (Non-reasoning),1.000,79a925fe-d7f7-4150-ae40-4a9252f0476d
+DIRECT,Kimi K2.5 (Reasoning),Kimi,Kimi K2.5 (Reasoning),1.000,79a925fe-d7f7-4150-ae40-4a9252f0476d
+DIRECT,Kimi K2.6,Kimi,Kimi K2.6,1.000,5b35baba-eeec-4f8f-bae5-ec1218808e5e
+DIRECT,Kimi K2.6 (Non-reasoning),Kimi,Kimi K2.6 (Non-reasoning),1.000,5b35baba-eeec-4f8f-bae5-ec1218808e5e
+DIRECT,Kimi K2.7 Code,Kimi,Kimi K2.7 Code,1.000,b06abc68-6e33-4c19-a0b5-1bf412d50811
+DIRECT,Kimi K3 (low),Kimi,Kimi K3 (low),1.000,583ebc82-f192-46a0-96e2-7ee89603a491
+DIRECT,Kimi K3 (max),Kimi,Kimi K3 (max),1.000,583ebc82-f192-46a0-96e2-7ee89603a491
+DIRECT,Kimi K3 (max),Moonshot AI,Kimi K3 (max),1.000,39b34457-8659-4897-84aa-9093ba786c6f
+DIRECT,Kimi Linear 48B A3B Instruct,Kimi,Kimi Linear 48B A3B Instruct,1.000,05a67f23-398a-4bf5-9f9c-207e651691ad
+DIRECT,Kimi-K2-Instruct,Moonshot AI,Kimi-K2-Instruct,1.000,13785294-6434-4b86-93d2-d7b4fd73e8b3
+DIRECT,Kimi-k2,Moonshot AI,Kimi-k2,1.000,f172cad0-f002-49d2-8de7-fbb4074671de
+REVIEW,LFM 40B,Liquid AI,,,
+REVIEW,LFM2 1.2B,Liquid AI,,,
+LIKELY_ALIAS,LFM2 2.6B,Liquid AI,LFM2.5 2.6B,1.000,6bc619c0-dae0-477f-9b3b-75a3108002a6
+DIRECT,LFM2 24B A2B,Liquid AI,LFM2 24B A2B,1.000,3b7c109a-c67d-4aca-88f6-44394a8a7def
+REVIEW,LFM2 8B A1B,Liquid AI,,,
+REVIEW,LFM2.5-1.2B-Instruct,Liquid AI,,,
+REVIEW,LFM2.5-1.2B-Thinking,Liquid AI,,,
+DIRECT,LFM2.5-2.6B,Liquid AI,LFM2.5-2.6B,1.000,17dbbf7b-6e9e-45b1-9524-5df864e7a83e
+REVIEW,LFM2.5-8B-A1B,Liquid AI,,,
+REVIEW,LFM2.5-VL-1.6B,Liquid AI,,,
+REVIEW,LLaDA,Unknown,,,
+DIRECT,Ling 2.6 Flash,InclusionAI,Ling 2.6 Flash,1.000,b41d18eb-6ec7-4959-a2eb-20c0adaf0971
+DIRECT,Ling 3.0 Flash,InclusionAI,Ling 3.0 Flash,1.000,a1b5b021-eb24-4513-acf7-6b6ee02a1af0
+DIRECT,Ling 3.0 Tiny,InclusionAI,Ling 3.0 Tiny,1.000,435aef16-e22c-42d7-bd33-aedab456b08c
+DIRECT,Ling-1T,InclusionAI,Ling-1T,1.000,973b0f30-4592-4db8-b0ca-a400bd7710d9
+DIRECT,Ling-2.6-1T,InclusionAI,Ling-2.6-1T,1.000,973b0f30-4592-4db8-b0ca-a400bd7710d9
+REVIEW,Ling-flash-2.0,InclusionAI,,,
+REVIEW,Ling-mini-2.0,InclusionAI,,,
+REVIEW,Lingma SWE-GPT 72b (v0918),OpenAI,,,
+REVIEW,Lingma SWE-GPT 72b (v0925),OpenAI,,,
+REVIEW,Lingma SWE-GPT 7b (v0918),OpenAI,,,
+REVIEW,Lingma SWE-GPT 7b (v0925),OpenAI,,,
+REVIEW,Llama 2 Chat 13B,Meta,Llama 2 13B Chat,0.849,100866d7-249f-49e2-bcaf-20dbfc12123a
+REVIEW,Llama 2 Chat 70B,Meta,Llama-2-70b-chat-hf,0.794,67678d05-bdad-4559-8de7-524f231a5ba2
+LIKELY_ALIAS,Llama 2 Chat 7B,Meta,Llama 2 7B Chat,0.913,8594305f-5e56-4c3c-880d-448f609349e2
+LIKELY_ALIAS,Llama 3 Instruct 70B,Meta,Llama 3 70B Instruct,0.904,eddccbe2-35f2-41cc-9c22-95fcfb3b7df5
+LIKELY_ALIAS,Llama 3 Instruct 8B,Meta,Llama 3 8B Instruct,0.955,db82512f-7ec4-46f4-85c9-05967b005959
+REVIEW,Llama 3.1 Instruct 405B,Meta,Llama 3.1 405B Instruct,0.869,2b2108a4-a6c8-4b69-9237-c3a66a642e03
+LIKELY_ALIAS,Llama 3.1 Instruct 70B,Meta,Llama 3.1 70B Instruct 1B,0.922,22395423-e913-4097-9d10-34fcc3fa91f5
+LIKELY_ALIAS,Llama 3.1 Instruct 8B,Meta,Llama 3.1 8B Instruct,0.962,68bb16f3-bf7e-410b-a1c4-b5ea247184ac
+REVIEW,Llama 3.1 Nemotron Instruct 70B,NVIDIA,Llama 3.1 Nemotron 70B,0.898,3bc3a895-f797-479c-aecf-dd9f6b06b444
+REVIEW,Llama 3.1 Nemotron Nano 4B v1.1 (Reasoning),NVIDIA,,,
+REVIEW,Llama 3.1 Nemotron Ultra 253B v1 (Reasoning),NVIDIA,,,
+REVIEW,Llama 3.1 Tulu3 405B,Allen Institute for AI,,,
+REVIEW,Llama 3.2 Instruct 11B (Vision),Meta,,,
+LIKELY_ALIAS,Llama 3.2 Instruct 1B,Meta,Llama 3.2 1B Instruct,0.962,1423e467-c60c-4f77-84f2-c59e610c654c
+LIKELY_ALIAS,Llama 3.2 Instruct 3B,Meta,Llama 3.2 3B Instruct,0.962,d66302c5-7a41-47a5-9269-d5bf68ae5967
+REVIEW,Llama 3.2 Instruct 90B (Vision),Meta,,,
+LIKELY_ALIAS,Llama 3.3 Instruct 70B,Meta,Llama 3.3 70B Instruct,0.913,1e752a31-f969-4de0-acc3-92ad013a4d02
+LIKELY_ALIAS,Llama 3.3 Nemotron Super 49B v1 (Non-reasoning),NVIDIA,Nvidia Nemotron Super 49B,0.973,a8769c1a-4de7-4ab7-b342-35e177ef9700
+LIKELY_ALIAS,Llama 3.3 Nemotron Super 49B v1 (Reasoning),NVIDIA,Nvidia Nemotron Super 49B,0.973,a8769c1a-4de7-4ab7-b342-35e177ef9700
+DIRECT,Llama 4 Maverick,Meta,Llama 4 Maverick,1.000,0ed5e9ad-a1a7-4f4a-b4ad-bd1fb95d3332
+DIRECT,Llama 4 Maverick Instruct,Meta,Llama 4 Maverick Instruct,1.000,4c93ed84-f51b-4bb9-9c20-7669a4c9c7ee
+DIRECT,Llama 4 Scout,Meta,Llama 4 Scout,1.000,2dbf7f6f-01bf-4da3-9d94-b3a5f4cbebb7
+DIRECT,Llama 4 Scout Instruct,Meta,Llama 4 Scout Instruct,1.000,80b3c51c-6c7e-4b03-b553-5484dde3870c
+REVIEW,Llama 65B,Meta,,,
+LIKELY_ALIAS,Llama Nemotron Super 49B v1.5 (Non-reasoning),NVIDIA,nvidia/Llama-3.3-Nemotron-Super-49B-v1.5,0.937,5243ac55-d40c-4961-bb61-7f879477fddc
+LIKELY_ALIAS,Llama Nemotron Super 49B v1.5 (Reasoning),NVIDIA,nvidia/Llama-3.3-Nemotron-Super-49B-v1.5,0.937,5243ac55-d40c-4961-bb61-7f879477fddc
+DIRECT,Llama-2-13B,Meta,Llama-2-13B,1.000,d2a62f60-286b-4c10-ac77-b9b6fd362678
+DIRECT,Llama-2-70B,Meta,Llama-2-70B,1.000,90a16b35-28d0-4b20-acc5-bc7721127875
+DIRECT,Llama-2-7B,Meta,Llama-2-7B,1.000,7731a4b9-0b4d-45bd-86a2-4d4b4cdc1e39
+DIRECT,Llama-3-70B,Meta,Llama-3-70B,1.000,1b289638-9eb6-4d9a-80a0-5921fef84b54
+DIRECT,Llama-3-70B-Instruct,Meta,Llama-3-70B-Instruct,1.000,eddccbe2-35f2-41cc-9c22-95fcfb3b7df5
+DIRECT,Llama-3-8B,Meta,Llama-3-8B,1.000,e2becb11-cf68-4544-b0e8-8549a942bf6c
+DIRECT,Llama-3-8B-Instruct,Meta,Llama-3-8B-Instruct,1.000,dfe9f31a-787a-4311-990b-6a4d5fcb7e1c
+DIRECT,Llama-3.1-405B,Meta,Llama-3.1-405B,1.000,56a6e0ed-c922-4db1-b252-cea4bd9d84e5
+DIRECT,Llama-3.1-405B-Instruct,Meta,Llama-3.1-405B-Instruct,1.000,6688dc88-f7a1-47fb-b5a0-1310b28b0e4b
+DIRECT,Llama-3.1-70B,Meta,Llama-3.1-70B,1.000,19154f0f-8a9d-4172-b257-754d0753b3b2
+DIRECT,Llama-3.1-70B-Instruct,Meta,Llama-3.1-70B-Instruct,1.000,09c87494-ff4e-4b9b-ba96-bfd5dc518e90
+DIRECT,Llama-3.1-8B,Meta,Llama-3.1-8B,1.000,5a63e279-3cd9-4356-ae61-3b6b1be79e0e
+DIRECT,Llama-3.1-8B-Instruct,Meta,Llama-3.1-8B-Instruct,1.000,ec694d85-20b8-4e1e-a27e-e413dbe95e41
+DIRECT,Llama-3.1-Nemotron-70B-Instruct-HF,Meta,Llama-3.1-Nemotron-70B-Instruct-HF,1.000,7b57f02e-6812-4fdf-bd0d-fb6897fc4f40
+DIRECT,Llama-3.2-1B,Meta,Llama-3.2-1B,1.000,2dfb206e-4c9e-4d2c-899c-49b881ba65d0
+DIRECT,Llama-3.2-3B,Meta,Llama-3.2-3B,1.000,ef81b292-2985-44da-9591-42445eceab2f
+DIRECT,Llama-3.3-70B-Instruct,Meta,Llama-3.3-70B-Instruct,1.000,4d2b0928-8e01-46ba-ba67-55f286025aa0
+REVIEW,Llama3-SWE-RL-70B,Meta,,,
+REVIEW,Llama3-Smaug-8B,Meta,,,
+REVIEW,Llama4-Behemoth,Meta,,,
+DIRECT,Llama4-Maverick,Meta,Llama4-Maverick,1.000,0ed5e9ad-a1a7-4f4a-b4ad-bd1fb95d3332
+DIRECT,Llama4-Scout,Meta,Llama4-Scout,1.000,2dbf7f6f-01bf-4da3-9d94-b3a5f4cbebb7
+REVIEW,Llemma-7B,Unknown,,,
+DIRECT,LongCat 2.0,LongCat,LongCat 2.0,1.000,a48d59c5-3358-4063-a2b7-e5df5d38b2c8
+REVIEW,LongCat Flash Lite,LongCat,,,
+REVIEW,LongCat-Flash-Chat,Unknown,,,
+REVIEW,MAmmoTH2-7B-Plus,Unknown,,,
+REVIEW,MAmmoTH2-8B-Plus,Unknown,,,
+REVIEW,MAmmoTH2-8x7B-Plus,Unknown,,,
+REVIEW,MCTS Refine 7B,Unknown,,,
+DIRECT,MIT-IBM Agent (BOAD) + SWE-Agent + Seed-OSS-36B,Unknown,MIT-IBM Agent (BOAD) + SWE-Agent + Seed-OSS-36B,1.000,61a60271-777d-457d-b3d5-1384d90246e6
+LIKELY_ALIAS,Magistral Medium 1,Mistral,magistral-medium-1-2,1.000,71844bba-3139-4bec-b4e3-0ba01afbaac8
+REVIEW,Magistral Medium 1.2,Mistral,,,
+LIKELY_ALIAS,Magistral Small 1,Mistral,magistral-small-1-2,1.000,da54cba0-f10a-45ad-b275-b48b848a8d17
+REVIEW,Magistral Small 1.2,Mistral,,,
+REVIEW,Mathstral-7B-v0.1,Unknown,,,
+DIRECT,Mercury 2,Inception,Mercury 2,1.000,c6e69d14-298e-415f-adbf-a9cadc003789
+REVIEW,Mi:dm K 2.5 Pro,Korea Telecom,,,
+REVIEW,MiMo-V2-Flash (Feb 2026),Xiaomi,,,
+REVIEW,MiMo-V2-Flash (Non-reasoning),Xiaomi,,,
+REVIEW,MiMo-V2-Flash (Reasoning),Xiaomi,,,
+REVIEW,MiMo-V2-Omni,Xiaomi,,,
+REVIEW,MiMo-V2-Omni-0327,Xiaomi,,,
+DIRECT,MiMo-V2-Pro,Xiaomi,MiMo-V2-Pro,1.000,c2a4f0d1-83cb-43a1-b1d1-78d898656167
+DIRECT,MiMo-V2.5,Xiaomi,MiMo-V2.5,1.000,e99ebaa8-860e-4872-87ba-e7d0b8c8d677
+DIRECT,MiMo-V2.5-Pro,Xiaomi,MiMo-V2.5-Pro,1.000,00be56a0-9932-4765-b171-fe857f9dc2fa
+DIRECT,MiMo-V2.5-Pro (Non-reasoning),Xiaomi,MiMo-V2.5-Pro (Non-reasoning),1.000,00be56a0-9932-4765-b171-fe857f9dc2fa
+REVIEW,Mimo-7B-RL,Unknown,,,
+REVIEW,Mimo-7B-base,Unknown,,,
+REVIEW,MiniCPM-V 4.6 1.3B,OpenBMB,,,
+REVIEW,MiniCPM5-1B (Non-reasoning),OpenBMB,,,
+REVIEW,MiniCPM5-1B (Reasoning),OpenBMB,,,
+DIRECT,MiniMax M1 40k,MiniMax,MiniMax M1 40k,1.000,41ebdbd3-6b97-4f2d-afff-e3c0975f190d
+DIRECT,MiniMax M1 80k,MiniMax,MiniMax M1 80k,1.000,e7cc9c20-41ff-4a71-9e52-932755252fac
+DIRECT,MiniMax M2,Minimax,MiniMax M2,1.000,87f61bcc-ee0c-483d-9793-8cb81ea451b6
+DIRECT,MiniMax M2.5,Minimax,MiniMax M2.5,1.000,073e53d9-8502-4b87-8622-9034552d064a
+DIRECT,MiniMax-M1,Unknown,MiniMax-M1,1.000,0a2a0df9-1ce4-4aad-b9e0-500ef42f9903
+DIRECT,MiniMax-M2,MiniMax,MiniMax-M2,1.000,87f61bcc-ee0c-483d-9793-8cb81ea451b6
+DIRECT,MiniMax-M2,Unknown,MiniMax-M2,1.000,fb40203f-7d9c-4356-a967-1ccac584369a
+DIRECT,MiniMax-M2.1,MiniMax,MiniMax-M2.1,1.000,ec4b5651-9a86-49f5-a496-b60fe5caa672
+DIRECT,MiniMax-M2.1,Unknown,MiniMax-M2.1,1.000,ec4b5651-9a86-49f5-a496-b60fe5caa672
+DIRECT,MiniMax-M2.5,MiniMax,MiniMax-M2.5,1.000,073e53d9-8502-4b87-8622-9034552d064a
+DIRECT,MiniMax-M2.5,Unknown,MiniMax-M2.5,1.000,073e53d9-8502-4b87-8622-9034552d064a
+DIRECT,MiniMax-M2.7,MiniMax,MiniMax-M2.7,1.000,51a45233-048c-4a7f-8fe4-90fbdda5f4ee
+DIRECT,MiniMax-M3,MiniMax,MiniMax-M3,1.000,8c80d0b6-705a-41ed-a72e-b21e278af22d
+DIRECT,MiniMax-Text-01,Unknown,MiniMax-Text-01,1.000,a7f8f5aa-a5db-49ed-a39a-af4512039af5
+DIRECT,Ministral 3 14B,Mistral,Ministral 3 14B,1.000,eafe407d-14f7-479b-b188-58080e0f16df
+DIRECT,Ministral 3 3B,Mistral,Ministral 3 3B,1.000,0465b897-f5b2-472d-b76b-95d913549f80
+DIRECT,Ministral 3 8B,Mistral,Ministral 3 8B,1.000,a03beab9-238d-4dee-950f-bd74e68dcaeb
+DIRECT,Ministral-8B-Instruct-2410,Unknown,Ministral-8B-Instruct-2410,1.000,981a204b-8f8e-40c2-9ef4-200da712a4a1
+DIRECT,Mistral 7B Instruct,Mistral,Mistral 7B Instruct,1.000,26f168db-3a8d-4010-a1cd-5ed5bf040f3e
+DIRECT,Mistral Large (Feb '24),Mistral,Mistral Large (Feb '24),1.000,221849a6-bdc3-4e4e-b0c8-96ed7af5e239
+REVIEW,Mistral Large 2 (Jul '24),Mistral,,,
+REVIEW,Mistral Large 2 (Nov '24),Mistral,,,
+DIRECT,Mistral Large 3,Mistral,Mistral Large 3,1.000,bd4d963c-437d-4903-b9a6-cf61908ea7f7
+DIRECT,Mistral Medium,Mistral,Mistral Medium,1.000,7e5d1742-eab7-4442-a2e9-bbc3d8ab9a9d
+DIRECT,Mistral Medium 3,Mistral,Mistral Medium 3,1.000,221ac5a0-36ab-4947-8c4a-fd70afb289bd
+DIRECT,Mistral Medium 3.1,Mistral,Mistral Medium 3.1,1.000,0ca74c5d-68c1-4f16-b4e1-608444855e91
+DIRECT,Mistral Medium 3.5,Mistral,Mistral Medium 3.5,1.000,a27e0e3f-d0f4-4a9d-b536-0c2f4befd47c
+DIRECT,Mistral Saba,Mistral,Mistral Saba,1.000,023540ff-42ad-445d-9b38-9d89dc19ab98
+DIRECT,Mistral Small (Feb '24),Mistral,Mistral Small (Feb '24),1.000,d344792f-a4aa-40a8-80bd-61b64be2a329
+DIRECT,Mistral Small (Sep '24),Mistral,Mistral Small (Sep '24),1.000,d344792f-a4aa-40a8-80bd-61b64be2a329
+DIRECT,Mistral Small 3,Mistral,Mistral Small 3,1.000,5a106924-ba01-4c98-a1b4-101269e76760
+DIRECT,Mistral Small 3.1,Mistral,Mistral Small 3.1,1.000,79d78a2b-7be0-4b06-8e9b-22951949dada
+DIRECT,Mistral Small 3.2,Mistral,Mistral Small 3.2,1.000,61c30b90-67df-427d-a042-2c5209a3a55e
+DIRECT,Mistral Small 4 (Non-reasoning),Mistral,Mistral Small 4 (Non-reasoning),1.000,55e8c032-66f4-4b8b-81c8-04b784695d41
+DIRECT,Mistral Small 4 (Reasoning),Mistral,Mistral Small 4 (Reasoning),1.000,55e8c032-66f4-4b8b-81c8-04b784695d41
+REVIEW,Mistral-3.1-Small,Mistral AI,,,
+DIRECT,Mistral-7B-Instruct-v0.1,Mistral AI,Mistral-7B-Instruct-v0.1,1.000,3035a825-e104-4aca-bd8c-c1bf3ecc3802
+DIRECT,Mistral-7B-Instruct-v0.2,Mistral AI,Mistral-7B-Instruct-v0.2,1.000,32382d21-ce7f-4798-b13e-1bae7e818a89
+DIRECT,Mistral-7B-v0.1,Mistral AI,Mistral-7B-v0.1,1.000,91784f10-ced1-41df-b0b0-9a36c905c451
+DIRECT,Mistral-7B-v0.2,Mistral AI,Mistral-7B-v0.2,1.000,8dc8ab1b-1498-4777-ba5c-b4de5f5e6a21
+REVIEW,Mistral-Large-Instruct-2407,Mistral AI,,,
+REVIEW,Mistral-Large-Instruct-2411,Mistral AI,,,
+DIRECT,Mistral-Nemo-Base-2407,Mistral AI,Mistral-Nemo-Base-2407,1.000,713189ff-16e1-4942-9a99-3b71d67591bd
+DIRECT,Mistral-Nemo-Instruct-2407,Mistral AI,Mistral-Nemo-Instruct-2407,1.000,e864f42a-0442-4669-8abf-6d2a7c576767
+REVIEW,Mistral-Small-Instruct-2409,Mistral AI,,,
+REVIEW,Mistral-Small-base,Mistral AI,,,
+DIRECT,Mistral-Small-instruct,Mistral AI,Mistral-Small-instruct,1.000,e565849a-1614-45e1-9308-ae7132a22d67
+DIRECT,Mixtral 8x22B Instruct,Mistral,Mixtral 8x22B Instruct,1.000,4c5db63b-306f-431e-aa33-17088b5b6857
+DIRECT,Mixtral 8x7B Instruct,Mistral,Mixtral 8x7B Instruct,1.000,6bceec1c-a7d4-4c5a-b313-60ecb9cb9e3d
+DIRECT,Mixtral-8x22B-Instruct-v0.1,Unknown,Mixtral-8x22B-Instruct-v0.1,1.000,a419e27a-07f6-4fc6-80c7-582fe7de4d06
+DIRECT,Mixtral-8x7B-Instruct-v0.1,Unknown,Mixtral-8x7B-Instruct-v0.1,1.000,91784f10-ced1-41df-b0b0-9a36c905c451
+DIRECT,Mixtral-8x7B-v0.1,Unknown,Mixtral-8x7B-v0.1,1.000,175d2300-a497-4a92-a208-144e3dd5b517
+REVIEW,Molmo 7B-D,Allen Institute for AI,,,
+DIRECT,Molmo2-8B,Allen Institute for AI,Molmo2-8B,1.000,9f9b20d2-04be-4733-bbd6-5a46124d3a96
+REVIEW,Motif 3,Motif Technologies,,,
+REVIEW,Motif 3 (Beta),Motif Technologies,,,
+REVIEW,Motif-2-12.7B-Reasoning,Motif Technologies,,,
+NON_MODEL,Multiple,Anthropic,,,
+DIRECT,Muse Glimmer (high),Meta,Muse Glimmer (high),1.000,05e3e675-580f-42c1-9b9f-64428ae215b1
+LIKELY_ALIAS,Muse Spark,Meta,muse-spark-1.1,0.980,862cb672-2514-4e99-9ad7-1c109cc40ba4
+DIRECT,Muse Spark 1.1 (xhigh),Meta,Muse Spark 1.1 (xhigh),1.000,862cb672-2514-4e99-9ad7-1c109cc40ba4
+DIRECT,Muse Spark 1.2 (xhigh),Meta,Muse Spark 1.2 (xhigh),1.000,2ef9f27e-9189-4217-9ce8-b518594227d5
+DIRECT,NVIDIA Nemotron 3 Nano 30B A3B (Non-reasoning),NVIDIA,NVIDIA Nemotron 3 Nano 30B A3B (Non-reasoning),1.000,3d9f9411-4925-4deb-8639-e4c7e7f556f8
+DIRECT,NVIDIA Nemotron 3 Nano 30B A3B (Reasoning),NVIDIA,NVIDIA Nemotron 3 Nano 30B A3B (Reasoning),1.000,3d9f9411-4925-4deb-8639-e4c7e7f556f8
+REVIEW,NVIDIA Nemotron 3 Nano 4B,NVIDIA,,,
+DIRECT,NVIDIA Nemotron Nano 12B v2 VL (Non-reasoning),NVIDIA,NVIDIA Nemotron Nano 12B v2 VL (Non-reasoning),1.000,a0256bc5-0c41-43a7-823c-a481c6a8a433
+DIRECT,NVIDIA Nemotron Nano 12B v2 VL (Reasoning),NVIDIA,NVIDIA Nemotron Nano 12B v2 VL (Reasoning),1.000,a0256bc5-0c41-43a7-823c-a481c6a8a433
+DIRECT,NVIDIA Nemotron Nano 9B V2 (Non-reasoning),NVIDIA,NVIDIA Nemotron Nano 9B V2 (Non-reasoning),1.000,0167f1d7-869c-49f7-bc43-e9ed63aef6bd
+DIRECT,NVIDIA Nemotron Nano 9B V2 (Reasoning),NVIDIA,NVIDIA Nemotron Nano 9B V2 (Reasoning),1.000,0167f1d7-869c-49f7-bc43-e9ed63aef6bd
+REVIEW,Nanbeige4.1-3B,Nanbeige,,,
+LIKELY_ALIAS,Nemotron 3 Nano Omni 30B A3B Reasoning,NVIDIA,Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8,1.000,db399034-12ed-4d94-b929-ffaae1af1f95
+FALLBACK,Nemotron 3 Super 120B A12B (Reasoning),NVIDIA,Nemotron 3 Super 120B A12B,1.000,2d176c61-f08f-4ef1-9b51-de8457281d7f
+LIKELY_ALIAS,Nemotron 3 Ultra 550B A55B (Reasoning),NVIDIA,NVIDIA: Nemotron 3 Ultra,0.960,e4040d5a-3313-4e16-a751-564a583ab180
+DIRECT,Nemotron 3.5 Lightning,NVIDIA,Nemotron 3.5 Lightning,1.000,84366c36-93b8-49be-8075-668284463686
+REVIEW,Nemotron Cascade 2 30B A3B,NVIDIA,,,
+DIRECT,Nemotron-3-Nano-30B-A3B(BF16),Unknown,Nemotron-3-Nano-30B-A3B(BF16),1.000,92e7788e-10b9-49e0-adce-6e72cd041dc2
+DIRECT,Nemotron-3-Nano-30B-A3B(FP8),Unknown,Nemotron-3-Nano-30B-A3B(FP8),1.000,92e7788e-10b9-49e0-adce-6e72cd041dc2
+DIRECT,Nemotron-3-Nano-30B-A3B-Base,Unknown,Nemotron-3-Nano-30B-A3B-Base,1.000,d68578af-1dee-4dfb-aa05-118543fa1fbb
+REVIEW,Nemotron-H-56B-Base,Unknown,,,
+REVIEW,Nemotron-H-8B-Base,Unknown,,,
+REVIEW,Nemotron-Orchestrator-8B,NVIDIA,,,
+REVIEW,Neo-7B,Unknown,,,
+REVIEW,Neo-7B-Instruct,Unknown,,,
+REVIEW,NewenAI/Phi4-sft,Unknown,,,
+DIRECT,Nex-N2-Pro,Nex AGI,Nex-N2-Pro,1.000,ad8687d1-c2ef-4179-b4c1-6b2ced0e197f
+DIRECT,North Mini Code,Cohere,North Mini Code,1.000,676c8257-4d06-4fec-954e-889bb08c07e9
+REVIEW,Nova 2.0 Lite (Non-reasoning),Amazon,,,
+REVIEW,Nova 2.0 Lite (high),Amazon,,,
+REVIEW,Nova 2.0 Lite (low),Amazon,,,
+REVIEW,Nova 2.0 Lite (medium),Amazon,,,
+REVIEW,Nova 2.0 Omni (Non-reasoning),Amazon,,,
+REVIEW,Nova 2.0 Omni (low),Amazon,,,
+REVIEW,Nova 2.0 Omni (medium),Amazon,,,
+REVIEW,Nova 2.0 Pro Preview (Non-reasoning),Amazon,,,
+REVIEW,Nova 2.0 Pro Preview (low),Amazon,,,
+REVIEW,Nova 2.0 Pro Preview (medium),Amazon,,,
+DIRECT,Nova Lite,Amazon,Nova Lite,1.000,61c7b10b-7b72-4195-b4e4-783a5b94b1dc
+DIRECT,Nova Micro,Amazon,Nova Micro,1.000,42f5fe25-c277-449f-94db-b26e4750853f
+DIRECT,Nova Premier,Amazon,Nova Premier,1.000,bfcff0bd-63cf-4519-b390-b0e5a025b315
+DIRECT,Nova Pro,Amazon,Nova Pro,1.000,77cfe171-c578-45dd-a6bf-6bed389315f8
+DIRECT,O3 (High),OpenAI,O3 (High),1.000,65000280-9ba7-48b6-aa52-0fcdecd0b634
+DIRECT,O3 Mini,OpenAI,O3 Mini,1.000,cc3f7087-b51a-4ec2-ada5-608d787dbdcf
+DIRECT,O3-Mini-2025-01-31 (High),OpenAI,O3-Mini-2025-01-31 (High),1.000,38c14505-0008-4925-aac3-85d08fd75874
+DIRECT,O3-Mini-2025-01-31 (Low),OpenAI,O3-Mini-2025-01-31 (Low),1.000,38c14505-0008-4925-aac3-85d08fd75874
+DIRECT,O3-Mini-2025-01-31 (Med),OpenAI,O3-Mini-2025-01-31 (Med),1.000,38c14505-0008-4925-aac3-85d08fd75874
+DIRECT,O4-Mini (High),OpenAI,O4-Mini (High),1.000,dc15322f-6a05-49f6-92a5-c7be74f6934a
+DIRECT,O4-Mini (Low),OpenAI,O4-Mini (Low),1.000,dc15322f-6a05-49f6-92a5-c7be74f6934a
+DIRECT,O4-Mini (Medium),OpenAI,O4-Mini (Medium),1.000,dc15322f-6a05-49f6-92a5-c7be74f6934a
+REVIEW,OLMo 2 32B,Allen Institute for AI,Olmo 3 32B Think,0.667,e90ab322-0cab-42be-b5b0-e452177c7efe
+REVIEW,OLMo 2 7B,Allen Institute for AI,allenai/olmOCR-2-7B-1025,0.519,5b7344a8-932e-4dd7-9887-b06b9c435928
+DIRECT,Olmo 3 32B Think,Allen Institute for AI,Olmo 3 32B Think,1.000,e90ab322-0cab-42be-b5b0-e452177c7efe
+REVIEW,Olmo 3 7B Instruct,Allen Institute for AI,,,
+REVIEW,Olmo 3 7B Think,Allen Institute for AI,,,
+REVIEW,Olmo 3.1 32B Instruct,Allen Institute for AI,allenai/Olmo-3.1-32B-Instruct,0.829,643ce872-082d-4fc0-94a0-c8fa0ed4c077
+REVIEW,Olmo 3.1 32B Think,Allen Institute for AI,,,
+REVIEW,OpenChat 3.5 (1210),OpenChat,,,
+REVIEW,OpenChat-3.5-8B,Unknown,,,
+REVIEW,OpenCodeReasoning-Nemotron-1.1-32B,Unknown,,,
+NON_MODEL,OpenHands + Claude 3.7 Sonnet,Anthropic,,,
+DIRECT,OpenHands + Claude-4.5-Sonnet,Anthropic,OpenHands + Claude-4.5-Sonnet,1.000,c6d53b8c-3ac5-4bc4-96c7-e4b05547c131
+DIRECT,OpenHands + DeepSeek V3,DeepSeek,OpenHands + DeepSeek V3,1.000,e7622b6c-2c65-45cf-8e20-4e1935027553
+DIRECT,OpenHands + DeepSeek-V3.1-Terminus,DeepSeek,OpenHands + DeepSeek-V3.1-Terminus,1.000,c24eaa21-5caf-48a9-b258-543012e526f7
+DIRECT,OpenHands + Deepseek-v4-Pro,DeepSeek,OpenHands + Deepseek-v4-Pro,1.000,0dae45bf-ac1a-47b6-b174-c1dd0437b2c5
+DIRECT,OpenHands + GPT 4.1,OpenAI,OpenHands + GPT 4.1,1.000,3ffbfd31-3137-44a3-9936-adda7cfb6846
+DIRECT,OpenHands + GPT 4o,OpenAI,OpenHands + GPT 4o,1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+DIRECT,OpenHands + GPT-5.5 (Medium),OpenAI,OpenHands + GPT-5.5 (Medium),1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,OpenHands + GPT5.2-Thinking (Medium),OpenAI,OpenHands + GPT5.2-Thinking (Medium),1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,OpenHands + Gemini3-Flash,Google,OpenHands + Gemini3-Flash,1.000,33b5e99e-452c-4e46-9a2e-752cbcb19c1d
+DIRECT,OpenHands + Qwen3-Coder-480B-A35B,Alibaba,OpenHands + Qwen3-Coder-480B-A35B,1.000,ad773c2f-fc0d-44d2-93fd-ba41b5b487d1
+DIRECT,OpenReasoning-Nemotron-32B,Unknown,OpenReasoning-Nemotron-32B,1.000,abd224c2-30c1-425b-bedf-6bc320fe2af6
+REVIEW,PALM-2,Google,,,
+REVIEW,Phi-3 Mini Instruct 3.8B,Microsoft,,,
+REVIEW,Phi-3.5-mini-instruct,Unknown,,,
+DIRECT,Phi-4,Microsoft,Phi-4,1.000,54d7f858-14be-440f-92f9-0a33d60aa5e4
+DIRECT,Phi-4,Unknown,Phi-4,1.000,54d7f858-14be-440f-92f9-0a33d60aa5e4
+REVIEW,Phi-4 Mini Instruct,Microsoft,Phi 4 Mini,0.860,6535fb93-1c5a-47a1-b38f-4d45a88b044a
+LIKELY_ALIAS,Phi-4 Multimodal Instruct,Microsoft,microsoft/Phi-4-multimodal-instruct,0.910,cb620607-020d-46b7-a846-d89aac481903
+DIRECT,Phi-4-mini,Unknown,Phi-4-mini,1.000,897ad3de-0bc5-4955-85aa-39660fbad030
+DIRECT,Phi-4-reasoning,Unknown,Phi-4-reasoning,1.000,54d7f858-14be-440f-92f9-0a33d60aa5e4
+DIRECT,Phi-4-reasoning-plus,Unknown,Phi-4-reasoning-plus,1.000,62c72b76-52ff-4f64-ba28-da8535b21b37
+REVIEW,Phi3-medium-128k,Unknown,,,
+REVIEW,Phi3-medium-4k,Unknown,,,
+REVIEW,Phi3-mini-128k,Unknown,,,
+REVIEW,Phi3-mini-4k,Unknown,,,
+REVIEW,Pine Voice Preview (enabled),Pine AI,,,
+DIRECT,Pixtral Large,Mistral,Pixtral Large,1.000,c7719586-4846-4459-8547-413cb5a88ea5
+REVIEW,Quasar 438B,Multiverse Computing,,,
+DIRECT,QwQ 32B,Alibaba,QwQ 32B,1.000,2816f1b1-327a-4a7f-946d-70bee527534e
+DIRECT,QwQ 32B-Preview,Alibaba,QwQ 32B-Preview,1.000,52c41d27-7269-4549-91b4-14c25f5bc2ab
+DIRECT,QwQ-32B,Unknown,QwQ-32B,1.000,2816f1b1-327a-4a7f-946d-70bee527534e
+DIRECT,QwQ-32B-Preview,Unknown,QwQ-32B-Preview,1.000,152a967b-8217-4696-b9a1-96da16f544a8
+DIRECT,Qwen 3.8 Max (xhigh),Qwen,Qwen 3.8 Max (xhigh),1.000,dd7d3cef-6ee7-429a-8116-30b17035c161
+REVIEW,Qwen Chat 14B,Alibaba,,,
+REVIEW,Qwen Chat 72B,Alibaba,Qwen1.5 72B Chat,0.667,40d52ce3-e34f-48f3-8c01-2ff7aec4d157
+REVIEW,Qwen1.5 Chat 110B,Alibaba,,,
+REVIEW,Qwen1.5-110B,Alibaba,,,
+REVIEW,Qwen1.5-14B-Chat,Alibaba,,,
+DIRECT,Qwen1.5-72B-Chat,Alibaba,Qwen1.5-72B-Chat,1.000,40d52ce3-e34f-48f3-8c01-2ff7aec4d157
+REVIEW,Qwen1.5-7B-Chat,Alibaba,,,
+REVIEW,Qwen2 Instruct 72B,Alibaba,Qwen2 72B Instruct,0.812,95ed7f4f-2f3b-44ed-8fff-814625678d1c
+DIRECT,Qwen2-0.5B,Alibaba,Qwen2-0.5B,1.000,77b2b3d9-adc4-43a0-b9d0-d31993125f70
+DIRECT,Qwen2-0.5B-Instruct,Alibaba,Qwen2-0.5B-Instruct,1.000,77b2b3d9-adc4-43a0-b9d0-d31993125f70
+DIRECT,Qwen2-1.5B,Alibaba,Qwen2-1.5B,1.000,d25af149-3fa4-4e1c-90af-e8321d2588b4
+DIRECT,Qwen2-1.5B-Instruct,Alibaba,Qwen2-1.5B-Instruct,1.000,d25af149-3fa4-4e1c-90af-e8321d2588b4
+REVIEW,Qwen2-72B-32k,Alibaba,,,
+REVIEW,Qwen2-72B-Chat,Alibaba,,,
+DIRECT,Qwen2-7B,Alibaba,Qwen2-7B,1.000,dfd48f0b-779e-4b56-9fe4-4eccd4543ca9
+DIRECT,Qwen2-7B-Instruct,Alibaba,Qwen2-7B-Instruct,1.000,c582da3c-316a-41a0-aadb-b2f6fa3c72e3
+DIRECT,Qwen2.5 (7B + 72B),Qwen,Qwen2.5 (7B + 72B),1.000,3491a492-0c90-4289-95fb-ccd39d955ad4
+DIRECT,Qwen2.5 Coder 32B Instruct,Qwen,Qwen2.5 Coder 32B Instruct,1.000,488035fd-75a4-4d16-8b1c-f6468be8a411
+REVIEW,Qwen2.5 Coder Instruct 32B,Alibaba,Qwen2.5 Coder 32B Instruct,0.864,d23b9815-7b62-4825-bd95-a50ba2456487
+LIKELY_ALIAS,Qwen2.5 Coder Instruct 7B,Alibaba,Qwen2.5-Coder 7B Instruct,0.905,ce47e215-5ea5-41c8-9c8f-61866f4b7d5b
+REVIEW,Qwen2.5 Instruct 32B,Alibaba,Qwen2.5 32B Instruct,0.824,10d41dfd-3561-46ad-8dad-c3028c2d8447
+REVIEW,Qwen2.5 Instruct 72B,Alibaba,Qwen2.5 72B Instruct,0.824,316aea0d-4574-4d70-bb01-b3546d6b5f87
+DIRECT,Qwen2.5 Max,Alibaba,Qwen2.5 Max,1.000,6600fea5-a0da-47d5-bec5-20ae4efc343b
+REVIEW,Qwen2.5 Turbo,Alibaba,Qwen2.5 7B Instruct Turbo,0.688,3a04c44a-ed11-4530-a26b-1e83fe7130cb
+DIRECT,Qwen2.5-0.5B,Alibaba,Qwen2.5-0.5B,1.000,77b2b3d9-adc4-43a0-b9d0-d31993125f70
+DIRECT,Qwen2.5-1.5B,Alibaba,Qwen2.5-1.5B,1.000,d25af149-3fa4-4e1c-90af-e8321d2588b4
+DIRECT,Qwen2.5-14B,Alibaba,Qwen2.5-14B,1.000,1eb6f61b-9729-4a5a-9a74-c41dee8e5c81
+DIRECT,Qwen2.5-32B,Alibaba,Qwen2.5-32B,1.000,5071de1f-e0ef-439e-83f3-c932edc695a5
+DIRECT,Qwen2.5-3B,Alibaba,Qwen2.5-3B,1.000,e531d95f-d825-4fbb-92ec-745ccf30c9d2
+DIRECT,Qwen2.5-72B,Alibaba,Qwen2.5-72B,1.000,02b8d923-5611-4e99-aa84-79972f8e7e57
+DIRECT,Qwen2.5-7B,Alibaba,Qwen2.5-7B,1.000,3491a492-0c90-4289-95fb-ccd39d955ad4
+DIRECT,Qwen2.5-Coder 32B Instruct,Qwen,Qwen2.5-Coder 32B Instruct,1.000,488035fd-75a4-4d16-8b1c-f6468be8a411
+DIRECT,Qwen2.5-Max,Alibaba,Qwen2.5-Max,1.000,6600fea5-a0da-47d5-bec5-20ae4efc343b
+DIRECT,Qwen2.5-Turbo,Alibaba,Qwen2.5-Turbo,1.000,3a04c44a-ed11-4530-a26b-1e83fe7130cb
+DIRECT,Qwen3 0.6B (Non-reasoning),Alibaba,Qwen3 0.6B (Non-reasoning),1.000,7f2db563-01a3-4f33-9f45-a0d17cd49b49
+DIRECT,Qwen3 0.6B (Reasoning),Alibaba,Qwen3 0.6B (Reasoning),1.000,7f2db563-01a3-4f33-9f45-a0d17cd49b49
+DIRECT,Qwen3 1.7B (Non-reasoning),Alibaba,Qwen3 1.7B (Non-reasoning),1.000,c1533b8f-8ab2-4659-a445-d156712a34c5
+DIRECT,Qwen3 1.7B (Reasoning),Alibaba,Qwen3 1.7B (Reasoning),1.000,c1533b8f-8ab2-4659-a445-d156712a34c5
+DIRECT,Qwen3 14B (Non-reasoning),Alibaba,Qwen3 14B (Non-reasoning),1.000,f13d06fb-1d84-4562-a09a-5609a5c82a45
+DIRECT,Qwen3 14B (Reasoning),Alibaba,Qwen3 14B (Reasoning),1.000,f13d06fb-1d84-4562-a09a-5609a5c82a45
+DIRECT,Qwen3 235B A22B (Non-reasoning),Alibaba,Qwen3 235B A22B (Non-reasoning),1.000,96f0084a-5c47-437e-a4eb-92cfa12935d3
+DIRECT,Qwen3 235B A22B (Reasoning),Alibaba,Qwen3 235B A22B (Reasoning),1.000,96f0084a-5c47-437e-a4eb-92cfa12935d3
+DIRECT,Qwen3 235B A22B 2507 (Reasoning),Alibaba,Qwen3 235B A22B 2507 (Reasoning),1.000,48ffee58-2820-4844-bad0-4dcf00e5852b
+REVIEW,Qwen3 235B A22B 2507 Instruct,Alibaba,Qwen3 235B A22B Instruct 2507,0.840,1734bca4-14e7-4ac8-97be-9a449e93fbf4
+DIRECT,Qwen3 30B A3B (Non-reasoning),Alibaba,Qwen3 30B A3B (Non-reasoning),1.000,8d2ada34-0b5d-4cfe-96f9-61e47b420f33
+DIRECT,Qwen3 30B A3B (Reasoning),Alibaba,Qwen3 30B A3B (Reasoning),1.000,8d2ada34-0b5d-4cfe-96f9-61e47b420f33
+DIRECT,Qwen3 30B A3B 2507 (Reasoning),Alibaba,Qwen3 30B A3B 2507 (Reasoning),1.000,63312386-ec81-42ec-afa0-8538ab6b6e18
+REVIEW,Qwen3 30B A3B 2507 Instruct,Alibaba,Qwen3 30B A3B Instruct 2507,0.826,bd230ed9-902b-43cb-941d-75d10dd89873
+DIRECT,Qwen3 32B (Non-reasoning),Alibaba,Qwen3 32B (Non-reasoning),1.000,ea832346-dffa-498b-98a4-073b473a1ba6
+DIRECT,Qwen3 32B (Reasoning),Alibaba,Qwen3 32B (Reasoning),1.000,ea832346-dffa-498b-98a4-073b473a1ba6
+DIRECT,Qwen3 4B (Non-reasoning),Alibaba,Qwen3 4B (Non-reasoning),1.000,84ae14e1-0016-445e-874a-171aac912d7d
+DIRECT,Qwen3 4B (Reasoning),Alibaba,Qwen3 4B (Reasoning),1.000,84ae14e1-0016-445e-874a-171aac912d7d
+REVIEW,Qwen3 4B 2507 (Reasoning),Alibaba,Qwen 3 4B Instruct 2507,0.733,43031186-22ba-415f-be4b-322f900a023f
+REVIEW,Qwen3 4B 2507 Instruct,Alibaba,Qwen 3 4B Instruct 2507,0.789,43031186-22ba-415f-be4b-322f900a023f
+DIRECT,Qwen3 8B (Non-reasoning),Alibaba,Qwen3 8B (Non-reasoning),1.000,a48d63e6-5bf7-4591-b6de-b4c2305d374d
+DIRECT,Qwen3 8B (Reasoning),Alibaba,Qwen3 8B (Reasoning),1.000,a48d63e6-5bf7-4591-b6de-b4c2305d374d
+DIRECT,Qwen3 Coder 30B A3B Instruct,Alibaba,Qwen3 Coder 30B A3B Instruct,1.000,cd4b572c-fa8a-45ae-ac97-460005073e22
+DIRECT,Qwen3 Coder 480B A35B Instruct,Alibaba,Qwen3 Coder 480B A35B Instruct,1.000,a2c5e5e1-ecc6-4276-82bc-1f9bdd433afc
+DIRECT,Qwen3 Coder Next,Alibaba,Qwen3 Coder Next,1.000,7c76c9f5-20e9-4144-97df-48aef895d6ce
+DIRECT,Qwen3 Max,Alibaba,Qwen3 Max,1.000,93a9a41a-91bd-418e-a3f3-d36693c820be
+DIRECT,Qwen3 Max (Preview),Alibaba,Qwen3 Max (Preview),1.000,93a9a41a-91bd-418e-a3f3-d36693c820be
+DIRECT,Qwen3 Max Thinking,Alibaba,Qwen3 Max Thinking,1.000,93a9a41a-91bd-418e-a3f3-d36693c820be
+DIRECT,Qwen3 Max Thinking (Preview),Alibaba,Qwen3 Max Thinking (Preview),1.000,93a9a41a-91bd-418e-a3f3-d36693c820be
+DIRECT,Qwen3 Next 80B A3B (Reasoning),Alibaba,Qwen3 Next 80B A3B (Reasoning),1.000,bcc61807-3cc8-4bb1-bc24-7933bc5cb242
+DIRECT,Qwen3 Next 80B A3B Instruct,Alibaba,Qwen3 Next 80B A3B Instruct,1.000,481f7dd1-7dd3-4ad1-835c-ea6cc853b23d
+FALLBACK,Qwen3 Omni 30B A3B (Reasoning),Alibaba,Qwen3 Omni 30B A3B,1.000,e3669d82-69a3-44e1-b1fa-46078d4c6c9e
+DIRECT,Qwen3 Omni 30B A3B Instruct,Alibaba,Qwen3 Omni 30B A3B Instruct,1.000,e3669d82-69a3-44e1-b1fa-46078d4c6c9e
+DIRECT,Qwen3 VL 235B A22B (Reasoning),Alibaba,Qwen3 VL 235B A22B (Reasoning),1.000,0862f09f-9849-4e37-beb0-172e89d27da2
+DIRECT,Qwen3 VL 235B A22B Instruct,Alibaba,Qwen3 VL 235B A22B Instruct,1.000,426dae38-15ea-4ab0-b380-4b006760d3d5
+DIRECT,Qwen3 VL 30B A3B (Reasoning),Alibaba,Qwen3 VL 30B A3B (Reasoning),1.000,15bc51a6-ae65-481c-9273-87ab25a44e75
+DIRECT,Qwen3 VL 30B A3B Instruct,Alibaba,Qwen3 VL 30B A3B Instruct,1.000,d95422ca-f94c-41a9-878e-daae2a6c2706
+DIRECT,Qwen3 VL 32B (Reasoning),Alibaba,Qwen3 VL 32B (Reasoning),1.000,b093ab84-4842-4381-8a77-9a5001217414
+DIRECT,Qwen3 VL 32B Instruct,Alibaba,Qwen3 VL 32B Instruct,1.000,a6c68e7d-da95-4870-bd02-cc8ff8955fe8
+REVIEW,Qwen3 VL 4B (Reasoning),Alibaba,Qwen/Qwen3-VL-4B-Instruct,0.600,fe1897e1-0f7f-409e-accd-054496afa659
+REVIEW,Qwen3 VL 4B Instruct,Alibaba,Qwen/Qwen3-VL-4B-Instruct,0.895,fe1897e1-0f7f-409e-accd-054496afa659
+REVIEW,Qwen3 VL 8B (Reasoning),Alibaba,Qwen3-VL-8B-Instruct,0.692,ec7d0508-97a1-49c8-a252-a90a2d0e425c
+DIRECT,Qwen3 VL 8B Instruct,Alibaba,Qwen3 VL 8B Instruct,1.000,ec7d0508-97a1-49c8-a252-a90a2d0e425c
+DIRECT,Qwen3-235B-A22B,Alibaba,Qwen3-235B-A22B,1.000,96f0084a-5c47-437e-a4eb-92cfa12935d3
+DIRECT,Qwen3-235B-A22B-Instruct-2507,Alibaba,Qwen3-235B-A22B-Instruct-2507,1.000,1734bca4-14e7-4ac8-97be-9a449e93fbf4
+DIRECT,Qwen3-235B-A22B-Thinking-2507,Alibaba,Qwen3-235B-A22B-Thinking-2507,1.000,48ffee58-2820-4844-bad0-4dcf00e5852b
+DIRECT,Qwen3-30B-A3B-Base,Alibaba,Qwen3-30B-A3B-Base,1.000,ad650576-6440-4c5c-bdf4-e6103cfa2ad3
+DIRECT,Qwen3-30B-A3B-Thinking,Alibaba,Qwen3-30B-A3B-Thinking,1.000,8d2ada34-0b5d-4cfe-96f9-61e47b420f33
+DIRECT,Qwen3-30B-A3B-Thinking-2507,Alibaba,Qwen3-30B-A3B-Thinking-2507,1.000,63312386-ec81-42ec-afa0-8538ab6b6e18
+DIRECT,Qwen3-Coder 480B/A35B Instruct,Qwen,Qwen3-Coder 480B/A35B Instruct,1.000,a2c5e5e1-ecc6-4276-82bc-1f9bdd433afc
+DIRECT,Qwen3-Coder-30B-A3B-Instruct,Qwen,Qwen3-Coder-30B-A3B-Instruct,1.000,cd4b572c-fa8a-45ae-ac97-460005073e22
+DIRECT,Qwen3-Coder-480B-A35B-Instruct,Qwen,Qwen3-Coder-480B-A35B-Instruct,1.000,a2c5e5e1-ecc6-4276-82bc-1f9bdd433afc
+DIRECT,Qwen3-Max,Qwen,Qwen3-Max,1.000,93a9a41a-91bd-418e-a3f3-d36693c820be
+DIRECT,Qwen3-Max-Thinking,Alibaba,Qwen3-Max-Thinking,1.000,93a9a41a-91bd-418e-a3f3-d36693c820be
+DIRECT,Qwen3-Max-Thinking,Qwen,Qwen3-Max-Thinking,1.000,93a9a41a-91bd-418e-a3f3-d36693c820be
+REVIEW,Qwen3.5 0.8B (Non-reasoning),Alibaba,Qwen/Qwen3.5-0.8B,0.818,45ae6f22-a649-417d-9f23-e746ab4ed647
+REVIEW,Qwen3.5 0.8B (Reasoning),Alibaba,Qwen/Qwen3.5-0.8B,0.818,45ae6f22-a649-417d-9f23-e746ab4ed647
+DIRECT,Qwen3.5 122B A10B (Non-reasoning),Alibaba,Qwen3.5 122B A10B (Non-reasoning),1.000,fb771ea6-3b95-4ddf-8611-2cd9b97fbbb6
+DIRECT,Qwen3.5 122B A10B (Reasoning),Alibaba,Qwen3.5 122B A10B (Reasoning),1.000,fb771ea6-3b95-4ddf-8611-2cd9b97fbbb6
+DIRECT,Qwen3.5 27B (Non-reasoning),Alibaba,Qwen3.5 27B (Non-reasoning),1.000,7f447a2c-f3e3-43eb-8aef-2808f8a4716c
+DIRECT,Qwen3.5 27B (Reasoning),Alibaba,Qwen3.5 27B (Reasoning),1.000,7f447a2c-f3e3-43eb-8aef-2808f8a4716c
+REVIEW,Qwen3.5 2B (Non-reasoning),Alibaba,Qwen/Qwen3.5-2B,0.800,09fca2e3-b559-4b2a-a44d-909c027b068b
+REVIEW,Qwen3.5 2B (Reasoning),Alibaba,Qwen/Qwen3.5-2B,0.800,09fca2e3-b559-4b2a-a44d-909c027b068b
+DIRECT,Qwen3.5 35B A3B (Non-reasoning),Alibaba,Qwen3.5 35B A3B (Non-reasoning),1.000,f136418a-079a-4f0c-b588-374f1c579e86
+DIRECT,Qwen3.5 35B A3B (Reasoning),Alibaba,Qwen3.5 35B A3B (Reasoning),1.000,f136418a-079a-4f0c-b588-374f1c579e86
+DIRECT,Qwen3.5 397B A17B (Non-reasoning),Alibaba,Qwen3.5 397B A17B (Non-reasoning),1.000,761cb568-07df-4db0-b2c2-c761fef5b385
+DIRECT,Qwen3.5 397B A17B (Reasoning),Alibaba,Qwen3.5 397B A17B (Reasoning),1.000,761cb568-07df-4db0-b2c2-c761fef5b385
+DIRECT,Qwen3.5 4B (Non-reasoning),Alibaba,Qwen3.5 4B (Non-reasoning),1.000,dba7b268-aace-45dd-ac1e-53833839692b
+DIRECT,Qwen3.5 4B (Reasoning),Alibaba,Qwen3.5 4B (Reasoning),1.000,dba7b268-aace-45dd-ac1e-53833839692b
+DIRECT,Qwen3.5 9B (Non-reasoning),Alibaba,Qwen3.5 9B (Non-reasoning),1.000,d13c2918-489f-4461-a5e0-4ea010a1a842
+DIRECT,Qwen3.5 9B (Reasoning),Alibaba,Qwen3.5 9B (Reasoning),1.000,d13c2918-489f-4461-a5e0-4ea010a1a842
+DIRECT,Qwen3.5 Omni Flash,Alibaba,Qwen3.5 Omni Flash,1.000,45beb63a-b55c-4c7c-bf02-f71cfb1d3099
+DIRECT,Qwen3.5 Omni Plus,Alibaba,Qwen3.5 Omni Plus,1.000,738eeca6-6ae6-4a6f-89e4-8b0582edd056
+DIRECT,Qwen3.5-0.8B,Alibaba,Qwen3.5-0.8B,1.000,45ae6f22-a649-417d-9f23-e746ab4ed647
+DIRECT,Qwen3.5-122B-A10B,Alibaba,Qwen3.5-122B-A10B,1.000,fb771ea6-3b95-4ddf-8611-2cd9b97fbbb6
+DIRECT,Qwen3.5-27B,Alibaba,Qwen3.5-27B,1.000,7f447a2c-f3e3-43eb-8aef-2808f8a4716c
+DIRECT,Qwen3.5-2B,Alibaba,Qwen3.5-2B,1.000,09fca2e3-b559-4b2a-a44d-909c027b068b
+DIRECT,Qwen3.5-35B-A3B,Alibaba,Qwen3.5-35B-A3B,1.000,f136418a-079a-4f0c-b588-374f1c579e86
+DIRECT,Qwen3.5-397B-A17B,Alibaba,Qwen3.5-397B-A17B,1.000,761cb568-07df-4db0-b2c2-c761fef5b385
+DIRECT,Qwen3.5-397B-A17B (enabled),Alibaba Cloud,Qwen3.5-397B-A17B (enabled),1.000,761cb568-07df-4db0-b2c2-c761fef5b385
+DIRECT,Qwen3.5-4B,Alibaba,Qwen3.5-4B,1.000,dba7b268-aace-45dd-ac1e-53833839692b
+DIRECT,Qwen3.5-9B,Alibaba,Qwen3.5-9B,1.000,d13c2918-489f-4461-a5e0-4ea010a1a842
+DIRECT,Qwen3.6 27B (Non-reasoning),Alibaba,Qwen3.6 27B (Non-reasoning),1.000,572a2061-515a-49ac-9be1-8b42c2650faf
+DIRECT,Qwen3.6 27B (Reasoning),Alibaba,Qwen3.6 27B (Reasoning),1.000,572a2061-515a-49ac-9be1-8b42c2650faf
+DIRECT,Qwen3.6 35B A3B (Non-reasoning),Alibaba,Qwen3.6 35B A3B (Non-reasoning),1.000,d0134a27-de50-46d1-b02f-bf2ddb790bf3
+DIRECT,Qwen3.6 35B A3B (Reasoning),Alibaba,Qwen3.6 35B A3B (Reasoning),1.000,d0134a27-de50-46d1-b02f-bf2ddb790bf3
+DIRECT,Qwen3.6 Max Preview,Alibaba,Qwen3.6 Max Preview,1.000,778e2b26-21f1-4d77-8d17-599c49334312
+DIRECT,Qwen3.6 Plus,Alibaba,Qwen3.6 Plus,1.000,40cf36ef-f975-40d9-8d63-b3f3cd74e715
+DIRECT,Qwen3.7 Max,Alibaba,Qwen3.7 Max,1.000,5166c286-5129-472c-b5da-facbecf4feab
+DIRECT,Qwen3.7 Plus,Alibaba,Qwen3.7 Plus,1.000,e5c92268-d7ee-4e70-a3fb-a9403254ccf5
+DIRECT,Qwen3.8 2.4T A95B,Alibaba,Qwen3.8 2.4T A95B,1.000,4d498009-3e19-46c8-9ad8-1821d330dc9e
+DIRECT,Qwen3.8 27B,Alibaba,Qwen3.8 27B,1.000,1b50b063-e171-43c1-a9ed-829d6428c36d
+DIRECT,Qwen3.8 27B (Non-reasoning),Alibaba,Qwen3.8 27B (Non-reasoning),1.000,1b50b063-e171-43c1-a9ed-829d6428c36d
+DIRECT,Qwen3.8 27B (low),Alibaba,Qwen3.8 27B (low),1.000,1b50b063-e171-43c1-a9ed-829d6428c36d
+DIRECT,Qwen3.8 27B (medium),Alibaba,Qwen3.8 27B (medium),1.000,1b50b063-e171-43c1-a9ed-829d6428c36d
+DIRECT,Qwen3.8 27B (xhigh),Alibaba,Qwen3.8 27B (xhigh),1.000,1b50b063-e171-43c1-a9ed-829d6428c36d
+DIRECT,Qwen3.8 Max,Alibaba,Qwen3.8 Max,1.000,6eb4a549-905b-4d8f-b0b9-237d35300860
+DIRECT,Qwen3.8-Flash-Next,Alibaba,Qwen3.8-Flash-Next,1.000,f1e2420b-5268-437f-946f-59accfc6c2df
+DIRECT,R1 1776,Perplexity,R1 1776,1.000,3f3f06d6-9707-4078-955c-a28d7d3d6bd8
+REVIEW,RAFT-30B-A3B,Northeastern University HAI Lab,,,
+REVIEW,RRD2.5-9B,Unknown,,,
+REVIEW,RWKV-4-Raven-14B,,,,
+REVIEW,RWKV-4-Raven-14B,RWKV,,,
+DIRECT,Reflection-Llama-3.1-70B,Meta,Reflection-Llama-3.1-70B,1.000,1c3fe1dd-c2a2-441a-be3d-123fd6c3064c
+REVIEW,Reka 3,Unknown,Reka Flash 3,0.667,2fe3e042-0a11-449b-801e-87eb84a211cc
+REVIEW,Reka Flash (Sep '24),Reka AI,,,
+DIRECT,Reka Flash 3,Reka AI,Reka Flash 3,1.000,2fe3e042-0a11-449b-801e-87eb84a211cc
+DIRECT,Ring-1T,InclusionAI,Ring-1T,1.000,b38905b0-ecd1-4b71-a632-cf234a1d74e1
+DIRECT,Ring-2.6-1T,InclusionAI,Ring-2.6-1T,1.000,b38905b0-ecd1-4b71-a632-cf234a1d74e1
+REVIEW,Ring-flash-2.0,InclusionAI,,,
+REVIEW,SWE-Llama 13B,Meta,,,
+REVIEW,SWE-Llama 7B,Meta,,,
+NON_MODEL,SWE-agent + Claude 3.7 Sonnet,Anthropic,,,
+DIRECT,SWE-agent + Claude-4.5-Sonnet,Anthropic,SWE-agent + Claude-4.5-Sonnet,1.000,c6d53b8c-3ac5-4bc4-96c7-e4b05547c131
+DIRECT,SWE-agent + DeepSeek V3,DeepSeek,SWE-agent + DeepSeek V3,1.000,e7622b6c-2c65-45cf-8e20-4e1935027553
+DIRECT,SWE-agent + DeepSeek-V3.1-Terminus,DeepSeek,SWE-agent + DeepSeek-V3.1-Terminus,1.000,c24eaa21-5caf-48a9-b258-543012e526f7
+DIRECT,SWE-agent + Deepseek-v4-Pro,DeepSeek,SWE-agent + Deepseek-v4-Pro,1.000,0dae45bf-ac1a-47b6-b174-c1dd0437b2c5
+DIRECT,SWE-agent + GPT 4.1,OpenAI,SWE-agent + GPT 4.1,1.000,3ffbfd31-3137-44a3-9936-adda7cfb6846
+DIRECT,SWE-agent + GPT 4o,OpenAI,SWE-agent + GPT 4o,1.000,7655ce55-93ac-440b-9b72-722dedc62b67
+DIRECT,SWE-agent + GPT-5.5 (Medium),OpenAI,SWE-agent + GPT-5.5 (Medium),1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,SWE-agent + GPT5-Thinking (Medium),OpenAI,SWE-agent + GPT5-Thinking (Medium),1.000,47893569-7a4c-4dcd-b63d-1ce9730536d2
+DIRECT,SWE-agent + GPT5.2-Thinking (Medium),OpenAI,SWE-agent + GPT5.2-Thinking (Medium),1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,SWE-agent + Gemini3-Flash,Google,SWE-agent + Gemini3-Flash,1.000,33b5e99e-452c-4e46-9a2e-752cbcb19c1d
+REVIEW,SWE-agent-LM-32B,Qwen,,,
+DIRECT,Sarvam 105B (high),Sarvam,Sarvam 105B (high),1.000,b4e2dcd9-b90b-47d4-af7c-69b4c7ec9242
+DIRECT,Sarvam 30B (high),Sarvam,Sarvam 30B (high),1.000,272b36de-ecbb-45e2-ba85-5eca31e0d179
+REVIEW,Sarvam M (Reasoning),Sarvam,Sarvam 30B,0.830,272b36de-ecbb-45e2-ba85-5eca31e0d179
+REVIEW,Seed-OSS-36B-Base(w/ syn.),Unknown,,,
+REVIEW,Seed-OSS-36B-Base(w/o syn.),Unknown,,,
+DIRECT,Seed-OSS-36B-Instruct,ByteDance Seed,Seed-OSS-36B-Instruct,1.000,61a60271-777d-457d-b3d5-1384d90246e6
+DIRECT,Seed-OSS-36B-Instruct,Unknown,Seed-OSS-36B-Instruct,1.000,61a60271-777d-457d-b3d5-1384d90246e6
+REVIEW,Seed-Thinking-v1.5,Unknown,,,
+REVIEW,Seed1.6-Ada-Thinking,Unknown,,,
+REVIEW,Seed1.6-Base,Unknown,,,
+DIRECT,Seed1.6-Thinking,Unknown,Seed1.6-Thinking,1.000,43a45ed0-14f5-4414-bb26-09ac1cf9453a
+REVIEW,Seed2.0-Lite,Unknown,,,
+DIRECT,Seed2.0-Mini,Unknown,Seed2.0-Mini,1.000,d5ff1691-f7ce-45c5-a4f6-26b402ea197b
+REVIEW,Seed2.0-Pro,Unknown,,,
+REVIEW,SkyThought-T1,Unknown,,,
+DIRECT,Slingshot + Claude-4.5-Sonnet,Anthropic,Slingshot + Claude-4.5-Sonnet,1.000,c6d53b8c-3ac5-4bc4-96c7-e4b05547c131
+DIRECT,Slingshot + Claude-4.6-Opus,Anthropic,Slingshot + Claude-4.6-Opus,1.000,51e215f4-ad75-4b67-af7c-ee79166f6938
+DIRECT,Slingshot-v2.6.0 + Claude-4.5-Sonnet,Anthropic,Slingshot-v2.6.0 + Claude-4.5-Sonnet,1.000,c6d53b8c-3ac5-4bc4-96c7-e4b05547c131
+DIRECT,Slingshot-v2.6.0 + GPT-5.5 (Medium),OpenAI,Slingshot-v2.6.0 + GPT-5.5 (Medium),1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,Slingshot-v3.0.0 + GPT-5.5 (Medium),OpenAI,Slingshot-v3.0.0 + GPT-5.5 (Medium),1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,Slingshot-v3.1.0 + GPT-5.5 (Medium),OpenAI,Slingshot-v3.1.0 + GPT-5.5 (Medium),1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+REVIEW,SmolLM-1.7B,Unknown,,,
+REVIEW,SmolLM-135M,Unknown,,,
+REVIEW,SmolLM-360M,Unknown,,,
+REVIEW,SmolLM2-1.7B,Unknown,,,
+REVIEW,SmolLM2-135M,Unknown,,,
+REVIEW,SmolLM2-360M,Unknown,,,
+REVIEW,Solar Mini,Upstage,,,
+REVIEW,Solar Open 100B (Reasoning),Upstage,,,
+REVIEW,Solar Open2 250B,Upstage,,,
+REVIEW,Solar Pro 2 (Non-reasoning),Upstage,,,
+REVIEW,Solar Pro 2 (Preview) (Non-reasoning),Upstage,,,
+REVIEW,Solar Pro 2 (Preview) (Reasoning),Upstage,,,
+REVIEW,Solar Pro 2 (Reasoning),Upstage,,,
+DIRECT,Solar Pro 3,Upstage,Solar Pro 3,1.000,4e6d42ef-6257-4423-a5fe-157106776a33
+DIRECT,Solar Pro 4,Upstage,Solar Pro 4,1.000,1169a24c-cd41-42b3-abd0-8880700e17d9
+DIRECT,Sonar,Perplexity,Sonar,1.000,339f860e-f3dc-4d56-bef6-b750b50057a4
+DIRECT,Sonar Pro,Perplexity,Sonar Pro,1.000,a0a66b13-5eb3-4860-8254-8b6596484171
+DIRECT,Sonar Reasoning,Perplexity,Sonar Reasoning,1.000,339f860e-f3dc-4d56-bef6-b750b50057a4
+DIRECT,Sonar Reasoning Pro,Perplexity,Sonar Reasoning Pro,1.000,a0a66b13-5eb3-4860-8254-8b6596484171
+REVIEW,Staring-7B,Unknown,,,
+DIRECT,Step 3.5 Flash,StepFun,Step 3.5 Flash,1.000,3fc56581-da3f-4574-b881-70b4dd067865
+DIRECT,Step 3.5 Flash 2603,StepFun,Step 3.5 Flash 2603,1.000,3fc56581-da3f-4574-b881-70b4dd067865
+DIRECT,Step 3.7 Flash,StepFun,Step 3.7 Flash,1.000,87e83035-bdb8-4448-9879-eab190335d19
+REVIEW,Step3 VL 10B,StepFun,,,
+NON_MODEL,TTS(Bo16),OpenAI,,,
+NON_MODEL,TTS(Bo8),Qwen,,,
+REVIEW,Tiny Aya Global,Cohere,,,
+REVIEW,Tri-21B-Think,Trillion Labs,,,
+REVIEW,Tri-21B-think Preview,Trillion Labs,,,
+DIRECT,Trinity Large Thinking,Arcee AI,Trinity Large Thinking,1.000,fd615469-508e-43fb-b6e0-727318a3fc8f
+NON_MODEL,Undisclosed,AWS,,,
+DIRECT,Win-agent + Claude-4.5-Sonnet,Anthropic,Win-agent + Claude-4.5-Sonnet,1.000,c6d53b8c-3ac5-4bc4-96c7-e4b05547c131
+DIRECT,Win-agent + DeepSeek-V3.1-Terminus,DeepSeek,Win-agent + DeepSeek-V3.1-Terminus,1.000,c24eaa21-5caf-48a9-b258-543012e526f7
+DIRECT,Win-agent + Deepseek-v4-Pro,DeepSeek,Win-agent + Deepseek-v4-Pro,1.000,0dae45bf-ac1a-47b6-b174-c1dd0437b2c5
+DIRECT,Win-agent + GPT-5.2-Thinking-Medium,OpenAI,Win-agent + GPT-5.2-Thinking-Medium,1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,Win-agent + GPT-5.5 (Medium),OpenAI,Win-agent + GPT-5.5 (Medium),1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,Win-agent + Gemini-3-Flash,Google,Win-agent + Gemini-3-Flash,1.000,33b5e99e-452c-4e46-9a2e-752cbcb19c1d
+DIRECT,WizardLM-2-8x22B,Unknown,WizardLM-2-8x22B,1.000,7eaf67d1-3a47-41c4-ba49-0a55e9fac4d3
+REVIEW,XBai-o4-medium,OpenAI,,,
+REVIEW,Yi-1.5-34B-Chat,Unknown,,,
+REVIEW,Yi-1.5-6B-Chat,Unknown,,,
+REVIEW,Yi-1.5-9B-Chat,Unknown,,,
+DIRECT,Yi-34B,Unknown,Yi-34B,1.000,846ad689-ff07-4d18-b759-d8d5398100c9
+REVIEW,Yi-6B,Unknown,,,
+REVIEW,Yi-6B-Chat,Unknown,,,
+DIRECT,Yi-Lightning,Unknown,Yi-Lightning,1.000,5c07f998-81ac-463e-a4eb-1edc78c5b0ad
+DIRECT,Yi-large,Unknown,Yi-large,1.000,29ba7690-2d86-43d3-b0cc-fef16ca857e9
+DIRECT,Zephyr-7B-Beta,Unknown,Zephyr-7B-Beta,1.000,8c2dd001-b3dc-4a0d-b9a2-f6a74b4e8af0
+REVIEW,alpaca-13b,,,,
+REVIEW,alpaca-13b,Stanford,,,
+REVIEW,amazon-nova-experimental-chat-10-09,amazon,,,
+REVIEW,amazon-nova-experimental-chat-10-20,amazon,,,
+REVIEW,amazon-nova-experimental-chat-11-10,amazon,,,
+REVIEW,amazon-nova-experimental-chat-12-10,amazon,,,
+REVIEW,amazon-nova-experimental-chat-26-01-10,amazon,,,
+REVIEW,amazon-nova-experimental-chat-26-02-10,amazon,,,
+REVIEW,amazon-nova-lite-v1.0,amazon,,,
+REVIEW,amazon-nova-micro-v1.0,amazon,,,
+REVIEW,amazon-nova-pro-v1.0,amazon,,,
+REVIEW,athene-70b-0725,,,,
+REVIEW,athene-70b-0725,NexusFlow,,,
+REVIEW,athene-v2-chat,,,,
+REVIEW,athene-v2-chat,NexusFlow,,,
+REVIEW,azerogpt,OpenAI,,,
+REVIEW,c4ai-aya-expanse-32b,cohere,,,
+REVIEW,c4ai-aya-expanse-8b,cohere,,,
+REVIEW,c4ai-command-r-v01,Unknown,,,
+REVIEW,chatglm-6b,,,,
+REVIEW,chatglm-6b,Tsinghua,,,
+REVIEW,chatglm2-6b,,,,
+REVIEW,chatglm2-6b,Tsinghua,,,
+REVIEW,chatglm3-6b,,,,
+REVIEW,chatglm3-6b,Tsinghua,,,
+DIRECT,chatgpt-4o-latest,openai,chatgpt-4o-latest,1.000,7dd31e0b-61a2-45da-9aa1-03904c9c913e
+DIRECT,chatgpt-4o-latest-20250326,openai,chatgpt-4o-latest-20250326,1.000,7dd31e0b-61a2-45da-9aa1-03904c9c913e
+REVIEW,claude-3-5-haiku-20241022,anthropic,,,
+REVIEW,claude-3-5-sonnet-20240620,anthropic,,,
+REVIEW,claude-3-5-sonnet-20241022,anthropic,,,
+DIRECT,claude-3-7-sonnet-20250219,anthropic,claude-3-7-sonnet-20250219,1.000,3cf0b7ef-f66c-4d1f-980a-cfaaa564cf09
+REVIEW,claude-3-7-sonnet-20250219-thinking-32k,anthropic,,,
+DIRECT,claude-3-haiku-20240307,anthropic,claude-3-haiku-20240307,1.000,0b5a39d7-f24a-470e-a6ff-b08e01cc2ddd
+DIRECT,claude-3-opus-20240229,anthropic,claude-3-opus-20240229,1.000,fbdb9829-ac51-4946-9253-4857a03a7fc1
+REVIEW,claude-3-sonnet-20240229,anthropic,,,
+DIRECT,claude-fable-5,anthropic,claude-fable-5,1.000,0e4afcba-b7af-4e47-ba7c-e3f7986cceaa
+DIRECT,claude-fable-5-xhigh-effort,Anthropic,claude-fable-5-xhigh-effort,1.000,0e4afcba-b7af-4e47-ba7c-e3f7986cceaa
+DIRECT,claude-haiku-4-5-20251001,anthropic,claude-haiku-4-5-20251001,1.000,6c5262a4-00fe-4380-b71a-0d0a458bcdeb
+DIRECT,claude-opus-4-1-20250805,anthropic,claude-opus-4-1-20250805,1.000,b8080d63-dc68-485a-b07a-e4e82af3a6ac
+REVIEW,claude-opus-4-1-20250805-thinking-16k,anthropic,,,
+DIRECT,claude-opus-4-20250514,anthropic,claude-opus-4-20250514,1.000,60779b55-9a09-4282-b39a-14518292785b
+REVIEW,claude-opus-4-20250514-thinking-16k,anthropic,,,
+DIRECT,claude-opus-4-5-20251101,anthropic,claude-opus-4-5-20251101,1.000,90810215-fd0e-411d-b2d4-14a878d15247
+REVIEW,claude-opus-4-5-20251101-high-32k,anthropic,,,
+REVIEW,claude-opus-4-5-20251101-thinking-32k,anthropic,,,
+REVIEW,claude-opus-4-5-20251101-thinking-64k-high-effort,Anthropic,,,
+DIRECT,claude-opus-4-6,anthropic,claude-opus-4-6,1.000,08b4af89-7dec-4dd1-b5a1-9796a34e8264
+DIRECT,claude-opus-4-6-high,anthropic,claude-opus-4-6-high,1.000,08b4af89-7dec-4dd1-b5a1-9796a34e8264
+DIRECT,claude-opus-4-6-thinking,anthropic,claude-opus-4-6-thinking,1.000,08b4af89-7dec-4dd1-b5a1-9796a34e8264
+REVIEW,claude-opus-4-6-thinking-auto-high-effort,Anthropic,,,
+DIRECT,claude-opus-4-7,anthropic,claude-opus-4-7,1.000,aa10a0c7-1aea-4b89-8107-620b86b270b3
+DIRECT,claude-opus-4-7-high,anthropic,claude-opus-4-7-high,1.000,aa10a0c7-1aea-4b89-8107-620b86b270b3
+DIRECT,claude-opus-4-7-thinking,anthropic,claude-opus-4-7-thinking,1.000,aa10a0c7-1aea-4b89-8107-620b86b270b3
+DIRECT,claude-opus-4-7-xhigh-effort,Anthropic,claude-opus-4-7-xhigh-effort,1.000,aa10a0c7-1aea-4b89-8107-620b86b270b3
+DIRECT,claude-opus-4-8,anthropic,claude-opus-4-8,1.000,7accddb7-ed1d-4d58-8b46-ce22c7b9b092
+DIRECT,claude-opus-4-8-high,anthropic,claude-opus-4-8-high,1.000,7accddb7-ed1d-4d58-8b46-ce22c7b9b092
+DIRECT,claude-opus-4-8-thinking,anthropic,claude-opus-4-8-thinking,1.000,7accddb7-ed1d-4d58-8b46-ce22c7b9b092
+DIRECT,claude-opus-4-8-xhigh-effort,Anthropic,claude-opus-4-8-xhigh-effort,1.000,7accddb7-ed1d-4d58-8b46-ce22c7b9b092
+DIRECT,claude-opus-5-high,anthropic,claude-opus-5-high,1.000,a2053a3a-8e6d-438d-baec-baa519d6575c
+DIRECT,claude-opus-5-max,anthropic,claude-opus-5-max,1.000,a2053a3a-8e6d-438d-baec-baa519d6575c
+DIRECT,claude-sonnet-4-20250514,anthropic,claude-sonnet-4-20250514,1.000,2fa2cd59-8361-438c-93c4-5ee7c330de62
+REVIEW,claude-sonnet-4-20250514-thinking-32k,anthropic,,,
+DIRECT,claude-sonnet-4-5-20250929,anthropic,claude-sonnet-4-5-20250929,1.000,5464a8fa-31ea-4f45-ac23-f3b9979c5d5d
+REVIEW,claude-sonnet-4-5-20250929-high-32k,anthropic,,,
+REVIEW,claude-sonnet-4-5-20250929-thinking-32k,anthropic,,,
+DIRECT,claude-sonnet-4-6,anthropic,claude-sonnet-4-6,1.000,d08ce58f-00e8-46a3-8eb8-381397e96825
+REVIEW,claude-sonnet-4-6-thinking-auto-medium-effort,Anthropic,,,
+DIRECT,claude-sonnet-5-high,anthropic,claude-sonnet-5-high,1.000,3a54c886-8085-42c4-af0a-54e6ceab55a7
+DIRECT,claude-sonnet-5-thinking,anthropic,claude-sonnet-5-thinking,1.000,3a54c886-8085-42c4-af0a-54e6ceab55a7
+DIRECT,claude-sonnet-5-xhigh-effort,Anthropic,claude-sonnet-5-xhigh-effort,1.000,3a54c886-8085-42c4-af0a-54e6ceab55a7
+DIRECT,codellama-34b-instruct,meta,codellama-34b-instruct,1.000,5c84f854-8963-4c54-a946-0bbe330d9cf6
+DIRECT,codellama-70b-instruct,meta,codellama-70b-instruct,1.000,a36ed812-6a63-4ee3-8f35-f0c81ca5a9c6
+REVIEW,command-a-03-2025,cohere,,,
+DIRECT,command-r,cohere,command-r,1.000,b063fef6-1cb0-4a0e-b593-1e5e95fb1a02
+DIRECT,command-r-08-2024,cohere,command-r-08-2024,1.000,19bcc9f6-10f3-44c4-aaf9-795f4319a407
+DIRECT,command-r-plus,cohere,command-r-plus,1.000,9b914d51-02cf-44cc-929b-e2ac1265f7fd
+DIRECT,command-r-plus-08-2024,cohere,command-r-plus-08-2024,1.000,680d833e-d1ab-4bed-b639-e87ef2c668cf
+REVIEW,dbrx-instruct-preview,,,,
+REVIEW,dbrx-instruct-preview,Databricks,,,
+DIRECT,deepseek-coder-v2,deepseek,deepseek-coder-v2,1.000,6afa0155-a0b2-4344-8989-e6c45b3cbfe6
+REVIEW,deepseek-llm-67b-chat,deepseek,,,
+DIRECT,deepseek-r1,deepseek,deepseek-r1,1.000,9211955e-3961-40a5-ae1e-3b7559a6b7f5
+DIRECT,deepseek-r1-0528,deepseek,deepseek-r1-0528,1.000,bd1fff12-92e8-4986-a9ff-d83e1561182e
+DIRECT,deepseek-v2.5,deepseek,deepseek-v2.5,1.000,6067766a-b11a-4be9-b671-a16bb8020f0c
+REVIEW,deepseek-v2.5-1210,deepseek,,,
+DIRECT,deepseek-v3,deepseek,deepseek-v3,1.000,e7622b6c-2c65-45cf-8e20-4e1935027553
+DIRECT,deepseek-v3-0324,deepseek,deepseek-v3-0324,1.000,c15cb69f-17c1-4ce2-8a45-99f05c9d0d79
+DIRECT,deepseek-v3.1,deepseek,deepseek-v3.1,1.000,dd5e4daa-bc8b-442c-810c-0b0afc82d5c9
+DIRECT,deepseek-v3.1-terminus,deepseek,deepseek-v3.1-terminus,1.000,c24eaa21-5caf-48a9-b258-543012e526f7
+DIRECT,deepseek-v3.1-terminus-thinking,deepseek,deepseek-v3.1-terminus-thinking,1.000,c24eaa21-5caf-48a9-b258-543012e526f7
+DIRECT,deepseek-v3.1-thinking,deepseek,deepseek-v3.1-thinking,1.000,dd5e4daa-bc8b-442c-810c-0b0afc82d5c9
+DIRECT,deepseek-v3.2,deepseek,deepseek-v3.2,1.000,977c4e83-0e21-4fb8-aa46-435bcf21676c
+DIRECT,deepseek-v3.2-exp,deepseek,deepseek-v3.2-exp,1.000,1385a7eb-3faa-4ef3-bfe7-0a52d31ed3fd
+DIRECT,deepseek-v3.2-exp-thinking,deepseek,deepseek-v3.2-exp-thinking,1.000,1385a7eb-3faa-4ef3-bfe7-0a52d31ed3fd
+DIRECT,deepseek-v3.2-thinking,deepseek,deepseek-v3.2-thinking,1.000,977c4e83-0e21-4fb8-aa46-435bcf21676c
+DIRECT,deepseek-v4-flash,DeepSeek,deepseek-v4-flash,1.000,dcafae1e-ad3f-4aff-b92b-58f1a100019c
+DIRECT,deepseek-v4-flash,deepseek,deepseek-v4-flash,1.000,dcafae1e-ad3f-4aff-b92b-58f1a100019c
+FALLBACK,deepseek-v4-flash-high-preview,deepseek,deepseek-v4-flash-high,1.000,dcafae1e-ad3f-4aff-b92b-58f1a100019c
+DIRECT,deepseek-v4-flash-thinking,deepseek,deepseek-v4-flash-thinking,1.000,dcafae1e-ad3f-4aff-b92b-58f1a100019c
+DIRECT,deepseek-v4-pro,DeepSeek,deepseek-v4-pro,1.000,0dae45bf-ac1a-47b6-b174-c1dd0437b2c5
+DIRECT,deepseek-v4-pro,deepseek,deepseek-v4-pro,1.000,0dae45bf-ac1a-47b6-b174-c1dd0437b2c5
+DIRECT,deepseek-v4-pro-high-20260813,deepseek,deepseek-v4-pro-high-20260813,1.000,0dae45bf-ac1a-47b6-b174-c1dd0437b2c5
+FALLBACK,deepseek-v4-pro-high-preview,deepseek,deepseek-v4-pro-high,1.000,0dae45bf-ac1a-47b6-b174-c1dd0437b2c5
+DIRECT,deepseek-v4-pro-thinking,deepseek,deepseek-v4-pro-thinking,1.000,0dae45bf-ac1a-47b6-b174-c1dd0437b2c5
+FALLBACK,dola-seed-2.0-preview,Bytedance,dola-seed-2.0,1.000,2cfe2b77-247a-45d6-b9b4-9dedc07de86c
+DIRECT,dola-seed-2.0-pro,,dola-seed-2.0-pro,1.000,c2dde267-6e06-4057-8e09-f6132e84937b
+DIRECT,dola-seed-2.0-pro,bytedance,dola-seed-2.0-pro,1.000,c2dde267-6e06-4057-8e09-f6132e84937b
+REVIEW,dolly-v2-12b,,,,
+REVIEW,dolly-v2-12b,Databricks,,,
+REVIEW,dolphin-2.2.1-mistral-7b,,,,
+REVIEW,dolphin-2.2.1-mistral-7b,Cognitive Computations,,,
+REVIEW,ernie-5.0-0110,baidu,,,
+REVIEW,ernie-5.0-preview-1022,baidu,,,
+REVIEW,ernie-5.0-preview-1203,baidu,,,
+DIRECT,ernie-5.1,baidu,ernie-5.1,1.000,a60726df-02fa-4226-9805-af301faefdd0
+FALLBACK,ernie-5.1-preview,baidu,ernie-5.1,1.000,a60726df-02fa-4226-9805-af301faefdd0
+REVIEW,falcon-180b-chat,,,,
+REVIEW,falcon-180b-chat,TII,,,
+REVIEW,fastchat-t5-3b,,,,
+REVIEW,fastchat-t5-3b,LMSYS,,,
+REVIEW,gemini-1.5-flash-001,google,,,
+REVIEW,gemini-1.5-flash-002,google,,,
+REVIEW,gemini-1.5-flash-8b-001,google,,,
+REVIEW,gemini-1.5-flash-api-0514,google,,,
+REVIEW,gemini-1.5-pro-001,google,,,
+REVIEW,gemini-1.5-pro-002,google,,,
+REVIEW,gemini-1.5-pro-api-0514,google,,,
+DIRECT,gemini-2.0-flash-001,google,gemini-2.0-flash-001,1.000,99a18a08-170b-466b-8e5c-e64ce2c910c5
+REVIEW,gemini-2.0-flash-lite-preview-02-05,google,,,
+DIRECT,gemini-2.5-flash,google,gemini-2.5-flash,1.000,7aadb3c7-8d10-4f00-84e4-f9b1078f1609
+REVIEW,gemini-2.5-flash-lite-preview-06-17-thinking,google,,,
+REVIEW,gemini-2.5-flash-lite-preview-09-2025-no-thinking,google,,,
+DIRECT,gemini-2.5-flash-preview-09-2025,google,gemini-2.5-flash-preview-09-2025,1.000,ebf0fbb9-dd82-4122-9533-14c686b72983
+DIRECT,gemini-2.5-pro,google,gemini-2.5-pro,1.000,26d0c47c-9372-45d1-8182-f9c3c22d6be4
+DIRECT,gemini-3-flash,google,gemini-3-flash,1.000,33b5e99e-452c-4e46-9a2e-752cbcb19c1d
+DIRECT,gemini-3-flash (thinking-minimal),google,gemini-3-flash (thinking-minimal),1.000,33b5e99e-452c-4e46-9a2e-752cbcb19c1d
+DIRECT,gemini-3-pro,google,gemini-3-pro,1.000,2ee84a14-44ff-451e-b574-157f36ab7761
+DIRECT,gemini-3.1-flash-lite-preview,google,gemini-3.1-flash-lite-preview,1.000,4bb5c559-97dd-4882-8dcd-6be05ef8a938
+REVIEW,gemini-3.1-flash-live-preview-thinking-high (high),Google,,,
+REVIEW,gemini-3.1-flash-live-preview-thinking-minimal (minimal),Google,,,
+DIRECT,gemini-3.1-pro-preview,google,gemini-3.1-pro-preview,1.000,8d770833-7198-4b0d-be8d-16f32561909e
+DIRECT,gemini-3.1-pro-preview-high,Google,gemini-3.1-pro-preview-high,1.000,8d770833-7198-4b0d-be8d-16f32561909e
+DIRECT,gemini-3.5-flash,google,gemini-3.5-flash,1.000,31343e73-b2ba-4daf-97bd-1375da36cc89
+DIRECT,gemini-3.5-flash-high,Google,gemini-3.5-flash-high,1.000,31343e73-b2ba-4daf-97bd-1375da36cc89
+DIRECT,gemini-3.5-flash-high,google,gemini-3.5-flash-high,1.000,31343e73-b2ba-4daf-97bd-1375da36cc89
+DIRECT,gemini-3.5-flash-lite,google,gemini-3.5-flash-lite,1.000,1313f073-7487-4944-ae2b-5658ba169568
+DIRECT,gemini-3.5-flash-medium,google,gemini-3.5-flash-medium,1.000,31343e73-b2ba-4daf-97bd-1375da36cc89
+DIRECT,gemini-3.6-flash,google,gemini-3.6-flash,1.000,fc58c264-b7c7-4c94-818f-3c934e86071b
+DIRECT,gemini-3.6-flash-high,google,gemini-3.6-flash-high,1.000,fc58c264-b7c7-4c94-818f-3c934e86071b
+DIRECT,gemini-3.7-flash-high,google,gemini-3.7-flash-high,1.000,6c096f02-911b-44d7-8b93-fbd2d60f2e88
+REVIEW,gemini-advanced-0514,google,,,
+REVIEW,gemini-live-2.5-flash-native-audio,Google,,,
+DIRECT,gemini-pro,google,gemini-pro,1.000,45dc32d1-1305-49e6-9843-136cff765b06
+REVIEW,gemini-pro-dev-api,google,,,
+REVIEW,gemma-1.1-2b-it,google,,,
+DIRECT,gemma-1.1-7b-it,google,gemma-1.1-7b-it,1.000,8b4e8115-5139-49d4-a565-6a5df7180967
+DIRECT,gemma-2-27b-it,google,gemma-2-27b-it,1.000,f2d335c5-d492-4279-ba2b-236136727ca2
+REVIEW,gemma-2-2b-it,google,,,
+DIRECT,gemma-2-9b-it,google,gemma-2-9b-it,1.000,3e4d57f4-0649-4ead-bec1-8f5a3e157c4c
+REVIEW,gemma-2-9b-it-simpo,,,,
+REVIEW,gemma-2-9b-it-simpo,Princeton,,,
+DIRECT,gemma-2b-it,google,gemma-2b-it,1.000,3b18b986-687e-486a-a347-d5ab61a71cc7
+DIRECT,gemma-3-12b-it,google,gemma-3-12b-it,1.000,4144f446-3e8e-419c-a847-7345c9e6844c
+DIRECT,gemma-3-27b-it,google,gemma-3-27b-it,1.000,dfd3dbdf-8978-4b21-9175-45492437a45c
+DIRECT,gemma-3-4b-it,google,gemma-3-4b-it,1.000,310edca8-5555-4b31-9c41-997a0ceba0c8
+DIRECT,gemma-3n-e4b-it,google,gemma-3n-e4b-it,1.000,b6b1a416-c2cc-4ded-8f6b-8e127a0cfea6
+DIRECT,gemma-4-26b-a4b,google,gemma-4-26b-a4b,1.000,d71dde5f-08a2-4455-8f55-898bc226b1d6
+DIRECT,gemma-4-31b,google,gemma-4-31b,1.000,5138cdbf-a864-4af6-a532-6fd69f9371be
+DIRECT,gemma-7b-it,google,gemma-7b-it,1.000,20bba958-9860-4c5f-a64b-abcea7cbb4de
+REVIEW,glm-4-0520,,,,
+REVIEW,glm-4-0520,Zhipu AI,,,
+REVIEW,glm-4-0520,zai,,,
+DIRECT,glm-4-plus,,glm-4-plus,1.000,95639794-94fc-49ec-a0f6-a6a4b320b57b
+DIRECT,glm-4-plus,Zhipu AI,glm-4-plus,1.000,95639794-94fc-49ec-a0f6-a6a4b320b57b
+DIRECT,glm-4-plus,zai,glm-4-plus,1.000,95639794-94fc-49ec-a0f6-a6a4b320b57b
+DIRECT,glm-4-plus-0111,,glm-4-plus-0111,1.000,80188680-4b11-4ff2-b2f3-8a3675f8283e
+DIRECT,glm-4-plus-0111,Zhipu,glm-4-plus-0111,1.000,80188680-4b11-4ff2-b2f3-8a3675f8283e
+DIRECT,glm-4-plus-0111,zai,glm-4-plus-0111,1.000,80188680-4b11-4ff2-b2f3-8a3675f8283e
+DIRECT,glm-4.5,zai,glm-4.5,1.000,e1a8a245-3137-40e3-a61a-50c8a78166b4
+DIRECT,glm-4.5-air,zai,glm-4.5-air,1.000,ec3caa5b-328a-4d8d-8154-e3a42783c764
+DIRECT,glm-4.5v,zai,glm-4.5v,1.000,ca6c4f81-c021-4edd-9596-b52e97c0d880
+DIRECT,glm-4.6,zai,glm-4.6,1.000,e62a4268-8037-4a5b-8193-3cf64158abaa
+DIRECT,glm-4.6v,zai,glm-4.6v,1.000,4f7a5318-35de-4e43-9012-d01cf67f0215
+DIRECT,glm-4.7,zai,glm-4.7,1.000,1d4d832c-2370-435d-aaa4-06261ffee17e
+DIRECT,glm-4.7-flash,zai,glm-4.7-flash,1.000,3ad52a9a-0303-46f6-9790-eb3e6b506b6c
+DIRECT,glm-5,zai,glm-5,1.000,8b7b733c-5c4a-4888-8111-5f3f699c6183
+DIRECT,glm-5.1,zai,glm-5.1,1.000,999e4d1d-d73b-4ebe-8a13-eb22cace4bcb
+DIRECT,glm-5.2,Z AI,glm-5.2,1.000,d2206d1e-6813-43b3-a6d4-89857a8363ec
+DIRECT,glm-5.2 (max),zai,glm-5.2 (max),1.000,e99293ce-d629-411c-bd83-c7e9750a05cf
+DIRECT,glm-5.2-max,zai,glm-5.2-max,1.000,e99293ce-d629-411c-bd83-c7e9750a05cf
+DIRECT,glm-5.3-flash,zai,glm-5.3-flash,1.000,2f44aab3-f043-4811-9036-0981256297fd
+DIRECT,glm-5.3-max,zai,glm-5.3-max,1.000,1b863b93-7712-499b-a9e2-82567603fb76
+DIRECT,glm-5v-turbo,zai,glm-5v-turbo,1.000,1c448a67-0524-427b-95dd-c865b5f91cc1
+DIRECT,gpt-3.5-turbo-0125,openai,gpt-3.5-turbo-0125,1.000,c84b90e0-2e82-4397-bc9c-bb6274552a19
+DIRECT,gpt-3.5-turbo-1106,openai,gpt-3.5-turbo-1106,1.000,33c89ab4-14a9-4b38-b9a0-c5bdec42dd6d
+DIRECT,gpt-4-0125-preview,openai,gpt-4-0125-preview,1.000,8d10d112-f074-4c34-9f44-dd9a6536df88
+DIRECT,gpt-4-0314,openai,gpt-4-0314,1.000,7f73f4f0-b348-4f0f-8bc6-08f1a4fcbff7
+DIRECT,gpt-4-0613,openai,gpt-4-0613,1.000,12342bf6-c08a-4a3c-a37e-4c609a14157b
+DIRECT,gpt-4-1106-preview,openai,gpt-4-1106-preview,1.000,a1af4bc6-afe1-4ce3-9059-7ec3886c03c2
+DIRECT,gpt-4-turbo-2024-04-09,openai,gpt-4-turbo-2024-04-09,1.000,fd32cd11-156b-495e-9cb7-a8ad850ee762
+DIRECT,gpt-4.1-2025-04-14,openai,gpt-4.1-2025-04-14,1.000,8f2df257-f17c-406e-b359-f76b507ec52b
+DIRECT,gpt-4.1-mini-2025-04-14,openai,gpt-4.1-mini-2025-04-14,1.000,4c559889-6fb5-4371-9a22-c58ae3b52729
+DIRECT,gpt-4.1-nano-2025-04-14,openai,gpt-4.1-nano-2025-04-14,1.000,52933546-98d5-45f6-b14f-a54db18bf592
+REVIEW,gpt-4.5-preview-2025-02-27,openai,,,
+DIRECT,gpt-4o-2024-05-13,openai,gpt-4o-2024-05-13,1.000,a18b3019-0b03-4b04-aa31-2fe474e90632
+DIRECT,gpt-4o-2024-08-06,openai,gpt-4o-2024-08-06,1.000,1dca9d3e-51a2-42e7-b2f9-c4bb5b5ccc12
+DIRECT,gpt-4o-mini-2024-07-18,openai,gpt-4o-mini-2024-07-18,1.000,5ceb499f-97f3-4abb-82a6-16001beccd79
+DIRECT,gpt-5-chat,openai,gpt-5-chat,1.000,1b5f3f04-7690-4a83-a82e-675c9109633d
+DIRECT,gpt-5-high,openai,gpt-5-high,1.000,47893569-7a4c-4dcd-b63d-1ce9730536d2
+DIRECT,gpt-5-mini-high,openai,gpt-5-mini-high,1.000,79e2d7c6-1dbf-4e4f-a978-7ca98553e046
+DIRECT,gpt-5-nano-high,openai,gpt-5-nano-high,1.000,70ad0b3a-67b3-4f3e-ac08-668a638cfde1
+DIRECT,gpt-5.1,openai,gpt-5.1,1.000,a1d80be8-84ba-49eb-9cc4-89c93d5d100e
+DIRECT,gpt-5.1-high,openai,gpt-5.1-high,1.000,a1d80be8-84ba-49eb-9cc4-89c93d5d100e
+DIRECT,gpt-5.2,openai,gpt-5.2,1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,gpt-5.2-2025-12-11-high,OpenAI,gpt-5.2-2025-12-11-high,1.000,ae17c2d8-545b-405a-bb80-4262beebf47b
+DIRECT,gpt-5.2-chat-latest-20260210,openai,gpt-5.2-chat-latest-20260210,1.000,3610f092-7882-4f63-aaa1-c9ea8ba7cfda
+DIRECT,gpt-5.2-codex,OpenAI,gpt-5.2-codex,1.000,42c47664-c838-4514-8f27-7c36f5f9162e
+DIRECT,gpt-5.2-high,openai,gpt-5.2-high,1.000,648d4ca4-7b1b-446b-9470-fa1e7cdf5376
+DIRECT,gpt-5.3-chat-latest,openai,gpt-5.3-chat-latest,1.000,df6a7d2a-0edd-4f98-8d17-9bafd3cc4fec
+DIRECT,gpt-5.4,openai,gpt-5.4,1.000,718a98fe-6aa1-43db-a916-4dbf786c13a8
+DIRECT,gpt-5.4-high,openai,gpt-5.4-high,1.000,718a98fe-6aa1-43db-a916-4dbf786c13a8
+DIRECT,gpt-5.4-mini-high,openai,gpt-5.4-mini-high,1.000,c2a9f2b3-2e0e-41c6-86a2-a0369ccd85ef
+DIRECT,gpt-5.4-mini-xhigh,OpenAI,gpt-5.4-mini-xhigh,1.000,c2a9f2b3-2e0e-41c6-86a2-a0369ccd85ef
+DIRECT,gpt-5.4-nano-high,openai,gpt-5.4-nano-high,1.000,e53ed681-6431-4368-9183-eb41e5973f3a
+DIRECT,gpt-5.4-nano-xhigh,OpenAI,gpt-5.4-nano-xhigh,1.000,e53ed681-6431-4368-9183-eb41e5973f3a
+DIRECT,gpt-5.4-xhigh,OpenAI,gpt-5.4-xhigh,1.000,718a98fe-6aa1-43db-a916-4dbf786c13a8
+DIRECT,gpt-5.5,OpenAI,gpt-5.5,1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,gpt-5.5,openai,gpt-5.5,1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,gpt-5.5-high,OpenAI,gpt-5.5-high,1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,gpt-5.5-high,openai,gpt-5.5-high,1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+REVIEW,gpt-5.5-instant,openai,,,
+DIRECT,gpt-5.5-xhigh,OpenAI,gpt-5.5-xhigh,1.000,8c7d25a8-629a-40c2-b924-91adc155cbfb
+DIRECT,gpt-5.6-luna-xhigh,openai,gpt-5.6-luna-xhigh,1.000,a3715a7d-f570-407c-90fe-13ccfd476be0
+DIRECT,gpt-5.6-sol-xhigh,openai,gpt-5.6-sol-xhigh,1.000,7672da2a-cb1d-4bbb-9ce5-41bf6504a3f1
+DIRECT,gpt-5.6-terra-xhigh,openai,gpt-5.6-terra-xhigh,1.000,600fb834-8e5c-4579-b714-e3fcfaa1d45b
+DIRECT,gpt-oss-120b,OpenAI,gpt-oss-120b,1.000,ea0abefd-ba7c-4713-86ca-729414d51979
+DIRECT,gpt-oss-120b,openai,gpt-oss-120b,1.000,ea0abefd-ba7c-4713-86ca-729414d51979
+DIRECT,gpt-oss-120b (high),OpenAI,gpt-oss-120b (high),1.000,ea0abefd-ba7c-4713-86ca-729414d51979
+DIRECT,gpt-oss-120b (low),OpenAI,gpt-oss-120b (low),1.000,ea0abefd-ba7c-4713-86ca-729414d51979
+DIRECT,gpt-oss-20b,openai,gpt-oss-20b,1.000,4f39df5b-7c02-4bc9-865c-10b05bbc9694
+DIRECT,gpt-oss-20b (high),OpenAI,gpt-oss-20b (high),1.000,4f39df5b-7c02-4bc9-865c-10b05bbc9694
+DIRECT,gpt-oss-20b (low),OpenAI,gpt-oss-20b (low),1.000,4f39df5b-7c02-4bc9-865c-10b05bbc9694
+REVIEW,gpt-realtime-1.0,OpenAI,,,
+REVIEW,gpt-realtime-1.5,OpenAI,,,
+REVIEW,gpt-realtime-2 (minimal),OpenAI,,,
+REVIEW,gpt-realtime-2 (xhigh),OpenAI,,,
+REVIEW,gpt4all-13b-snoozy,,,,
+REVIEW,gpt4all-13b-snoozy,Nomic AI,,,
+REVIEW,granite-3.0-2b-instruct,ibm,,,
+REVIEW,granite-3.0-8b-instruct,ibm,,,
+REVIEW,granite-3.1-2b-instruct,ibm,,,
+REVIEW,granite-3.1-8b-instruct,ibm,,,
+DIRECT,granite-4.1-8b,ibm,granite-4.1-8b,1.000,d27256c5-24c2-437f-9847-8fe9d3fa808d
+DIRECT,granite-4.2-30b,ibm,granite-4.2-30b,1.000,ba17f94f-59f2-42ed-8cce-98482f1980ba
+DIRECT,granite-4.2-3b,ibm,granite-4.2-3b,1.000,e3ce8a06-4611-497a-8ebc-41b48dff57b8
+DIRECT,granite-4.2-8b,ibm,granite-4.2-8b,1.000,f00ef34d-5485-4fbe-adb0-824b8f600451
+REVIEW,grok-2-2024-08-13,xai,,,
+REVIEW,grok-2-mini-2024-08-13,xai,,,
+DIRECT,grok-3-mini-beta,xai,grok-3-mini-beta,1.000,f24269ee-a4e9-4cfc-8f76-021c56dbfab2
+DIRECT,grok-3-mini-high,xai,grok-3-mini-high,1.000,f6bb2c16-d39a-4259-b54e-49084aac36de
+REVIEW,grok-3-preview-02-24,xai,,,
+DIRECT,grok-4-0709,xai,grok-4-0709,1.000,9148b6e7-06c2-4168-9b4f-d70704ed038a
+DIRECT,grok-4-1-fast-reasoning,xai,grok-4-1-fast-reasoning,1.000,b394365f-7977-4bf7-8602-eb639875668d
+REVIEW,grok-4-fast-chat,xai,,,
+DIRECT,grok-4-fast-reasoning,xai,grok-4-fast-reasoning,1.000,e68b6c3d-1e2f-4d7c-9530-17879011efbf
+DIRECT,grok-4.1,xai,grok-4.1,1.000,3bf7c52b-ac86-4f7d-8e99-51f264bc2118
+REVIEW,grok-4.1-thinking,xai,,,
+DIRECT,grok-4.20-beta-0309-reasoning,xai,grok-4.20-beta-0309-reasoning,1.000,3270323d-749c-40cc-8a4b-1175ec091ed1
+REVIEW,grok-4.20-beta1,xai,,,
+DIRECT,grok-4.20-multi-agent-beta-0309,xai,grok-4.20-multi-agent-beta-0309,1.000,b48b4757-9a05-4a36-9dd5-e76db04829c8
+DIRECT,grok-4.3,SpaceXAI,grok-4.3,1.000,78c78c0a-d12c-4be2-8efa-ef0b34cb8793
+DIRECT,grok-4.3,xai,grok-4.3,1.000,7a605e01-1e78-4d8f-aa4b-ca41bcb8646f
+DIRECT,grok-4.5,xai,grok-4.5,1.000,3b9614c1-299f-4f5e-bf5f-a2e3835830ae
+DIRECT,grok-4.6-high,xai,grok-4.6-high,1.000,3b1164d2-4a1d-4ac2-b7a5-dcfa508c99f5
+DIRECT,grok-build-0.1,SpaceXAI,grok-build-0.1,1.000,a83a6fd0-a677-4c8d-b9e5-cb0414db6812
+REVIEW,grok-voice-fast-1.0,xAI,,,
+REVIEW,grok-voice-think-fast-1.0 (enabled),xAI,,,
+NON_MODEL,grok-voice-think-fast-1.0 + tool-mentor (enabled),Pickle,,,
+REVIEW,grok-voice-think-fast-2.0 (high),xAI,,,
+REVIEW,guanaco-33b,,,,
+REVIEW,guanaco-33b,UW,,,
+REVIEW,hunyuan-hy3-preview,tencent,,,
+REVIEW,hunyuan-large-2025-02-10,tencent,,,
+REVIEW,hunyuan-large-vision,tencent,,,
+REVIEW,hunyuan-standard-2025-02-10,tencent,,,
+REVIEW,hunyuan-standard-256k,tencent,,,
+REVIEW,hunyuan-t1-20250711,tencent,,,
+REVIEW,hunyuan-turbo-0110,tencent,,,
+DIRECT,hunyuan-turbos-20250226,tencent,hunyuan-turbos-20250226,1.000,6c539c09-afea-4727-bf09-cb143e6e6da1
+REVIEW,hunyuan-turbos-20250416,tencent,,,
+REVIEW,hunyuan-vision-1.5-thinking,tencent,,,
+DIRECT,hy3,tencent,hy3,1.000,466d943b-7e4c-430a-9600-fcce80d447a1
+REVIEW,ibm-granite-h-small,ibm,,,
+DIRECT,inkling,thinky,inkling,1.000,0eea000f-39cb-4c47-aa70-07bec46af568
+REVIEW,intellect-3,,,,
+REVIEW,intellect-3,Prime Intellect,,,
+REVIEW,internlm2_5-20b-chat,,,,
+REVIEW,internlm2_5-20b-chat,InternLM,,,
+DIRECT,jamba-1.5-large,,jamba-1.5-large,1.000,1776beff-9c66-4351-ac37-c021ac4bad35
+DIRECT,jamba-1.5-large,AI21 Labs,jamba-1.5-large,1.000,1776beff-9c66-4351-ac37-c021ac4bad35
+DIRECT,jamba-1.5-mini,,jamba-1.5-mini,1.000,7688fa69-1ccb-44e4-a746-bfc0e5aa12c8
+DIRECT,jamba-1.5-mini,AI21 Labs,jamba-1.5-mini,1.000,7688fa69-1ccb-44e4-a746-bfc0e5aa12c8
+DIRECT,kimi-k2-0711-preview,moonshot,kimi-k2-0711-preview,1.000,cb4bf0a8-0dae-4182-8bd6-a732539f37fb
+DIRECT,kimi-k2-0905-preview,moonshot,kimi-k2-0905-preview,1.000,f28a4ed5-475f-4b38-be3c-e82cc74db431
+DIRECT,kimi-k2-thinking-turbo,moonshot,kimi-k2-thinking-turbo,1.000,995357c3-9b99-4bec-8bef-8ef8ae2d4423
+REVIEW,kimi-k2.5-instant,moonshot,,,
+DIRECT,kimi-k2.5-thinking,moonshot,kimi-k2.5-thinking,1.000,79a925fe-d7f7-4150-ae40-4a9252f0476d
+DIRECT,kimi-k2.6,moonshot,kimi-k2.6,1.000,5b35baba-eeec-4f8f-bae5-ec1218808e5e
+DIRECT,kimi-k2.6-thinking,Moonshot AI,kimi-k2.6-thinking,1.000,30aef2a8-5cc5-442d-beae-d71d08950aeb
+DIRECT,kimi-k2.7-code,Moonshot AI,kimi-k2.7-code,1.000,a7eb7cd7-e239-440d-ab28-48aabcf42987
+DIRECT,kimi-k3,moonshot,kimi-k3,1.000,583ebc82-f192-46a0-96e2-7ee89603a491
+DIRECT,kimi-k3-max,moonshot,kimi-k3-max,1.000,583ebc82-f192-46a0-96e2-7ee89603a491
+REVIEW,koala-13b,,,,
+REVIEW,koala-13b,UC Berkeley,,,
+REVIEW,ling-flash-2.0,ant-group,,,
+DIRECT,llama-13b,meta,llama-13b,1.000,0d13d1c0-17ff-43f6-892e-5139246527a6
+DIRECT,llama-2-13b-chat,meta,llama-2-13b-chat,1.000,100866d7-249f-49e2-bcaf-20dbfc12123a
+DIRECT,llama-2-70b-chat,meta,llama-2-70b-chat,1.000,609b80b6-3826-4d13-aef4-b15e3ebb12e0
+DIRECT,llama-2-7b-chat,meta,llama-2-7b-chat,1.000,8594305f-5e56-4c3c-880d-448f609349e2
+DIRECT,llama-3-70b-instruct,meta,llama-3-70b-instruct,1.000,eddccbe2-35f2-41cc-9c22-95fcfb3b7df5
+DIRECT,llama-3-8b-instruct,meta,llama-3-8b-instruct,1.000,dfe9f31a-787a-4311-990b-6a4d5fcb7e1c
+DIRECT,llama-3.1-405b-instruct,meta,llama-3.1-405b-instruct,1.000,6688dc88-f7a1-47fb-b5a0-1310b28b0e4b
+REVIEW,llama-3.1-405b-instruct-bf16,meta,,,
+DIRECT,llama-3.1-405b-instruct-fp8,meta,llama-3.1-405b-instruct-fp8,1.000,26acbce7-4b4e-469e-992a-f3bee8ed61be
+DIRECT,llama-3.1-70b-instruct,meta,llama-3.1-70b-instruct,1.000,09c87494-ff4e-4b9b-ba96-bfd5dc518e90
+DIRECT,llama-3.1-8b-instruct,meta,llama-3.1-8b-instruct,1.000,ec694d85-20b8-4e1e-a27e-e413dbe95e41
+REVIEW,llama-3.1-nemotron-51b-instruct,nvidia,,,
+DIRECT,llama-3.1-nemotron-70b-instruct,nvidia,llama-3.1-nemotron-70b-instruct,1.000,8acf9875-3f46-42bd-9445-5c4ee82d6bd5
+REVIEW,llama-3.1-nemotron-ultra-253b-v1,nvidia,,,
+REVIEW,llama-3.1-tulu-3-70b,,,,
+REVIEW,llama-3.1-tulu-3-70b,Ai2,,,
+REVIEW,llama-3.1-tulu-3-70b,allenai,,,
+REVIEW,llama-3.1-tulu-3-8b,,,,
+REVIEW,llama-3.1-tulu-3-8b,Ai2,,,
+REVIEW,llama-3.1-tulu-3-8b,allenai,,,
+DIRECT,llama-3.2-1b-instruct,meta,llama-3.2-1b-instruct,1.000,ef9a49ed-0749-4122-97cf-9d8131ccfca9
+DIRECT,llama-3.2-3b-instruct,meta,llama-3.2-3b-instruct,1.000,0aef3f8a-199d-49b3-8310-af3d9b357419
+DIRECT,llama-3.3-70b-instruct,meta,llama-3.3-70b-instruct,1.000,4d2b0928-8e01-46ba-ba67-55f286025aa0
+REVIEW,llama-3.3-nemotron-49b-super-v1,nvidia,,,
+DIRECT,llama-4-maverick-17b-128e-instruct,meta,llama-4-maverick-17b-128e-instruct,1.000,b8085f7f-49f8-485b-9eb0-c29cfaf10ef3
+DIRECT,llama-4-scout-17b-16e-instruct,meta,llama-4-scout-17b-16e-instruct,1.000,8100d319-b2a0-427b-b539-e54fbaf6958d
+REVIEW,llama2-70b-steerlm-chat,nvidia,,,
+REVIEW,longcat-flash-chat,meituan,,,
+REVIEW,longcat-flash-chat-2602-exp,meituan,,,
+DIRECT,magistral-medium-2506,mistral,magistral-medium-2506,1.000,8f2dea97-3be8-4ade-aeb5-dda276cb6551
+REVIEW,magnum-72b-v1,Unknown,,,
+REVIEW,mai-1-preview,microsoft-ai,,,
+DIRECT,mercury,inception-ai,mercury,1.000,2bdf4e54-a2bf-496c-a2c1-0a8234864985
+DIRECT,mercury-2,inception-ai,mercury-2,1.000,c6e69d14-298e-415f-adbf-a9cadc003789
+REVIEW,mimo-v2-flash (non-thinking),xiaomi,,,
+REVIEW,mimo-v2-flash (thinking),xiaomi,,,
+REVIEW,mimo-v2-omni,xiaomi,,,
+DIRECT,mimo-v2-pro,xiaomi,mimo-v2-pro,1.000,c2a4f0d1-83cb-43a1-b1d1-78d898656167
+DIRECT,mimo-v2.5,xiaomi,mimo-v2.5,1.000,e99ebaa8-860e-4872-87ba-e7d0b8c8d677
+DIRECT,mimo-v2.5-pro,xiaomi,mimo-v2.5-pro,1.000,00be56a0-9932-4765-b171-fe857f9dc2fa
+DIRECT,minimax-m1,minimax,minimax-m1,1.000,0a2a0df9-1ce4-4aad-b9e0-500ef42f9903
+DIRECT,minimax-m2,minimax,minimax-m2,1.000,87f61bcc-ee0c-483d-9793-8cb81ea451b6
+FALLBACK,minimax-m2.1-preview,minimax,minimax-m2.1,1.000,ec4b5651-9a86-49f5-a496-b60fe5caa672
+DIRECT,minimax-m2.5,minimax,minimax-m2.5,1.000,073e53d9-8502-4b87-8622-9034552d064a
+DIRECT,minimax-m2.7,minimax,minimax-m2.7,1.000,51a45233-048c-4a7f-8fe4-90fbdda5f4ee
+DIRECT,minimax-m3,Unknown,minimax-m3,1.000,1ad07149-f203-4739-b4ef-11bf63c532fe
+DIRECT,minimax-m3,minimax,minimax-m3,1.000,8c80d0b6-705a-41ed-a72e-b21e278af22d
+DIRECT,ministral-8b-2410,mistral,ministral-8b-2410,1.000,981a204b-8f8e-40c2-9ef4-200da712a4a1
+DIRECT,mistral-7b-instruct,mistral,mistral-7b-instruct,1.000,26f168db-3a8d-4010-a1cd-5ed5bf040f3e
+DIRECT,mistral-7b-instruct-v0.2,mistral,mistral-7b-instruct-v0.2,1.000,32382d21-ce7f-4798-b13e-1bae7e818a89
+DIRECT,mistral-large-2402,mistral,mistral-large-2402,1.000,f31158e9-0a1b-463d-bb54-28c2002c41b9
+DIRECT,mistral-large-2407,mistral,mistral-large-2407,1.000,7ad3a72b-f2d8-4a9c-aaab-0603ca6edd78
+DIRECT,mistral-large-2411,mistral,mistral-large-2411,1.000,7c25bd39-0971-4019-bc93-99d2ad545002
+DIRECT,mistral-large-3,mistral,mistral-large-3,1.000,bd4d963c-437d-4903-b9a6-cf61908ea7f7
+DIRECT,mistral-medium,mistral,mistral-medium,1.000,7e5d1742-eab7-4442-a2e9-bbc3d8ab9a9d
+DIRECT,mistral-medium-2505,mistral,mistral-medium-2505,1.000,897f68eb-3bc0-4b98-8a7e-0363e1c25494
+DIRECT,mistral-medium-2508,mistral,mistral-medium-2508,1.000,d6417da8-99a6-4b62-9ecc-afec2fc7e83e
+DIRECT,mistral-medium-3.5,mistral,mistral-medium-3.5,1.000,a27e0e3f-d0f4-4a9d-b536-0c2f4befd47c
+DIRECT,mistral-small-24b-instruct-2501,mistral,mistral-small-24b-instruct-2501,1.000,5a2115d9-7240-437c-a93a-0cd771da0fc9
+DIRECT,mistral-small-2506,mistral,mistral-small-2506,1.000,e565849a-1614-45e1-9308-ae7132a22d67
+DIRECT,mistral-small-3.1-24b-instruct-2503,mistral,mistral-small-3.1-24b-instruct-2503,1.000,62e7dff4-81c4-48ec-8524-e0230a0f06cc
+DIRECT,mixtral-8x22b-instruct-v0.1,mistral,mixtral-8x22b-instruct-v0.1,1.000,a419e27a-07f6-4fc6-80c7-582fe7de4d06
+DIRECT,mixtral-8x7b-instruct-v0.1,mistral,mixtral-8x7b-instruct-v0.1,1.000,91784f10-ced1-41df-b0b0-9a36c905c451
+DIRECT,molmo-2-8b,,molmo-2-8b,1.000,9f9b20d2-04be-4733-bbd6-5a46124d3a96
+DIRECT,molmo-2-8b,Ai2,molmo-2-8b,1.000,9f9b20d2-04be-4733-bbd6-5a46124d3a96
+DIRECT,molmo-2-8b,allenai,molmo-2-8b,1.000,9f9b20d2-04be-4733-bbd6-5a46124d3a96
+REVIEW,mpt-30b-chat,,,,
+REVIEW,mpt-30b-chat,MosaicML,,,
+REVIEW,mpt-7b-chat,,,,
+REVIEW,mpt-7b-chat,MosaicML,,,
+DIRECT,muse-glimmer,meta,muse-glimmer,1.000,05e3e675-580f-42c1-9b9f-64428ae215b1
+DIRECT,muse-spark,meta,muse-spark,1.000,449d3c4f-8bdd-4b60-aa07-49464a89d292
+DIRECT,muse-spark-1.1,meta,muse-spark-1.1,1.000,862cb672-2514-4e99-9ad7-1c109cc40ba4
+DIRECT,muse-spark-1.2 (xHigh),meta,muse-spark-1.2 (xHigh),1.000,2ef9f27e-9189-4217-9ce8-b518594227d5
+DIRECT,nemotron-4-340b-instruct,nvidia,nemotron-4-340b-instruct,1.000,fc515548-d50d-4e4a-989d-18e228b1f2c8
+DIRECT,nous-hermes-2-mixtral-8x7b-dpo,,nous-hermes-2-mixtral-8x7b-dpo,1.000,365fb7da-a6e5-4844-939e-7c75fd6e3e5d
+DIRECT,nous-hermes-2-mixtral-8x7b-dpo,NousResearch,nous-hermes-2-mixtral-8x7b-dpo,1.000,365fb7da-a6e5-4844-939e-7c75fd6e3e5d
+DIRECT,nova-2-lite,amazon,nova-2-lite,1.000,143ece1d-3aa1-4601-8871-76bc97b31530
+DIRECT,nvidia-llama-3.3-nemotron-super-49b-v1.5,nvidia,nvidia-llama-3.3-nemotron-super-49b-v1.5,1.000,5243ac55-d40c-4961-bb61-7f879477fddc
+DIRECT,nvidia-nemotron-3-nano-30b-a3b-bf16,nvidia,nvidia-nemotron-3-nano-30b-a3b-bf16,1.000,5119ed5d-1de4-4739-b0da-4c037db41e04
+DIRECT,nvidia-nemotron-3-super-120b-a12b,nvidia,nvidia-nemotron-3-super-120b-a12b,1.000,09cd920f-ee06-43a7-9d9b-c07329588e32
+DIRECT,nvidia-nemotron-3-ultra-550b-a55b-nvfp4,nvidia,nvidia-nemotron-3-ultra-550b-a55b-nvfp4,1.000,0e555743-e003-47f6-bb57-7de12dd264f5
+DIRECT,nvidia-nemotron-3.5-lightning-30b-a3b-nvfp4,nvidia,nvidia-nemotron-3.5-lightning-30b-a3b-nvfp4,1.000,1208f815-9e1f-424e-b7be-c3904acd7c47
+DIRECT,o1,OpenAI,o1,1.000,4407acc9-ffa6-4812-bdf7-ecbaf7da0c55
+DIRECT,o1-2024-12-17,openai,o1-2024-12-17,1.000,7189b015-a164-43f5-97c4-0e214b984b22
+REVIEW,o1-mini,OpenAI,,,
+REVIEW,o1-mini,openai,,,
+DIRECT,o1-preview,OpenAI,o1-preview,1.000,a79ab9d9-4227-475d-884b-146da3c719b0
+DIRECT,o1-preview,openai,o1-preview,1.000,a79ab9d9-4227-475d-884b-146da3c719b0
+DIRECT,o1-pro,OpenAI,o1-pro,1.000,c66a4194-b64b-42ed-9ffd-fe64c454883c
+DIRECT,o3,OpenAI,o3,1.000,65000280-9ba7-48b6-aa52-0fcdecd0b634
+DIRECT,o3-2025-04-16,openai,o3-2025-04-16,1.000,8d967cec-3664-4e29-8e17-afe3f7c9e939
+DIRECT,o3-mini,OpenAI,o3-mini,1.000,cc3f7087-b51a-4ec2-ada5-608d787dbdcf
+DIRECT,o3-mini,openai,o3-mini,1.000,cc3f7087-b51a-4ec2-ada5-608d787dbdcf
+DIRECT,o3-mini (high),OpenAI,o3-mini (high),1.000,cc3f7087-b51a-4ec2-ada5-608d787dbdcf
+DIRECT,o3-mini-high,openai,o3-mini-high,1.000,cc3f7087-b51a-4ec2-ada5-608d787dbdcf
+DIRECT,o3-pro,OpenAI,o3-pro,1.000,3b72a507-abb0-42cb-b627-ba870fc27c9d
+DIRECT,o4-mini,OpenAI,o4-mini,1.000,dc15322f-6a05-49f6-92a5-c7be74f6934a
+DIRECT,o4-mini (high),OpenAI,o4-mini (high),1.000,dc15322f-6a05-49f6-92a5-c7be74f6934a
+DIRECT,o4-mini-2025-04-16,openai,o4-mini-2025-04-16,1.000,2fdc4501-3516-455e-b0a8-038f692717d5
+REVIEW,oasst-pythia-12b,,,,
+REVIEW,oasst-pythia-12b,OpenAssistant,,,
+REVIEW,olmo-2-0325-32b-instruct,,,,
+REVIEW,olmo-2-0325-32b-instruct,Ai2,,,
+REVIEW,olmo-2-0325-32b-instruct,allenai,,,
+DIRECT,olmo-3-32b-think,,olmo-3-32b-think,1.000,e90ab322-0cab-42be-b5b0-e452177c7efe
+DIRECT,olmo-3-32b-think,Ai2,olmo-3-32b-think,1.000,e90ab322-0cab-42be-b5b0-e452177c7efe
+DIRECT,olmo-3-32b-think,allenai,olmo-3-32b-think,1.000,e90ab322-0cab-42be-b5b0-e452177c7efe
+DIRECT,olmo-3.1-32b-instruct,,olmo-3.1-32b-instruct,1.000,643ce872-082d-4fc0-94a0-c8fa0ed4c077
+DIRECT,olmo-3.1-32b-instruct,Ai2,olmo-3.1-32b-instruct,1.000,643ce872-082d-4fc0-94a0-c8fa0ed4c077
+DIRECT,olmo-3.1-32b-instruct,allenai,olmo-3.1-32b-instruct,1.000,643ce872-082d-4fc0-94a0-c8fa0ed4c077
+REVIEW,olmo-3.1-32b-think,,,,
+REVIEW,olmo-3.1-32b-think,Ai2,,,
+REVIEW,olmo-3.1-32b-think,allenai,,,
+REVIEW,olmo-7b-instruct,,,,
+REVIEW,olmo-7b-instruct,Ai2,,,
+REVIEW,olmo-7b-instruct,allenai,,,
+DIRECT,openchat-3.5,,openchat-3.5,1.000,555d3304-e915-4c89-9f56-02aeb3455ecb
+DIRECT,openchat-3.5,OpenChat,openchat-3.5,1.000,555d3304-e915-4c89-9f56-02aeb3455ecb
+DIRECT,openchat-3.5-0106,,openchat-3.5-0106,1.000,145eef34-2ce4-427c-932c-9b1c2a91ea77
+DIRECT,openchat-3.5-0106,OpenChat,openchat-3.5-0106,1.000,145eef34-2ce4-427c-932c-9b1c2a91ea77
+DIRECT,openhermes-2.5-mistral-7b,,openhermes-2.5-mistral-7b,1.000,566e9e34-1913-4f8b-864e-6a7819b0adfa
+DIRECT,openhermes-2.5-mistral-7b,NousResearch,openhermes-2.5-mistral-7b,1.000,566e9e34-1913-4f8b-864e-6a7819b0adfa
+REVIEW,palm-2,google,,,
+DIRECT,phi-3-medium-4k-instruct,microsoft,phi-3-medium-4k-instruct,1.000,f67767bd-8b87-482d-bbdd-00d964a1abb2
+DIRECT,phi-3-mini-128k-instruct,microsoft,phi-3-mini-128k-instruct,1.000,5f2c2217-d75b-4742-80b1-e446fd1c3180
+REVIEW,phi-3-mini-4k-instruct,microsoft,,,
+REVIEW,phi-3-mini-4k-instruct-june-2024,microsoft,,,
+REVIEW,phi-3-small-8k-instruct,microsoft,,,
+DIRECT,phi-4,microsoft,phi-4,1.000,54d7f858-14be-440f-92f9-0a33d60aa5e4
+REVIEW,qwen-14b-chat,alibaba,,,
+REVIEW,qwen-max-0919,alibaba,,,
+REVIEW,qwen-plus-0125,alibaba,,,
+REVIEW,qwen1.5-110b-chat,alibaba,,,
+REVIEW,qwen1.5-14b-chat,alibaba,,,
+REVIEW,qwen1.5-32b-chat,alibaba,,,
+REVIEW,qwen1.5-4b-chat,alibaba,,,
+DIRECT,qwen1.5-72b-chat,alibaba,qwen1.5-72b-chat,1.000,40d52ce3-e34f-48f3-8c01-2ff7aec4d157
+REVIEW,qwen1.5-7b-chat,alibaba,,,
+DIRECT,qwen2-72b-instruct,alibaba,qwen2-72b-instruct,1.000,95ed7f4f-2f3b-44ed-8fff-814625678d1c
+DIRECT,qwen2.5-72b-instruct,alibaba,qwen2.5-72b-instruct,1.000,316aea0d-4574-4d70-bb01-b3546d6b5f87
+DIRECT,qwen2.5-coder-32b-instruct,alibaba,qwen2.5-coder-32b-instruct,1.000,488035fd-75a4-4d16-8b1c-f6468be8a411
+DIRECT,qwen2.5-max,alibaba,qwen2.5-max,1.000,6600fea5-a0da-47d5-bec5-20ae4efc343b
+REVIEW,qwen2.5-plus-1127,alibaba,,,
+DIRECT,qwen3-235b-a22b,alibaba,qwen3-235b-a22b,1.000,96f0084a-5c47-437e-a4eb-92cfa12935d3
+DIRECT,qwen3-235b-a22b-instruct-2507,alibaba,qwen3-235b-a22b-instruct-2507,1.000,1734bca4-14e7-4ac8-97be-9a449e93fbf4
+REVIEW,qwen3-235b-a22b-no-thinking,alibaba,,,
+DIRECT,qwen3-235b-a22b-thinking-2507,alibaba,qwen3-235b-a22b-thinking-2507,1.000,48ffee58-2820-4844-bad0-4dcf00e5852b
+DIRECT,qwen3-30b-a3b,alibaba,qwen3-30b-a3b,1.000,8d2ada34-0b5d-4cfe-96f9-61e47b420f33
+DIRECT,qwen3-30b-a3b-instruct-2507,alibaba,qwen3-30b-a3b-instruct-2507,1.000,bd230ed9-902b-43cb-941d-75d10dd89873
+DIRECT,qwen3-32b,alibaba,qwen3-32b,1.000,ea832346-dffa-498b-98a4-073b473a1ba6
+DIRECT,qwen3-coder-480b-a35b-instruct,alibaba,qwen3-coder-480b-a35b-instruct,1.000,a2c5e5e1-ecc6-4276-82bc-1f9bdd433afc
+REVIEW,qwen3-max-2025-09-23,alibaba,,,
+DIRECT,qwen3-max-preview,alibaba,qwen3-max-preview,1.000,a03dca51-89fb-491f-88da-34e426fe0f4a
+DIRECT,qwen3-next-80b-a3b-instruct,alibaba,qwen3-next-80b-a3b-instruct,1.000,481f7dd1-7dd3-4ad1-835c-ea6cc853b23d
+DIRECT,qwen3-next-80b-a3b-thinking,alibaba,qwen3-next-80b-a3b-thinking,1.000,bcc61807-3cc8-4bb1-bc24-7933bc5cb242
+DIRECT,qwen3-vl-235b-a22b-instruct,alibaba,qwen3-vl-235b-a22b-instruct,1.000,426dae38-15ea-4ab0-b380-4b006760d3d5
+DIRECT,qwen3-vl-235b-a22b-thinking,alibaba,qwen3-vl-235b-a22b-thinking,1.000,0862f09f-9849-4e37-beb0-172e89d27da2
+DIRECT,qwen3.5-122b-a10b,alibaba,qwen3.5-122b-a10b,1.000,fb771ea6-3b95-4ddf-8611-2cd9b97fbbb6
+DIRECT,qwen3.5-27b,alibaba,qwen3.5-27b,1.000,7f447a2c-f3e3-43eb-8aef-2808f8a4716c
+DIRECT,qwen3.5-35b-a3b,alibaba,qwen3.5-35b-a3b,1.000,f136418a-079a-4f0c-b588-374f1c579e86
+DIRECT,qwen3.5-397b-a17b,alibaba,qwen3.5-397b-a17b,1.000,761cb568-07df-4db0-b2c2-c761fef5b385
+DIRECT,qwen3.5-flash,alibaba,qwen3.5-flash,1.000,ce54021d-d39a-4afb-9302-cffab9073d26
+FALLBACK,qwen3.5-max-preview,alibaba,qwen3.5-max,1.000,0154cc05-ad44-4f73-985b-696be5f7c4ad
+REVIEW,qwen3.5-omni-plus-realtime,Qwen,,,
+DIRECT,qwen3.6-27b,Alibaba,qwen3.6-27b,1.000,572a2061-515a-49ac-9be1-8b42c2650faf
+DIRECT,qwen3.6-max-preview,alibaba,qwen3.6-max-preview,1.000,778e2b26-21f1-4d77-8d17-599c49334312
+DIRECT,qwen3.6-plus,Alibaba,qwen3.6-plus,1.000,40cf36ef-f975-40d9-8d63-b3f3cd74e715
+DIRECT,qwen3.6-plus,alibaba,qwen3.6-plus,1.000,40cf36ef-f975-40d9-8d63-b3f3cd74e715
+DIRECT,qwen3.7-max,Alibaba,qwen3.7-max,1.000,5166c286-5129-472c-b5da-facbecf4feab
+FALLBACK,qwen3.7-max-preview,alibaba,qwen3.7-max,1.000,5166c286-5129-472c-b5da-facbecf4feab
+DIRECT,qwen3.7-plus,alibaba,qwen3.7-plus,1.000,e5c92268-d7ee-4e70-a3fb-a9403254ccf5
+DIRECT,qwen3.8-27b,alibaba,qwen3.8-27b,1.000,1b50b063-e171-43c1-a9ed-829d6428c36d
+DIRECT,qwen3.8-max,alibaba,qwen3.8-max,1.000,6eb4a549-905b-4d8f-b0b9-237d35300860
+DIRECT,qwq-32b,alibaba,qwq-32b,1.000,2816f1b1-327a-4a7f-946d-70bee527534e
+DIRECT,qwq-32b-preview,alibaba,qwq-32b-preview,1.000,152a967b-8217-4696-b9a1-96da16f544a8
+REVIEW,reka-core-20240904,,,,
+REVIEW,reka-core-20240904,Reka AI,,,
+REVIEW,reka-flash-20240904,,,,
+REVIEW,reka-flash-20240904,Reka AI,,,
+REVIEW,reka-flash-21b-20240226,,,,
+REVIEW,reka-flash-21b-20240226,Reka AI,,,
+REVIEW,reka-flash-21b-20240226-online,,,,
+REVIEW,reka-flash-21b-20240226-online,Reka AI,,,
+REVIEW,ring-flash-2.0,ant-group,,,
+REVIEW,smollm2-1.7b-instruct,,,,
+REVIEW,smollm2-1.7b-instruct,HuggingFace,,,
+REVIEW,snowflake-arctic-instruct,,,,
+REVIEW,snowflake-arctic-instruct,Snowflake,,,
+REVIEW,solar-10.7b-instruct-v1.0,,,,
+REVIEW,solar-10.7b-instruct-v1.0,Upstage AI,,,
+DIRECT,solar-pro4,upstage,solar-pro4,1.000,1169a24c-cd41-42b3-abd0-8880700e17d9
+REVIEW,stablelm-tuned-alpha-7b,,,,
+REVIEW,stablelm-tuned-alpha-7b,Stability AI,,,
+REVIEW,starling-lm-7b-alpha,,,,
+REVIEW,starling-lm-7b-alpha,UC Berkeley,,,
+REVIEW,starling-lm-7b-beta,,,,
+REVIEW,starling-lm-7b-beta,Nexusflow,,,
+REVIEW,step-1o-turbo-202506,stepfun,,,
+REVIEW,step-2-16k-exp-202412,stepfun,,,
+DIRECT,step-3,stepfun,step-3,1.000,141c4187-1cf5-4ae2-a7be-c71e017b0056
+DIRECT,step-3.5-flash,stepfun,step-3.5-flash,1.000,e0c09207-de0b-448e-8402-22812f618cae
+REVIEW,stripedhyena-nous-7b,,,,
+REVIEW,stripedhyena-nous-7b,Together AI,,,
+REVIEW,swe-search,Anthropic,,,
+DIRECT,trinity-large,,trinity-large,1.000,fd615469-508e-43fb-b6e0-727318a3fc8f
+DIRECT,trinity-large,Arcee AI,trinity-large,1.000,fd615469-508e-43fb-b6e0-727318a3fc8f
+FALLBACK,trinity-large-preview,,trinity-large,1.000,fd615469-508e-43fb-b6e0-727318a3fc8f
+DIRECT,trinity-large-thinking,,trinity-large-thinking,1.000,fd615469-508e-43fb-b6e0-727318a3fc8f
+REVIEW,tulu-2-dpo-70b,,,,
+REVIEW,tulu-2-dpo-70b,AllenAI/UW,,,
+REVIEW,vicuna-13b,,,,
+REVIEW,vicuna-13b,LMSYS,,,
+REVIEW,vicuna-33b,,,,
+REVIEW,vicuna-33b,LMSYS,,,
+REVIEW,vicuna-7b,,,,
+REVIEW,vicuna-7b,LMSYS,,,
+REVIEW,wizardlm-13b,microsoft,,,
+REVIEW,wizardlm-70b,microsoft,,,
+REVIEW,xai-realtime (enabled),xAI,,,
+REVIEW,yi-1.5-34b-chat,,,,
+REVIEW,yi-1.5-34b-chat,01 AI,,,
+REVIEW,yi-34b-chat,,,,
+REVIEW,yi-34b-chat,01 AI,,,
+DIRECT,yi-lightning,,yi-lightning,1.000,5c07f998-81ac-463e-a4eb-1edc78c5b0ad
+DIRECT,yi-lightning,01 AI,yi-lightning,1.000,5c07f998-81ac-463e-a4eb-1edc78c5b0ad
+REVIEW,zephyr-7b-alpha,,,,
+REVIEW,zephyr-7b-alpha,HuggingFace,,,
+DIRECT,zephyr-7b-beta,,zephyr-7b-beta,1.000,8c2dd001-b3dc-4a0d-b9a2-f6a74b4e8af0
+DIRECT,zephyr-7b-beta,HuggingFace,zephyr-7b-beta,1.000,8c2dd001-b3dc-4a0d-b9a2-f6a74b4e8af0
+REVIEW,zephyr-orpo-141b-A35b-v0.1,,,,
+REVIEW,zephyr-orpo-141b-A35b-v0.1,HuggingFace,,,

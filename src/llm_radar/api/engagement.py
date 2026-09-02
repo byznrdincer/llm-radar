@@ -59,6 +59,9 @@ DemandCriterion = Literal[
     "turkish",
     "privacy",
     "open_weight",
+    "data_residency",
+    "openai_compatible",
+    "fine_tuning",
 ]
 
 DemandLevel = Literal[
@@ -66,6 +69,47 @@ DemandLevel = Literal[
     "need",
     "active_use",
 ]
+
+DemandUsageVolume = Literal[
+    "pilot",
+    "under_10m",
+    "under_100m",
+    "over_100m",
+]
+
+DemandBudgetRange = Literal[
+    "unknown",
+    "under_100",
+    "100_500",
+    "500_2000",
+    "over_2000",
+]
+
+DemandDeploymentPreference = Literal[
+    "no_preference",
+    "turkey",
+    "private_cloud",
+    "on_premise",
+]
+
+DemandTimeline = Literal[
+    "exploring",
+    "this_quarter",
+    "immediate",
+]
+
+
+class SubmissionContext(BaseModel):
+    page: str | None = Field(default=None, max_length=240)
+    section: str | None = Field(default=None, max_length=80)
+    locale: str | None = Field(default=None, max_length=32)
+    viewport: str | None = Field(default=None, max_length=32)
+
+    @field_validator("page", "section", "locale", "viewport")
+    @classmethod
+    def clean_optional_context(cls, value: str | None) -> str | None:
+        cleaned = value.strip() if value else None
+        return cleaned or None
 
 
 class AnalyticsEventRequest(BaseModel):
@@ -91,6 +135,7 @@ class FeedbackRequest(BaseModel):
     severity: FeedbackSeverity | None = None
     source_url: str | None = Field(default=None, max_length=500)
     product_area: str | None = Field(default=None, max_length=80)
+    context: SubmissionContext | None = None
 
     @field_validator("message")
     @classmethod
@@ -119,6 +164,11 @@ class ModelDemandRequest(BaseModel):
     use_cases: list[DemandUseCase] = Field(default_factory=list, max_length=10)
     criteria: list[DemandCriterion] = Field(default_factory=list, max_length=10)
     demand_level: DemandLevel | None = None
+    usage_volume: DemandUsageVolume | None = None
+    budget_range: DemandBudgetRange | None = None
+    deployment_preference: DemandDeploymentPreference | None = None
+    timeline: DemandTimeline | None = None
+    context: SubmissionContext | None = None
 
     @field_validator("requested_models")
     @classmethod
@@ -176,6 +226,8 @@ def submit_feedback(request: FeedbackRequest, session: DatabaseSession) -> dict[
             "accepted": False,
             "duplicate": True,
             "feedback_id": str(existing.id),
+            "tracking_code": str(existing.id),
+            "status": existing.status,
         }
 
     if (
@@ -194,6 +246,9 @@ def submit_feedback(request: FeedbackRequest, session: DatabaseSession) -> dict[
         severity=request.severity,
         source_url=request.source_url,
         product_area=request.product_area,
+        submission_context=(
+            request.context.model_dump(exclude_none=True) if request.context else {}
+        ),
         status="new",
     )
 
@@ -204,16 +259,14 @@ def submit_feedback(request: FeedbackRequest, session: DatabaseSession) -> dict[
         "accepted": True,
         "duplicate": False,
         "feedback_id": str(item.id),
+        "tracking_code": str(item.id),
+        "status": item.status,
     }
 
 
 @router.post("/model-demands", tags=["feedback"], status_code=status.HTTP_201_CREATED)
 def submit_model_demand(request: ModelDemandRequest, session: DatabaseSession) -> dict[str, Any]:
-    if (
-        not request.requested_model_ids
-        and not request.requested_models
-        and not request.other_model
-    ):
+    if not request.requested_model_ids and not request.requested_models and not request.other_model:
         raise HTTPException(
             status_code=422,
             detail="Select or enter at least one model",
@@ -225,23 +278,19 @@ def submit_model_demand(request: ModelDemandRequest, session: DatabaseSession) -
             "accepted": False,
             "duplicate": True,
             "demand_id": str(existing.id),
+            "tracking_code": str(existing.id),
+            "status": existing.status,
         }
 
     requested_models = request.requested_models
     requested_model_ids = request.requested_model_ids
 
     if requested_model_ids:
-        found_models = session.scalars(
-            select(Model).where(Model.id.in_(requested_model_ids))
-        ).all()
+        found_models = session.scalars(select(Model).where(Model.id.in_(requested_model_ids))).all()
 
         models_by_id = {model.id: model for model in found_models}
 
-        missing_ids = [
-            model_id
-            for model_id in requested_model_ids
-            if model_id not in models_by_id
-        ]
+        missing_ids = [model_id for model_id in requested_model_ids if model_id not in models_by_id]
 
         if missing_ids:
             raise HTTPException(
@@ -250,10 +299,7 @@ def submit_model_demand(request: ModelDemandRequest, session: DatabaseSession) -
             )
 
         # İsimleri frontend'den değil canonical Model kayıtlarından üret.
-        requested_models = [
-            models_by_id[model_id].name
-            for model_id in requested_model_ids
-        ]
+        requested_models = [models_by_id[model_id].name for model_id in requested_model_ids]
 
     item = ModelDemand(
         id=request.submission_id,
@@ -264,6 +310,14 @@ def submit_model_demand(request: ModelDemandRequest, session: DatabaseSession) -
         use_cases=request.use_cases,
         criteria=request.criteria,
         demand_level=request.demand_level,
+        usage_volume=request.usage_volume,
+        budget_range=request.budget_range,
+        deployment_preference=request.deployment_preference,
+        timeline=request.timeline,
+        submission_context=(
+            request.context.model_dump(exclude_none=True) if request.context else {}
+        ),
+        status="new",
     )
 
     session.add(item)
@@ -273,6 +327,42 @@ def submit_model_demand(request: ModelDemandRequest, session: DatabaseSession) -
         "accepted": True,
         "duplicate": False,
         "demand_id": str(item.id),
+        "tracking_code": str(item.id),
+        "status": item.status,
+    }
+
+
+@router.get("/feedback/{submission_id}/status", tags=["feedback"])
+def feedback_status(
+    submission_id: UUID,
+    session_id: UUID,
+    session: DatabaseSession,
+) -> dict[str, Any]:
+    item = session.get(Feedback, submission_id)
+    if item is None or item.session_id != session_id:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    return {
+        "tracking_code": str(item.id),
+        "type": "feedback",
+        "status": item.status,
+        "created_at": item.created_at,
+    }
+
+
+@router.get("/model-demands/{submission_id}/status", tags=["feedback"])
+def model_demand_status(
+    submission_id: UUID,
+    session_id: UUID,
+    session: DatabaseSession,
+) -> dict[str, Any]:
+    item = session.get(ModelDemand, submission_id)
+    if item is None or item.session_id != session_id:
+        raise HTTPException(status_code=404, detail="Model demand not found")
+    return {
+        "tracking_code": str(item.id),
+        "type": "model_demand",
+        "status": item.status,
+        "created_at": item.created_at,
     }
 
 

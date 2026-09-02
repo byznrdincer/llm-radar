@@ -123,13 +123,13 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
   const filtersOn = openWeightOnly || query.trim().length > 0;
 
   return (
-    <section className="tr-page" id="turkish">
-      <header className="tr-hero">
+    <section className="turkish-page" id="turkish">
+      <header className="turkish-hero">
         <div>
           <h2>Türkçe odaklı modeller</h2>
-          <p className="tr-lead">Yerel geliştiriciler ve açık ağırlıklı modeller.</p>
+          <p className="turkish-lead">Yerel geliştiriciler ve açık ağırlıklı modeller.</p>
         </div>
-        <div className="tr-stats">
+        <div className="turkish-stats">
           <div>
             <strong>{loading ? "—" : stats.total}</strong>
             <span>model</span>
@@ -141,8 +141,8 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
         </div>
       </header>
 
-      <div className="tr-toolbar">
-        <label className="tr-search">
+      <div className="turkish-toolbar">
+        <label className="turkish-search">
           <span aria-hidden="true">⌕</span>
           <input
             value={query}
@@ -151,7 +151,7 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
           />
         </label>
         <select
-          className="tr-select"
+          className="turkish-select"
           value={sortField}
           onChange={event => { setSortField(event.target.value as SortField); setPage(1); }}
           aria-label="Sırala"
@@ -162,7 +162,7 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
         </select>
         <button
           type="button"
-          className={`tr-chip${openWeightOnly ? " on" : ""}`}
+          className={`turkish-chip${openWeightOnly ? " on" : ""}`}
           onClick={() => { setOpenWeightOnly(value => !value); setPage(1); }}
         >
           Open-weight
@@ -170,7 +170,7 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
         {filtersOn && (
           <button
             type="button"
-            className="tr-reset"
+            className="turkish-reset"
             onClick={() => { setQuery(""); setOpenWeightOnly(false); setPage(1); }}
           >
             Temizle
@@ -178,12 +178,12 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
         )}
       </div>
 
-      <div className="tr-table-wrap">
+      <div className="turkish-table-wrap">
         {loading ? (
-          <p className="tr-msg">Modeller yükleniyor…</p>
+          <p className="turkish-msg">Modeller yükleniyor…</p>
         ) : visible.length ? (
-          <div className="tr-scroll">
-            <table className="tr-table">
+          <div className="turkish-scroll">
+            <table className="turkish-table">
               <thead>
                 <tr>
                   <th>Model</th>
@@ -202,8 +202,8 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
                       <td>
                         <strong title={model.name}>{model.name}</strong>
                         {(base || tags.length > 0) && (
-                          <div className="tr-row-sub">
-                            {base && <span className="tr-base">{base}</span>}
+                          <div className="turkish-row-sub">
+                            {base && <span className="turkish-base">{base}</span>}
                             {tags.map(tag => (
                               <i key={tag}>{tag}</i>
                             ))}
@@ -211,9 +211,9 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
                         )}
                       </td>
                       <td>{model.organization}</td>
-                      <td className="tr-muted">{model.license ?? "—"}</td>
-                      <td className="mono tr-num">{compact(model.downloads)}</td>
-                      <td className="tr-muted">{formatDate(model.last_updated)}</td>
+                      <td className="turkish-muted">{model.license ?? "—"}</td>
+                      <td className="mono turkish-num">{compact(model.downloads)}</td>
+                      <td className="turkish-muted">{formatDate(model.last_updated)}</td>
                     </tr>
                   );
                 })}
@@ -221,14 +221,14 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
             </table>
           </div>
         ) : (
-          <p className="tr-msg">
+          <p className="turkish-msg">
             {items.length ? "Filtrelere uyan model yok." : "Henüz model bulunamadı."}
           </p>
         )}
       </div>
 
       {pages > 1 && (
-        <footer className="tr-pager">
+        <footer className="turkish-pager">
           <button type="button" disabled={safePage === 1} onClick={() => setPage(p => p - 1)}>
             Önceki
           </button>

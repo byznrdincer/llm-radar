@@ -89,12 +89,47 @@ const criterionOptions = [
   ["turkish", "Türkçe kalitesi"],
   ["privacy", "Gizlilik"],
   ["open_weight", "Open-weight"],
+  ["data_residency", "Türkiye’de veri barındırma"],
+  ["openai_compatible", "OpenAI API uyumu"],
+  ["fine_tuning", "Fine-tuning"],
 ] as const;
 
 const demandLevels = [
   ["interested", "İlgileniyorum"],
   ["need", "İhtiyacım var"],
   ["active_use", "Aktif kullanırım"],
+] as const;
+
+const usageVolumeOptions = [
+  ["", "Belirtmek istemiyorum"],
+  ["pilot", "Pilot · 1M token altı"],
+  ["under_10m", "1–10M token / ay"],
+  ["under_100m", "10–100M token / ay"],
+  ["over_100m", "100M+ token / ay"],
+] as const;
+
+const budgetRangeOptions = [
+  ["", "Belirtmek istemiyorum"],
+  ["unknown", "Henüz belli değil"],
+  ["under_100", "$100 altı / ay"],
+  ["100_500", "$100–500 / ay"],
+  ["500_2000", "$500–2.000 / ay"],
+  ["over_2000", "$2.000+ / ay"],
+] as const;
+
+const deploymentOptions = [
+  ["", "Belirtmek istemiyorum"],
+  ["no_preference", "Fark etmez"],
+  ["turkey", "Türkiye’de barındırma"],
+  ["private_cloud", "Özel bulut / VPC"],
+  ["on_premise", "Kendi altyapım / on-premise"],
+] as const;
+
+const timelineOptions = [
+  ["", "Belirtmek istemiyorum"],
+  ["exploring", "Şimdilik araştırıyorum"],
+  ["this_quarter", "Bu çeyrek içinde"],
+  ["immediate", "Hemen kullanmak istiyorum"],
 ] as const;
 
 const feedbackPlaceholders: Record<string, string> = {
@@ -160,6 +195,15 @@ function toggleValue(current: string[], value: string) {
     : [...current, value];
 }
 
+function submissionContext() {
+  return {
+    page: `${window.location.pathname}${window.location.hash}`,
+    section: "feedback",
+    locale: window.navigator.language,
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+  };
+}
+
 function ModelPicker({
   api,
   selected,
@@ -180,9 +224,6 @@ function ModelPicker({
     const q = query.trim();
 
     if (!q) {
-      setResults([]);
-      setSearchState("idle");
-      setOpen(false);
       return;
     }
 
@@ -341,8 +382,15 @@ function ModelPicker({
           <input
             value={query}
             onChange={(event) => {
-              setQuery(event.target.value);
-              setOpen(event.target.value.trim().length > 0);
+              const nextQuery = event.target.value;
+              setQuery(nextQuery);
+              if (!nextQuery.trim()) {
+                setResults([]);
+                setSearchState("idle");
+                setOpen(false);
+                return;
+              }
+              setOpen(true);
             }}
             onFocus={() => {
               if (query.trim()) setOpen(true);
@@ -434,6 +482,11 @@ export default function FeedbackPage({ api }: { api: string }) {
   const [useCases, setUseCases] = useState<string[]>([]);
   const [criteria, setCriteria] = useState<string[]>([]);
   const [demandLevel, setDemandLevel] = useState("");
+  const [usageVolume, setUsageVolume] = useState("");
+  const [budgetRange, setBudgetRange] = useState("");
+  const [deploymentPreference, setDeploymentPreference] =
+    useState("");
+  const [timeline, setTimeline] = useState("");
   const [demandState, setDemandState] =
     useState<FormState>("idle");
 
@@ -488,6 +541,7 @@ export default function FeedbackPage({ api }: { api: string }) {
           severity: severity || null,
           source_url: sourceUrl.trim() || null,
           product_area: productArea || null,
+          context: submissionContext(),
         }),
       });
 
@@ -542,6 +596,11 @@ export default function FeedbackPage({ api }: { api: string }) {
           use_cases: useCases,
           criteria,
           demand_level: demandLevel || null,
+          usage_volume: usageVolume || null,
+          budget_range: budgetRange || null,
+          deployment_preference: deploymentPreference || null,
+          timeline: timeline || null,
+          context: submissionContext(),
         }),
       });
 
@@ -556,6 +615,10 @@ export default function FeedbackPage({ api }: { api: string }) {
           use_cases: useCases,
           criteria,
           demand_level: demandLevel || null,
+          usage_volume: usageVolume || null,
+          budget_range: budgetRange || null,
+          deployment_preference: deploymentPreference || null,
+          timeline: timeline || null,
         },
       });
 
@@ -564,6 +627,10 @@ export default function FeedbackPage({ api }: { api: string }) {
       setUseCases([]);
       setCriteria([]);
       setDemandLevel("");
+      setUsageVolume("");
+      setBudgetRange("");
+      setDeploymentPreference("");
+      setTimeline("");
       setDemandState("success");
     } catch {
       setDemandState("error");
@@ -577,8 +644,8 @@ export default function FeedbackPage({ api }: { api: string }) {
         <h2>Radar’ı birlikte geliştirelim.</h2>
         <p>
           Eksik model, hatalı veri veya yeni özellik önerilerini
-          doğrudan bize iletebilirsin. Kişisel bilgi toplamıyoruz;
-          gönderimler yalnızca anonim oturum kimliğiyle ilişkilendirilir.
+          doğrudan bize iletebilirsin. Gönderimler anonim oturum
+          kimliği ve yalnızca gerekli sayfa bağlamıyla ilişkilendirilir.
         </p>
       </div>
 
@@ -593,8 +660,8 @@ export default function FeedbackPage({ api }: { api: string }) {
               <div>
                 <h3>Geri bildirim gönder</h3>
                 <p>
-                  Veri hatası, eksik model, kaynak, filtre, özellik
-                  veya deneyim önerilerini paylaş.
+                  Türü seç; ilgili model, veri alanı veya kaynak
+                  bilgileri gerektiğinde otomatik olarak açılsın.
                 </p>
               </div>
             </header>
@@ -768,6 +835,7 @@ export default function FeedbackPage({ api }: { api: string }) {
                 Gönderilemedi; lütfen tekrar dene.
               </p>
             )}
+
           </form>
 
           <form className="feedback-card" onSubmit={submitDemand}>
@@ -902,6 +970,80 @@ export default function FeedbackPage({ api }: { api: string }) {
                     ))}
                   </div>
                 </fieldset>
+
+                <div className="demand-grid">
+                  <label>
+                    <span>Aylık kullanım tahmini</span>
+
+                    <select
+                      value={usageVolume}
+                      onChange={(event) => {
+                        setUsageVolume(event.target.value);
+                        setDemandState("idle");
+                      }}
+                    >
+                      {usageVolumeOptions.map(([value, label]) => (
+                        <option value={value} key={value || "empty"}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>Aylık bütçe tahmini · USD</span>
+
+                    <select
+                      value={budgetRange}
+                      onChange={(event) => {
+                        setBudgetRange(event.target.value);
+                        setDemandState("idle");
+                      }}
+                    >
+                      {budgetRangeOptions.map(([value, label]) => (
+                        <option value={value} key={value || "empty"}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>Barındırma tercihi</span>
+
+                    <select
+                      value={deploymentPreference}
+                      onChange={(event) => {
+                        setDeploymentPreference(event.target.value);
+                        setDemandState("idle");
+                      }}
+                    >
+                      {deploymentOptions.map(([value, label]) => (
+                        <option value={value} key={value || "empty"}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>Planlanan başlangıç</span>
+
+                    <select
+                      value={timeline}
+                      onChange={(event) => {
+                        setTimeline(event.target.value);
+                        setDemandState("idle");
+                      }}
+                    >
+                      {timelineOptions.map(([value, label]) => (
+                        <option value={value} key={value || "empty"}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               </div>
             )}
 
@@ -925,6 +1067,7 @@ export default function FeedbackPage({ api }: { api: string }) {
                 Talep kaydedilemedi; tekrar dene.
               </p>
             )}
+
           </form>
         </div>
 
@@ -933,8 +1076,8 @@ export default function FeedbackPage({ api }: { api: string }) {
             <p className="kicker">GİZLİLİK</p>
             <h4>Minimum veri</h4>
             <p>
-              E-posta veya hesap bilgisi istemiyoruz. Yalnızca
-              anonim oturum kimliği ve gönderim içeriği saklanır.
+              E-posta veya hesap bilgisi istemiyoruz. Anonim oturum,
+              gönderim içeriği ve bildirimin geldiği sayfa saklanır.
             </p>
           </article>
 
@@ -942,9 +1085,8 @@ export default function FeedbackPage({ api }: { api: string }) {
             <p className="kicker">LLMaaS</p>
             <h4>Daha anlamlı talep sinyali</h4>
             <p>
-              Model seçiminin yanında kullanım amacı, öncelikli
-              kriterler ve talep seviyesi ürün planlamasında
-              değerlendirilir.
+              Kullanım amacı, hacim, bütçe ve barındırma tercihi
+              kapasite ve ürün planlamasında birlikte değerlendirilir.
             </p>
           </article>
 
@@ -952,9 +1094,8 @@ export default function FeedbackPage({ api }: { api: string }) {
             <p className="kicker">GERİ BİLDİRİM</p>
             <h4>Bağlamla birlikte değerlendirilir</h4>
             <p>
-              Model, veri alanı, kaynak ve önem seviyesi gibi
-              bilgiler geri bildirimin daha hızlı incelenmesini
-              sağlar.
+              Model, veri alanı, kaynak ve önem seviyesi gibi bilgiler
+              geri bildirimin daha hızlı incelenmesini sağlar.
             </p>
           </article>
         </aside>

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from llm_radar.api.engagement import (
     AnalyticsEventRequest,
+    FeedbackRequest,
     ModelDemandRequest,
     record_analytics_event,
 )
@@ -64,10 +65,44 @@ def test_model_demand_normalizes_duplicates_and_whitespace() -> None:
         session_id=uuid4(),
         requested_models=[" Qwen ", "Qwen", "DeepSeek"],
         other_model="  Yerli Model  ",
+        criteria=["price", "openai_compatible", "fine_tuning"],
+        usage_volume="under_10m",
+        budget_range="100_500",
+        deployment_preference="turkey",
+        timeline="this_quarter",
+        context={
+            "page": " / ",
+            "section": " feedback ",
+            "locale": " tr-TR ",
+        },
     )
 
     assert request.requested_models == ["Qwen", "DeepSeek"]
     assert request.other_model == "Yerli Model"
+    assert request.criteria == ["price", "openai_compatible", "fine_tuning"]
+    assert request.usage_volume == "under_10m"
+    assert request.deployment_preference == "turkey"
+    assert request.context is not None
+    assert request.context.page == "/"
+    assert request.context.section == "feedback"
+
+
+def test_feedback_context_rejects_oversized_values() -> None:
+    with pytest.raises(ValidationError):
+        FeedbackRequest(
+            feedback_type="general",
+            message="Useful feedback",
+            context={"page": "/" + "x" * 300},
+        )
+
+
+def test_model_demand_rejects_unknown_operational_options() -> None:
+    with pytest.raises(ValidationError):
+        ModelDemandRequest(
+            session_id=uuid4(),
+            requested_models=["Qwen"],
+            usage_volume="unlimited",
+        )
 
 
 @pytest.mark.parametrize(

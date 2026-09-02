@@ -250,10 +250,25 @@ def test_engagement_writes_are_idempotent_and_forms_validate() -> None:
                 "session_id": str(session_id),
                 "feedback_type": "feature_request",
                 "message": "Smoke test feedback",
+                "context": {
+                    "page": "/#feedback",
+                    "section": "feedback",
+                    "locale": "tr-TR",
+                    "viewport": "1440x900",
+                },
             },
             timeout=30,
         )
         assert feedback.status_code == 201
+        assert feedback.json()["tracking_code"] == str(feedback_id)
+        assert feedback.json()["status"] == "new"
+        feedback_status = httpx.get(
+            f"{BASE_URL}/api/v1/feedback/{feedback_id}/status",
+            params={"session_id": str(session_id)},
+            timeout=30,
+        )
+        assert feedback_status.status_code == 200
+        assert feedback_status.json()["status"] == "new"
         empty_feedback = httpx.post(
             f"{BASE_URL}/api/v1/feedback",
             json={
@@ -271,10 +286,28 @@ def test_engagement_writes_are_idempotent_and_forms_validate() -> None:
                 "submission_id": str(demand_id),
                 "session_id": str(session_id),
                 "requested_models": ["Qwen", "DeepSeek"],
+                "criteria": ["price", "openai_compatible"],
+                "usage_volume": "under_10m",
+                "budget_range": "100_500",
+                "deployment_preference": "turkey",
+                "timeline": "this_quarter",
+                "context": {
+                    "page": "/#feedback",
+                    "section": "feedback",
+                },
             },
             timeout=30,
         )
         assert demand.status_code == 201
+        assert demand.json()["tracking_code"] == str(demand_id)
+        assert demand.json()["status"] == "new"
+        demand_status = httpx.get(
+            f"{BASE_URL}/api/v1/model-demands/{demand_id}/status",
+            params={"session_id": str(session_id)},
+            timeout=30,
+        )
+        assert demand_status.status_code == 200
+        assert demand_status.json()["status"] == "new"
     finally:
         engine = create_engine(DATABASE_URL)
         with Session(engine) as session, session.begin():

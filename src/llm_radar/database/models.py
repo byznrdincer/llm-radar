@@ -523,6 +523,7 @@ class Feedback(Base):
     severity: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
     source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     product_area: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    submission_context: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
     status: Mapped[str] = mapped_column(String(24), default="new", index=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -544,6 +545,12 @@ class ModelDemand(Base):
     use_cases: Mapped[list[Any]] = mapped_column(JSONB, default=list)
     criteria: Mapped[list[Any]] = mapped_column(JSONB, default=list)
     demand_level: Mapped[str | None] = mapped_column(String(24), nullable=True, index=True)
+    usage_volume: Mapped[str | None] = mapped_column(String(24), nullable=True, index=True)
+    budget_range: Mapped[str | None] = mapped_column(String(24), nullable=True, index=True)
+    deployment_preference: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    timeline: Mapped[str | None] = mapped_column(String(24), nullable=True, index=True)
+    submission_context: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    status: Mapped[str] = mapped_column(String(24), default="new", index=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True

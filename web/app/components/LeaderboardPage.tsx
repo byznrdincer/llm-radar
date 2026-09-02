@@ -400,9 +400,13 @@ export default function LeaderboardPage({
                                                 <small>{formatTertiary(item, isArena, isSwe, isSweLive)}</small>
                                             </td>
                                             <td className="lb-col-action">
-                                                <button type="button" className="lb-inspect-btn" onClick={() => onInspectModel(item)}>
-                                                    <span className="sr-only">{item.model_name} modelini incele</span>
-                                                    <span aria-hidden="true">↗</span>
+                                                <button
+                                                    type="button"
+                                                    className="catalog-link"
+                                                    onClick={() => onInspectModel(item)}
+                                                    aria-label={`${item.model_name} modelini incele`}
+                                                >
+                                                    İncele
                                                 </button>
                                             </td>
                                         </tr>
