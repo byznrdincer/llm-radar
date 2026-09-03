@@ -66,6 +66,11 @@ type TurkishRadarData = {
   items: TurkishRadarItem[];
 };
 
+type TurkishRadarRawItem = Omit<TurkishRadarItem, "rank" | "score"> & {
+  rank: number | null;
+  score: number | null;
+};
+
 type Props = {
   api: string;
   bootstrap?: TurkishModel[] | null;
@@ -93,7 +98,15 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
     const controller = new AbortController();
     fetch(`${api}/api/v1/insights/radar-score?origin=turkish&limit=10`, { signal: controller.signal })
       .then(response => (response.ok ? response.json() : null))
-      .then(data => { if (data) setRadar(data as TurkishRadarData); })
+      .then(data => {
+        if (!data) return;
+        // The endpoint also lists catalog models with no score yet (used by
+        // the Genel Bakış full-catalog view) - this leaderboard only wants
+        // the ranked, actually-scored ones.
+        const scored = ((data.items ?? []) as TurkishRadarRawItem[])
+          .filter((item): item is TurkishRadarItem => item.score != null && item.rank != null);
+        setRadar({ eligible_count: data.eligible_count, items: scored });
+      })
       .catch(() => {});
     return () => controller.abort();
   }, [api]);
