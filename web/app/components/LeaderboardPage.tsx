@@ -124,19 +124,37 @@ const viewHints: Record<LeaderboardView, string> = {
 
 const tabGroups = ["Genel", "Kodlama", "Bilgi", "Agent"] as const;
 
+// Profildeki openness alanı boş olsa bile, lisans "Proprietary" olarak
+// doğrulanmışsa (bkz. backend _known_family_license) bu tek yönlü ve
+// belirsizlik taşımayan bir sinyaldir: kapalı lisans asla açık ağırlık/
+// açık kaynak anlamına gelmez. Open/Apache/MIT gibi lisanslar ise
+// open_source ile open_weight arasında ayrım yapmaya yetmediği için
+// burada tahmin yürütülmüyor - sadece "proprietary" çıkarımı yapılır.
+function effectiveOpenness(
+    openness: string | null | undefined,
+    license: string | null | undefined,
+): "open_source" | "open_weight" | "proprietary" | null {
+    const normalized = (openness ?? "").trim().toLowerCase();
+    if (normalized === "open_source" || normalized === "open_weight" || normalized === "proprietary")
+        return normalized;
+    if ((license ?? "").trim().toLowerCase() === "proprietary")
+        return "proprietary";
+    return null;
+}
+
 function sourceBadge(
     openness: string | null | undefined,
     license: string | null | undefined,
 ) {
-    const normalized = (openness ?? "").trim().toLowerCase();
+    const resolved = effectiveOpenness(openness, license);
 
-    if (normalized === "open_source")
+    if (resolved === "open_source")
         return { label: "Open Source", description: "Açık kaynak model", kind: "open" };
 
-    if (normalized === "open_weight")
+    if (resolved === "open_weight")
         return { label: "Open Weight", description: "Model ağırlıkları indirilebilir", kind: "open" };
 
-    if (normalized === "proprietary")
+    if (resolved === "proprietary")
         return { label: "Closed Source", description: "Kapalı model / servis erişimi", kind: "closed" };
 
     const normalizedLicense = (license ?? "").trim().toLowerCase();
@@ -238,7 +256,7 @@ export default function LeaderboardPage({
     const allItems = board?.items ?? [];
     const filteredItems = opennessFilter === "all"
         ? allItems
-        : allItems.filter(item => item.openness === opennessFilter);
+        : allItems.filter(item => effectiveOpenness(item.openness, item.license) === opennessFilter);
 
     const visibleItems = filteredItems.slice(0, visibleCount);
     const hasMore = visibleCount < filteredItems.length;
@@ -357,11 +375,11 @@ export default function LeaderboardPage({
             <div className="lb-summary-grid" aria-label="Benchmark özeti">
                 <div className="lb-summary-card">
                     <span>Listelenen model</span>
-                    <strong>{allItems.length || "—"} model</strong>
+                    <strong>{filteredItems.length || "—"} model</strong>
                 </div>
                 <div className="lb-summary-card">
                     <span>En yüksek {scoreLabel}</span>
-                    <strong>{board?.items[0] ? formatScore(board.items[0], isArena, isSwe, isSweLive, isTau) : "—"}</strong>
+                    <strong>{filteredItems[0] ? formatScore(filteredItems[0], isArena, isSwe, isSweLive, isTau) : "—"}</strong>
                 </div>
                 <div className="lb-summary-card">
                     <span>Son güncelleme</span>
@@ -397,6 +415,10 @@ export default function LeaderboardPage({
                         <div className="leaderboard-empty">Benchmark yükleniyor…</div>
                     ) : !allItems.length ? (
                         <div className="leaderboard-empty">Bu benchmark için henüz veri yok.</div>
+                    ) : !filteredItems.length ? (
+                        <div className="leaderboard-empty">
+                            Bu açıklık filtresinde ({opennessFilter === "open_source" ? "Open Source" : opennessFilter === "open_weight" ? "Open Weight" : "Closed Source"}) eşleşen model yok.
+                        </div>
                     ) : (
                         <>
                         <table className="leaderboard-table">
