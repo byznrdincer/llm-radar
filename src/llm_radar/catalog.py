@@ -787,20 +787,6 @@ SOURCE_CATALOG: tuple[SourceSpec, ...] = (
         "academic",
         public_url="https://taubench.com/",
     ),
-    SourceSpec(
-        "terminal-bench",
-        "Terminal-Bench",
-        "https://www.tbench.ai/",
-        SourceCategory.BENCHMARK,
-        SourceClass.INDEPENDENT,
-        CollectionMethod.BENCHMARK,
-        43_200,
-        4,
-        "none",
-        "academic",
-        is_active=False,
-        public_url="https://www.tbench.ai/",
-    ),
 )
 
 SOURCE_BY_SLUG = {item.slug: item for item in SOURCE_CATALOG}
