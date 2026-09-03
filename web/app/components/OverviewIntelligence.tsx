@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useInfiniteScroll } from "../lib/useInfiniteScroll";
+
+const PAGE_SIZE = 25;
 
 type RadarScoreItem = {
-  rank: number;
+  rank: number | null;
   model_name: string;
   organization: string;
-  score: number;
+  score: number | null;
   coverage: number;
   benchmark_count: number;
   category_count: number;
+  eligible: boolean;
 };
 
 type BenchmarkLeader = {
@@ -22,19 +26,22 @@ type BenchmarkLeader = {
   published_at: string;
 };
 
+type Methodology = {
+  version: string;
+  score_type: string;
+  is_first_party_evaluation: boolean;
+  normalization: string;
+  aggregation: string;
+  missing_data: string;
+  minimum_coverage: { benchmarks: number; categories: number };
+};
+
 type RadarScoreData = {
   snapshot_at: string | null;
   eligible_count: number;
+  total: number;
   active_benchmarks: string[];
-  methodology: {
-    version: string;
-    score_type: string;
-    is_first_party_evaluation: boolean;
-    normalization: string;
-    aggregation: string;
-    missing_data: string;
-    minimum_coverage: { benchmarks: number; categories: number };
-  };
+  methodology: Methodology;
   leaders: BenchmarkLeader[];
   items: RadarScoreItem[];
 };
@@ -53,16 +60,47 @@ function formatDate(value: string | null): string {
 const RANK_ACCENT = ["gold", "silver", "bronze"] as const;
 
 export default function OverviewIntelligence({ api, onOpenLeaderboards }: Props) {
-  const [score, setScore] = useState<RadarScoreData | null>(null);
+  const [head, setHead] = useState<Omit<RadarScoreData, "items"> | null>(null);
+  const [items, setItems] = useState<RadarScoreItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${api}/api/v1/insights/radar-score?limit=8`, { signal: controller.signal })
+    fetch(`${api}/api/v1/insights/radar-score?limit=${PAGE_SIZE}&offset=0`, { signal: controller.signal })
       .then(response => (response.ok ? response.json() : null))
-      .then(data => { if (data) setScore(data as RadarScoreData); })
-      .catch(() => {});
+      .then(data => {
+        if (!data) return;
+        const { items: firstPage, ...rest } = data as RadarScoreData;
+        setHead(rest);
+        setItems(firstPage);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
     return () => controller.abort();
   }, [api]);
+
+  const hasMore = head !== null && items.length < head.total;
+
+  const loadMore = async () => {
+    if (!hasMore || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const response = await fetch(`${api}/api/v1/insights/radar-score?limit=${PAGE_SIZE}&offset=${items.length}`);
+      if (!response.ok) return;
+      const data = await response.json() as RadarScoreData;
+      setItems(current => [...current, ...data.items]);
+    } catch {
+      /* keep current page */
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  };
+
+  const sentinelRef = useInfiniteScroll(loadMore, hasMore && !loadingMore);
 
   return (
     <section className="overview-intelligence" aria-label="LLM Radar skoru">
@@ -71,32 +109,49 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards }: Props)
           <div>
             <p className="kicker">ORTAK GÖRÜNÜM · KOMPOZİT ENDEKS</p>
             <h2>LLM Radar Skoru</h2>
-            <p>Bağımsız benchmark sıralamalarının ağırlıklı ortalamasından üretilen tek bir 0–100 skor. Kendi eval testimiz değil.</p>
+            <p>Bağımsız benchmark sıralamalarının ağırlıklı ortalamasından üretilen tek bir 0–100 skor. Kendi eval testimiz değil — katalogdaki tüm modeller, skoru olan olmayan hepsi listelenir.</p>
           </div>
           <div className="overview-panel-meta">
-            <span>{score?.active_benchmarks.length ?? "—"} benchmark</span>
-            <small>Güncelleme: {formatDate(score?.snapshot_at ?? null)}</small>
+            <span>{head?.eligible_count ?? "—"} / {head?.total ?? "—"} skorlu</span>
+            <small>Güncelleme: {formatDate(head?.snapshot_at ?? null)}</small>
           </div>
         </header>
 
         <div className="overview-score-list">
-          {score?.items.length ? score.items.map(item => (
-            <div
-              className={`overview-score-row${item.rank <= 3 ? ` rank-${RANK_ACCENT[item.rank - 1]}` : ""}`}
-              key={`${item.organization}:${item.model_name}`}
-            >
-              <b>#{item.rank}</b>
-              <div>
-                <strong>{item.model_name}</strong>
-                <small>{item.organization} · {item.benchmark_count} benchmark / {item.category_count} kategori</small>
-              </div>
-              <div className="overview-score-value">
-                <strong>{item.score.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}</strong>
-                <span><i style={{ width: `${item.score}%` }} /></span>
-                <small>%{item.coverage} kapsam</small>
-              </div>
-            </div>
-          )) : <p className="overview-empty">Yeterli kapsama ulaşan model verisi bekleniyor.</p>}
+          {loading ? (
+            <p className="overview-empty">Yükleniyor…</p>
+          ) : items.length ? (
+            <>
+              {items.map(item => (
+                <div
+                  className={`overview-score-row${item.rank && item.rank <= 3 ? ` rank-${RANK_ACCENT[item.rank - 1]}` : ""}${item.score == null ? " unscored" : ""}`}
+                  key={`${item.organization}:${item.model_name}`}
+                >
+                  <b>{item.rank ?? "—"}</b>
+                  <div>
+                    <strong>{item.model_name}</strong>
+                    <small>
+                      {item.organization}
+                      {item.score != null && ` · ${item.benchmark_count} benchmark / ${item.category_count} kategori`}
+                    </small>
+                  </div>
+                  {item.score != null ? (
+                    <div className="overview-score-value">
+                      <strong>{item.score.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}</strong>
+                      <span><i style={{ width: `${item.score}%` }} /></span>
+                      <small>%{item.coverage} kapsam</small>
+                    </div>
+                  ) : (
+                    <div className="overview-score-value overview-score-value-empty">
+                      <small>Yeterli benchmark verisi yok</small>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {hasMore && <div ref={sentinelRef} className="overview-score-sentinel" aria-hidden="true" />}
+              {loadingMore && <p className="overview-loading-more">Daha fazla model yükleniyor…</p>}
+            </>
+          ) : <p className="overview-empty">Yeterli kapsama ulaşan model verisi bekleniyor.</p>}
         </div>
 
         <div className="overview-leaders">
@@ -105,7 +160,7 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards }: Props)
             <button type="button" onClick={onOpenLeaderboards}>Tüm sıralamalar →</button>
           </div>
           <div className="overview-leader-grid">
-            {(score?.leaders ?? []).map(leader => (
+            {(head?.leaders ?? []).map(leader => (
               <div key={leader.benchmark}>
                 <small>{leader.label}</small>
                 <strong>{leader.model_name}</strong>
@@ -115,12 +170,12 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards }: Props)
           </div>
         </div>
 
-        {score?.methodology && (
+        {head?.methodology && (
           <details className="overview-method">
             <summary>Skor nasıl hesaplanıyor?</summary>
-            <p>{score.methodology.normalization} {score.methodology.aggregation}</p>
-            <p>{score.methodology.missing_data} En az {score.methodology.minimum_coverage.benchmarks} benchmark ve {score.methodology.minimum_coverage.categories} kategori gerekir.</p>
-            <small>{score.methodology.version} · Bu bir LLM Radar eval testi değildir.</small>
+            <p>{head.methodology.normalization} {head.methodology.aggregation}</p>
+            <p>{head.methodology.missing_data} En az {head.methodology.minimum_coverage.benchmarks} benchmark ve {head.methodology.minimum_coverage.categories} kategori gerekir.</p>
+            <small>{head.methodology.version} · Bu bir LLM Radar eval testi değildir.</small>
           </details>
         )}
       </article>

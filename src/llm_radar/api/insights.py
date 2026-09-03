@@ -222,7 +222,8 @@ def _catalog_openness_index(session: Session) -> dict[tuple[str, str], str | Non
 @router.get("/insights/radar-score", tags=["insights"])
 def radar_score(
     session: DatabaseSession,
-    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+    limit: Annotated[int, Query(ge=1, le=200)] = 10,
+    offset: Annotated[int, Query(ge=0)] = 0,
     origin: Literal["all", "turkish"] = "all",
 ) -> dict[str, Any]:
     """Return the versioned LLM Radar composite index and source leaders.
@@ -307,16 +308,61 @@ def radar_score(
             )
 
     result = build_radar_scores(inputs)
+
+    # Append every catalog model (scoped to the same origin) that never
+    # cleared the eligibility threshold - or never appeared in a relevant
+    # benchmark at all - as an explicit "no score yet" row rather than
+    # omitting it. Never given an invented score; sorted after the ranked,
+    # scored items. Scored rows with no catalog_model_id are excluded here:
+    # they're benchmark entries that never resolved to a specific catalog
+    # model (see today's matching-safety hardening), so they aren't really
+    # "a catalog model" and would inflate this list past the actual catalog
+    # size.
+    scored_items = [item for item in result["items"] if item.get("catalog_model_id")]
+    for rank, item in enumerate(scored_items, start=1):
+        item["rank"] = rank
+    scored_ids = {item["catalog_model_id"] for item in scored_items}
+    unscored_items: list[dict[str, Any]] = []
+    for model, company in session.execute(
+        select(Model, Company).join(Company, Company.id == Model.company_id)
+    ):
+        model_id = str(model.id)
+        if model_id in scored_ids:
+            continue
+        if turkish_ids is not None and model_id not in turkish_ids:
+            continue
+        unscored_items.append(
+            {
+                "identity_key": f"catalog:{model_id}",
+                "catalog_model_id": model_id,
+                "model_name": model.name,
+                "organization": company.name,
+                "score": None,
+                "coverage": 0,
+                "benchmark_count": 0,
+                "category_count": 0,
+                "eligible": False,
+                "published_at": None,
+                "category_scores": {},
+                "breakdown": [],
+                "rank": None,
+            }
+        )
+    unscored_items.sort(key=lambda item: (item["organization"].lower(), item["model_name"].lower()))
+
+    combined_items = scored_items + unscored_items
+    total = len(combined_items)
     return {
         "generated_at": datetime.now(UTC),
         "snapshot_at": max(snapshot_dates, default=None),
         "origin": origin,
         "methodology": result["methodology"],
-        "eligible_count": result["eligible_count"],
-        "ineligible_count": result["ineligible_count"],
+        "eligible_count": len(scored_items),
+        "ineligible_count": total - len(scored_items),
+        "total": total,
         "active_benchmarks": result["active_benchmarks"],
         "leaders": leaders,
-        "items": result["items"][:limit],
+        "items": combined_items[offset : offset + limit],
     }
 
 
