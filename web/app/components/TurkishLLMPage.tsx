@@ -188,7 +188,10 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
             ))}
           </ol>
         ) : (
-          <p className="turkish-msg">Yeterli benchmark kapsamina ulasan Turkiye modeli bekleniyor.</p>
+          <div className="turkish-radar-empty">
+            <p>Su an takip edilen uluslararasi benchmark&apos;larda (Arena, AA Intelligence Index) yeterli veri kapsamina ulasan bir Turkiye modeli yok.</p>
+            <small>Skor uydurmuyoruz - kapsam olustukca burada gorunecek.</small>
+          </div>
         )}
       </section>
 

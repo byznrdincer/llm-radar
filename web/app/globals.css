@@ -471,6 +471,9 @@ h1 em { color:#557049; font-style:normal; }
 .turkish-radar-list strong{font-size:13px;color:var(--ink);font-weight:700}
 .turkish-radar-list small{font-size:11px;color:#8a918c}
 .turkish-radar-list em{font-style:normal;text-align:right;display:flex;flex-direction:column;align-items:flex-end;color:#2f4a24;font-weight:750;font-size:14px}
+.turkish-radar-empty{padding:20px 4px 6px;text-align:center}
+.turkish-radar-empty p{margin:0 0 4px;font-size:13px;color:#5b615c}
+.turkish-radar-empty small{font-size:11px;color:#8a918c}
 .turkish-pager button:disabled{opacity:.35;cursor:not-allowed}
 .turkish-pager span{color:#8a918c;font-size:13px}
 .catalog-page{display:flex;flex-direction:column;gap:10px;height:100%;padding:16px 28px 0;background:#f4f2ec;overflow:hidden}
