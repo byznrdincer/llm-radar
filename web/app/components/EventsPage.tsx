@@ -554,38 +554,57 @@ export default function EventsPage({
   );
   const hasMore = view === "all" && nextOffset < total && !loading;
 
-  const loadMore = () => {
-    if (!hasMore || loadingMoreRef.current || loadingMore) return;
-    loadingMoreRef.current = true;
-    setLoadingMore(true);
+  async function fetchEventsPage(offset: number) {
     const params = eventQueryParams({
-      offset: nextOffset,
+      offset,
       category,
       days,
       query: debouncedQuery,
       importance,
       sortBy,
     });
+    const response = await fetch(`${api}/api/v1/events?${params}`);
+    if (!response.ok) throw new Error("events");
+    const data = await response.json();
+    const raw = (data.items ?? []) as FeedEvent[];
+    let addedCount = 0;
+    setEvents(current => {
+      const seen = new Set(current.map(event => event.id));
+      const fresh = raw.filter(event => !isJunkEvent(event) && !seen.has(event.id));
+      addedCount = fresh.length;
+      return [...current, ...fresh];
+    });
+    const newTotal = typeof data.total === "number" ? data.total : total;
+    if (typeof data.total === "number") setTotal(data.total);
+    const newOffset = Number(data.offset ?? offset) + Number(data.limit ?? PAGE_SIZE);
+    setNextOffset(newOffset);
+    return { addedCount, newOffset, newTotal };
+  }
 
-    fetch(`${api}/api/v1/events?${params}`)
-      .then(response => {
-        if (!response.ok) throw new Error("events");
-        return response.json();
-      })
-      .then(data => {
-        const raw = (data.items ?? []) as FeedEvent[];
-        setEvents(current => {
-          const seen = new Set(current.map(event => event.id));
-          return [...current, ...raw.filter(event => !isJunkEvent(event) && !seen.has(event.id))];
-        });
-        if (typeof data.total === "number") setTotal(data.total);
-        setNextOffset(Number(data.offset ?? nextOffset) + Number(data.limit ?? PAGE_SIZE));
-      })
-      .catch(() => { /* keep current page */ })
-      .finally(() => {
-        loadingMoreRef.current = false;
-        setLoadingMore(false);
-      });
+  const loadMore = async () => {
+    if (!hasMore || loadingMoreRef.current || loadingMore) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      let offset = nextOffset;
+      let attempts = 0;
+      // Bir sayfa tamamen "junk" (isJunkEvent) event'lerden olusursa ekrana yeni kart
+      // eklenmiyor, sentinel yer degistirmiyor ve IntersectionObserver bir daha
+      // tetiklenmedigi icin sonsuz scroll donuyordu. Bos sayfa geldiginde otomatik
+      // olarak bir sonraki sayfayi cekmeye devam ediyoruz (asiri istek atmayi
+      // onlemek icin art arda en fazla 8 sayfa).
+      while (attempts < 8) {
+        const { addedCount, newOffset, newTotal } = await fetchEventsPage(offset);
+        attempts += 1;
+        if (addedCount > 0 || newOffset >= newTotal) break;
+        offset = newOffset;
+      }
+    } catch {
+      /* keep current page */
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
   };
 
   const sentinelRef = useInfiniteScroll(loadMore, hasMore && view === "all");
