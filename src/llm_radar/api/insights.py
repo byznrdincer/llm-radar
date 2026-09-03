@@ -53,9 +53,13 @@ USA_ORGANIZATIONS = {
 }
 CHINA_ORGANIZATIONS = {
     "alibaba",
+    "ant-group",
+    "ant group",
     "baidu",
     "bytedance",
     "deepseek",
+    "internlm",
+    "meituan",
     "minimax",
     "moonshot",
     "qwen",
