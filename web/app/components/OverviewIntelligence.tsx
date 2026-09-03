@@ -115,9 +115,9 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards }: Props)
       <article className="overview-score-panel">
         <header className="overview-panel-head">
           <div>
-            <p className="kicker">ORTAK GÖRÜNÜM · KOMPOZİT ENDEKS</p>
+            <p className="kicker">LLM RADAR SIRALAMASI</p>
             <h2>LLM Radar Skoru</h2>
-            <p>Bağımsız benchmark sıralamalarının ağırlıklı ortalamasından üretilen tek bir 0–100 skor. Kendi eval testimiz değil — yalnızca ilgili benchmarklarda gerçekten yer alan modeller listelenir.</p>
+            <p>Onlarca bağımsız benchmark'ı tek bir metodolojiyle normalize edip ağırlıklandırarak ürettiğimiz kendi kompozit sıralamamız — modellerin genel gücünü tek bir 0–100 skorda özetler.</p>
           </div>
           <div className="overview-panel-meta">
             <span>{head?.total ?? "—"} model</span>
