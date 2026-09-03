@@ -25,6 +25,17 @@ logger = logging.getLogger(__name__)
 HF_HUB_TASKS = ("text-generation", "image-text-to-text", "text-to-image")
 WEIGHT_SUFFIXES = (".safetensors", ".gguf", ".bin", ".pt", ".pth")
 
+# Organization- and search-based fetches have no task filter at the API level
+# (unlike HF_HUB_TASKS, which asks the API for one specific pipeline_tag), so
+# without this a watched org's non-LLM repos (embeddings, audio, adapters,
+# datasets processors, ...) would enter the catalog alongside its real models.
+# This mirrors HF_HUB_TASKS plus the two other tags legitimate chat/LLM
+# families commonly use (T5-style encoder-decoders, older "conversational"
+# cards) so we don't accidentally drop known model lines like Google's T5.
+LLM_PIPELINE_TAGS = frozenset(
+    {*HF_HUB_TASKS, "text2text-generation", "conversational"}
+)
+
 
 def _weight_files(item: dict[str, Any]) -> list[str]:
     siblings = item.get("siblings")
@@ -159,7 +170,11 @@ class HuggingFaceCollector(BaseCollector):
         raw: list[dict[str, Any]] = []
         seen: set[str] = set()
 
-        async def ingest(item: dict[str, Any]) -> None:
+        async def ingest(item: dict[str, Any], *, require_llm_pipeline: bool = False) -> None:
+            if require_llm_pipeline:
+                pipeline = item.get("pipeline_tag")
+                if not isinstance(pipeline, str) or pipeline.strip().lower() not in LLM_PIPELINE_TAGS:
+                    return
             try:
                 converted = self._to_event(item, collected_at)
             except Exception:
@@ -196,7 +211,7 @@ class HuggingFaceCollector(BaseCollector):
             )
             response.raise_for_status()
             for item in response.json():
-                await ingest(item)
+                await ingest(item, require_llm_pipeline=True)
 
         for task in HF_HUB_TASKS:
             response = await self.client.get(
@@ -230,7 +245,7 @@ class HuggingFaceCollector(BaseCollector):
             )
             response.raise_for_status()
             for item in response.json():
-                await ingest(item)
+                await ingest(item, require_llm_pipeline=True)
 
         for model_id in PINNED_HF_MODELS:
             entity_key = model_id.lower()

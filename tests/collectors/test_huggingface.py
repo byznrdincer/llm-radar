@@ -24,6 +24,7 @@ async def test_huggingface_requires_downloadable_weight_evidence(
         {
             "id": "example/without-weights",
             "cardData": {"license": "apache-2.0"},
+            "pipeline_tag": "text-generation",
             "siblings": [{"rfilename": "config.json"}],
         },
     ]
@@ -63,11 +64,13 @@ async def test_huggingface_survives_list_typed_license_and_keeps_other_repos(
         {
             "id": "example/dual-licensed",
             "cardData": {"license": ["mit", "apache-2.0"]},
+            "pipeline_tag": "text-generation",
             "siblings": [{"rfilename": "model.safetensors"}],
         },
         {
             "id": "example/normal",
             "cardData": {"license": "apache-2.0"},
+            "pipeline_tag": "text-generation",
             "siblings": [{"rfilename": "model.safetensors"}],
         },
     ]
@@ -81,6 +84,48 @@ async def test_huggingface_survives_list_typed_license_and_keeps_other_repos(
     assert len(result.events) == 2
     dual = next(e for e in result.events if e.entity_key == "example/dual-licensed")
     assert dual.payload["license"] == "MIT"
+
+
+@pytest.mark.asyncio
+async def test_huggingface_org_scrape_excludes_non_llm_pipeline_tags(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Watched orgs (e.g. nvidia, google) publish many non-chat repos
+    (embeddings, audio, adapters, ...) alongside their real LLMs. Org-based
+    fetches have no pipeline_tag filter at the API level, so we must apply
+    one ourselves or every repo type from a watched org enters the catalog."""
+    monkeypatch.setattr("llm_radar.collectors.huggingface.WATCHED_HF_ORGS", ("example",))
+    monkeypatch.setattr("llm_radar.collectors.huggingface.HF_HUB_TASKS", ())
+    monkeypatch.setattr("llm_radar.collectors.huggingface.TURKISH_HF_SEARCH_QUERIES", ())
+    monkeypatch.setattr("llm_radar.collectors.huggingface.PINNED_HF_MODELS", ())
+    payload = [
+        {
+            "id": "example/chat-model",
+            "cardData": {"license": "apache-2.0"},
+            "pipeline_tag": "text-generation",
+            "siblings": [{"rfilename": "model.safetensors"}],
+        },
+        {
+            "id": "example/embedding-model",
+            "cardData": {"license": "apache-2.0"},
+            "pipeline_tag": "feature-extraction",
+            "siblings": [{"rfilename": "model.safetensors"}],
+        },
+        {
+            "id": "example/untagged-repo",
+            "cardData": {"license": "apache-2.0"},
+            "siblings": [{"rfilename": "model.safetensors"}],
+        },
+    ]
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await HuggingFaceCollector(client).collect()
+
+    assert len(result.events) == 1
+    assert result.events[0].entity_key == "example/chat-model"
 
 
 @pytest.mark.asyncio
