@@ -617,7 +617,6 @@ export default function FeedbackPage({ api }: { api: string }) {
       setDemandLevel("");
       setUsageVolume("");
       setBudgetRange("");
-      setDeploymentPreference("");
       setTimeline("");
       setDemandState("success");
     } catch {
@@ -1055,8 +1054,8 @@ export default function FeedbackPage({ api }: { api: string }) {
             <p className="kicker">LLMaaS</p>
             <h4>Daha anlamlı talep sinyali</h4>
             <p>
-              Kullanım amacı, hacim, bütçe ve barındırma tercihi
-              kapasite ve ürün planlamasında birlikte değerlendirilir.
+              Kullanım amacı, hacim ve bütçe kapasite ve ürün
+              planlamasında birlikte değerlendirilir.
             </p>
           </article>
 
