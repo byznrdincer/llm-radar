@@ -180,12 +180,13 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
         </div>
       </header>
 
-      <section className="turkish-radar" aria-label="Turkiye LLM Score">
+      <section className="turkish-radar" aria-label="Türkiye LLM Skoru">
         <header className="turkish-radar-head">
-          <div>
-            <h3>Turkiye LLM Score</h3>
-            <p>Mevcut Radar Score motoruyla (ayni normalizasyon, kategori agirliklari ve kapsam kurallariyla) Turkiye sinyali tasiyan modeller icin hesaplanir. Bu ayri bir Turkce degerlendirme suit'i degildir - ucuncu taraf benchmark sonuclarinin bu alt kumeye uygulanmis halidir.</p>
-          </div>
+          <h3>Türkiye LLM Skoru</h3>
+          <details className="turkish-radar-info">
+            <summary>Nasıl hesaplanıyor?</summary>
+            <p>LLM Radar Skoru ile aynı motor, aynı kurallarla — yalnızca Türkiye sinyali taşıyan modellere uygulanır. Ayrı bir Türkçe değerlendirme paketi değildir.</p>
+          </details>
         </header>
         {radar?.items.length ? (
           <ol className="turkish-radar-list">
@@ -201,10 +202,7 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
             ))}
           </ol>
         ) : (
-          <div className="turkish-radar-empty">
-            <p>Su an takip edilen uluslararasi benchmark&apos;larda (Arena, AA Intelligence Index) yeterli veri kapsamina ulasan bir Turkiye modeli yok.</p>
-            <small>Skor uydurmuyoruz - kapsam olustukca burada gorunecek.</small>
-          </div>
+          <p className="turkish-radar-empty">Yeterli benchmark verisi olan bir Türkiye modeli yok.</p>
         )}
       </section>
 
@@ -275,7 +273,7 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
                               href={model.source_url}
                               target="_blank"
                               rel="noreferrer"
-                              aria-label={`${model.name} icin kaynagi ac`}
+                              aria-label={`${model.name} için kaynağı aç`}
                             >
                               {"\u2197"}
                             </a>
