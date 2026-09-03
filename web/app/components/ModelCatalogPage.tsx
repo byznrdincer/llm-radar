@@ -564,9 +564,12 @@ export default function ModelCatalogPage(props: Props) {
             <header className="catalog-top">
                 <div>
                     <p className="kicker">MODEL KATALOĞU</p>
-                    <h2>{p.loading ? "Yükleniyor…" : `${p.modelCount.toLocaleString("tr-TR")} model`}</h2>
+                    <h2>{p.loading || p.profileLoading ? "Yükleniyor…" : `${p.resultTotal.toLocaleString("tr-TR")} model`}</h2>
                 </div>
-                <p className="catalog-meta">{p.profileLoading ? "…" : `${p.resultTotal.toLocaleString("tr-TR")} sonuç`} · {sortSummary}</p>
+                <p className="catalog-meta">
+                    {!p.profileLoading && p.resultTotal !== p.modelCount && `${p.modelCount.toLocaleString("tr-TR")} model içinden · `}
+                    {sortSummary}
+                </p>
             </header>
 
             <div className="catalog-bar">
