@@ -286,7 +286,7 @@ export default function LeaderboardPage({
                 </div>
             </div>
 
-            {(isLive && view === "livebench") || isMmlu || isSweLive || isTau ? (
+            {board ? (
                 <div className="lb-filter-bar">
                     <div className="lb-filter-group" role="group" aria-label="Model açıklığı">
                         <span>Açıklık</span>
