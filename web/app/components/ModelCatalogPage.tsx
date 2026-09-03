@@ -600,6 +600,28 @@ export default function ModelCatalogPage(props: Props) {
                 )}
             </div>
 
+            <div className="lb-filter-bar catalog-openness-bar">
+                <div className="lb-filter-group" role="group" aria-label="Model açıklığı">
+                    <span>Açıklık</span>
+                    <div className="lb-filter-pills">
+                        {([
+                            ["open_source", "Open Source"],
+                            ["open_weight", "Open Weight"],
+                            ["proprietary", "Closed Source"],
+                        ] as const).map(([value, label]) => (
+                            <button
+                                key={value}
+                                type="button"
+                                className={p.openness.includes(value) ? "active" : ""}
+                                onClick={() => p.onToggleOpenness(value)}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
             {p.advancedOpen && (
                 <div
                     className="catalog-filter-layer"
@@ -629,9 +651,6 @@ export default function ModelCatalogPage(props: Props) {
                             <section className="catalog-filter-section">
                                 <h4>Model özellikleri</h4>
                                 <div className="catalog-filter-grid">
-                                    <MultiSelectFilter title="Açıklık" values={p.openness} options={[
-                                        { value: "open_source" }, { value: "open_weight" }, { value: "proprietary" },
-                                    ]} renderLabel={v => ({ open_source: "Open Source", open_weight: "Open Weight", proprietary: "Closed Source" }[v] ?? v)} onToggle={p.onToggleOpenness} />
                                     <MultiSelectFilter className="catalog-filter-wide" title="Model ailesi" values={p.families} options={p.facets.families.map(i => ({ value: i.name, count: i.count }))} onToggle={p.onToggleFamily} />
                                     <label><span>Min. context</span><select value={p.minContext} onChange={e => p.onMinContextChange(e.target.value)}><option value="">Farketmez</option><option value="32768">32K+</option><option value="131072">128K+</option><option value="1000000">1M+</option></select></label>
                                     <label><span>Maks. girdi</span><input type="number" min="0" step="0.01" value={p.maxInputPrice} onChange={e => p.onMaxInputPriceChange(e.target.value)} placeholder="USD / 1M" /></label>
