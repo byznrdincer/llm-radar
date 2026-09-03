@@ -55,6 +55,16 @@ CHINA_ORGANIZATIONS = {
     "zhipu",
     "zhipu ai",
 }
+# Katalogda takip edilen, merkezi Avrupa'da olan saglayicilar. USA/China
+# listeleriyle ayni yontem: dogrulanabilir sirket->ulke eslesmesi, tahmini
+# bolge/pazar payi degil.
+EUROPE_ORGANIZATIONS = {
+    "mistral",
+    "mistral ai",
+    "aleph alpha",
+    "stability ai",
+    "stabilityai",
+}
 TURKISH_SIGNALS = (
     "turkish",
     "türkçe",
@@ -154,6 +164,8 @@ def _organization_region(value: str) -> str | None:
         return "USA"
     if any(name in normalized for name in CHINA_ORGANIZATIONS):
         return "China"
+    if any(name in normalized for name in EUROPE_ORGANIZATIONS):
+        return "Europe"
     return None
 
 
@@ -186,6 +198,25 @@ def _strict_catalog_identity_index(
         if all(key):
             candidates[key].append(str(model.id))
     return {key: model_ids[0] for key, model_ids in candidates.items() if len(model_ids) == 1}
+
+
+def _catalog_openness_index(session: Session) -> dict[tuple[str, str], str | None]:
+    """Resolve (organization, model) leaderboard identities to catalog openness.
+
+    Best-effort match on the same canonical name pair used elsewhere; entries
+    with no catalog match or no profile are simply absent (never guessed).
+    """
+    index: dict[tuple[str, str], str | None] = {}
+    rows = session.execute(
+        select(Company, Model, ModelProfile)
+        .join(Model, Model.company_id == Company.id)
+        .outerjoin(ModelProfile, ModelProfile.model_id == Model.id)
+    )
+    for company, model, profile in rows:
+        key = (canonical_model_name(company.name), canonical_model_name(model.name))
+        if all(key):
+            index[key] = profile.openness if profile else None
+    return index
 
 
 @router.get("/insights/radar-score", tags=["insights"])
@@ -552,6 +583,7 @@ def market_dashboard(
         else None
     )
 
+    openness_index = _catalog_openness_index(session)
     movers: list[dict[str, Any]] = []
     for (_, model_name), history in model_history.items():
         ordered = sorted(history.items())
@@ -564,6 +596,9 @@ def market_dashboard(
                 "model": model_name,
                 "organization": latest_row.organization,
                 "region": _organization_region(latest_row.organization),
+                "openness": openness_index.get(
+                    (canonical_model_name(latest_row.organization), canonical_model_name(model_name))
+                ),
                 "delta": round(float(latest_row.score - first_row.score), 2),
                 "score": float(latest_row.score),
             }
@@ -587,6 +622,9 @@ def market_dashboard(
                 "model": row.model_external_id,
                 "score": float(row.score),
                 "region": _organization_region(row.organization),
+                "openness": openness_index.get(
+                    (canonical_model_name(row.organization), canonical_model_name(row.model_external_id))
+                ),
             }
             for row in sorted(best_by_provider.values(), key=lambda item: item.score, reverse=True)[
                 :8

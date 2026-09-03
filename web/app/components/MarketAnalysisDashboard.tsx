@@ -42,10 +42,13 @@ type CountryPoint = {
   china_changed?: boolean;
 };
 
+type OpennessClass = "open_source" | "open_weight" | "proprietary" | "unknown" | null;
+
 type MarketModel = {
   model: string;
   organization: string;
-  region: "USA" | "China" | null;
+  region: "USA" | "China" | "Europe" | null;
+  openness?: OpennessClass;
   delta: number;
   score: number;
 };
@@ -54,7 +57,8 @@ type ProviderPoint = {
   organization: string;
   model: string;
   score: number;
-  region: "USA" | "China" | null;
+  region: "USA" | "China" | "Europe" | null;
+  openness?: OpennessClass;
 };
 
 type MarketDashboardData = {
@@ -369,7 +373,7 @@ function ProviderChart({ data }: { data: ProviderPoint[] }) {
           {chartData.map((item) => (
             <Cell
               key={`${item.organization}-${item.model}`}
-              fill={item.region === "USA" ? "#58c7ba" : item.region === "China" ? "#b9ff25" : "#9a84e8"}
+              fill={item.region === "USA" ? "#58c7ba" : item.region === "China" ? "#b9ff25" : item.region === "Europe" ? "#f2b134" : "#6b7a72"}
             />
           ))}
         </Bar>
@@ -417,6 +421,7 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
   const [view, setView] = useState<MarketView>("country");
   const [dashboard, setDashboard] = useState<MarketDashboardData | null>(null);
   const [openness, setOpenness] = useState<OpennessData | null>(null);
+  const [opennessFilter, setOpennessFilter] = useState<"all" | "open_source" | "open_weight" | "proprietary">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -491,10 +496,20 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
     setDays(value);
   };
 
+  const matchesOpennessFilter = (value?: OpennessClass) =>
+    opennessFilter === "all" || value === opennessFilter;
+  const filteredProviders = useMemo(
+    () => (dashboard?.providers ?? []).filter((item) => matchesOpennessFilter(item.openness)),
+    [dashboard, opennessFilter],
+  );
+  const filteredMovers = useMemo(
+    () => (dashboard?.movers ?? []).filter((item) => matchesOpennessFilter(item.openness)),
+    [dashboard, opennessFilter],
+  );
   const primaryChart = view === "country"
     ? <CountryChart data={dashboard?.country_trend ?? []} periodDays={days} />
     : view === "provider"
-      ? <ProviderChart data={dashboard?.providers ?? []} />
+      ? <ProviderChart data={filteredProviders} />
       : <OpennessChart data={opennessRows} />;
   const primaryTitle = view === "country"
     ? "Çin vs ABD frontier yarışı"
@@ -544,6 +559,16 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
             ))}
           </div>
         </div>
+        {view !== "openness" && (
+          <div className="market-control-group">
+            <span>Açıklık</span>
+            <div className="market-segmented" role="group" aria-label="Açıklık filtresi">
+              {([['all', 'Tümü'], ['open_source', 'Open Source'], ['open_weight', 'Open Weight'], ['proprietary', 'Closed Source']] as const).map(([value, label]) => (
+                <button key={value} type="button" className={opennessFilter === value ? "active" : ""} onClick={() => setOpennessFilter(value)}>{label}</button>
+              ))}
+            </div>
+          </div>
+        )}
         <p className="market-coverage-note">
           <span>VERİ KAPSAMI</span>
           {dashboard?.benchmark.name ?? "Benchmark"} · {dashboard?.country_trend.length ?? 0} ölçüm noktası
@@ -651,7 +676,7 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
         </article>
         <article className="market-panel market-movers">
           <header><i>⌁</i><h3>En hızlı yükselenler</h3></header>
-          <ol>{(dashboard?.movers ?? []).slice(0, 3).map((item, index) => <li key={item.model}><b>{index + 1}</b><span><strong>{item.model}</strong><small>{item.organization}</small></span><em>+{number.format(item.delta)}<small>puan</small></em></li>)}</ol>
+          <ol>{filteredMovers.slice(0, 3).map((item, index) => <li key={item.model}><b>{index + 1}</b><span><strong>{item.model}</strong><small>{item.organization}</small></span><em>+{number.format(item.delta)}<small>puan</small></em></li>)}</ol>
         </article>
         <article className="market-panel market-snapshot">
           <header><i>▥</i><h3>Pazar özeti</h3></header>
