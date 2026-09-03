@@ -34,12 +34,20 @@ type CountryPoint = {
   date: string;
   usa: number | null;
   china: number | null;
+  europe: number | null;
+  canada: number | null;
   usa_model: string | null;
   china_model: string | null;
+  europe_model: string | null;
+  canada_model: string | null;
   usa_organization: string | null;
   china_organization: string | null;
+  europe_organization: string | null;
+  canada_organization: string | null;
   usa_changed?: boolean;
   china_changed?: boolean;
+  europe_changed?: boolean;
+  canada_changed?: boolean;
 };
 
 type OpennessClass = "open_source" | "open_weight" | "proprietary" | "unknown" | null;
@@ -47,7 +55,7 @@ type OpennessClass = "open_source" | "open_weight" | "proprietary" | "unknown" |
 type MarketModel = {
   model: string;
   organization: string;
-  region: "USA" | "China" | "Europe" | null;
+  region: "USA" | "China" | "Europe" | "Canada" | null;
   openness?: OpennessClass;
   delta: number;
   score: number;
@@ -57,7 +65,7 @@ type ProviderPoint = {
   organization: string;
   model: string;
   score: number;
-  region: "USA" | "China" | "Europe" | null;
+  region: "USA" | "China" | "Europe" | "Canada" | null;
   openness?: OpennessClass;
 };
 
@@ -138,13 +146,15 @@ function shortModel(value: string | null): string {
   return value.length > 22 ? `${value.slice(0, 20)}…` : value;
 }
 
+type CountrySide = "usa" | "china" | "europe" | "canada";
+
 function selectFrontierAnnotations(
   data: CountryPoint[],
-  side: "usa" | "china",
+  side: CountrySide,
   limit: number,
 ): CountryPoint[] {
-  const changedKey = side === "usa" ? "usa_changed" : "china_changed";
-  const scoreKey = side === "usa" ? "usa" : "china";
+  const changedKey = `${side}_changed` as const;
+  const scoreKey = side;
 
   const changed = data.filter(
     (point) => Boolean(point[changedKey]) && point[scoreKey] != null,
@@ -169,6 +179,8 @@ type CountryChartRow = CountryPoint & {
   timestamp: number;
   usa_end: string;
   china_end: string;
+  europe_end: string;
+  canada_end: string;
 };
 
 function CountryTooltip({ active, payload }: {
@@ -189,6 +201,18 @@ function CountryTooltip({ active, payload }: {
         <i />
         <span><b>Çin · {point.china == null ? "—" : number.format(point.china)}</b><small>{point.china_model ?? "Model bilgisi yok"}{point.china_organization ? ` · ${point.china_organization}` : ""}</small></span>
       </div>
+      {point.europe != null && (
+        <div className="europe">
+          <i />
+          <span><b>Avrupa · {number.format(point.europe)}</b><small>{point.europe_model ?? "Model bilgisi yok"}{point.europe_organization ? ` · ${point.europe_organization}` : ""}</small></span>
+        </div>
+      )}
+      {point.canada != null && (
+        <div className="canada">
+          <i />
+          <span><b>Kanada · {number.format(point.canada)}</b><small>{point.canada_model ?? "Model bilgisi yok"}{point.canada_organization ? ` · ${point.canada_organization}` : ""}</small></span>
+        </div>
+      )}
     </div>
   );
 }
@@ -217,6 +241,8 @@ function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: 
       timestamp: Date.parse(`${point.date}T00:00:00Z`),
       usa_end: last && point.usa != null ? number.format(point.usa) : "",
       china_end: last && point.china != null ? number.format(point.china) : "",
+      europe_end: last && point.europe != null ? number.format(point.europe) : "",
+      canada_end: last && point.canada != null ? number.format(point.canada) : "",
     };
   });
 
@@ -312,6 +338,64 @@ function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: 
             );
           })}
 
+        {selectFrontierAnnotations(data, "europe", annotationLimit)
+          .map((sourcePoint, index) => {
+            const point = chartData.find((item) => item.date === sourcePoint.date);
+            if (!point || point.europe == null) return null;
+
+            return (
+              <ReferenceDot
+                key={`europe-frontier-${point.date}`}
+                x={point.timestamp}
+                y={Number(point.europe)}
+                r={4}
+                fill="#f2b134"
+                stroke="#0b1712"
+                strokeWidth={2}
+                label={{
+                  value: shortModel(point.europe_model),
+                  position: "top",
+                  fill: "#f7dba0",
+                  stroke: "#0b1712",
+                  strokeWidth: 3,
+                  paintOrder: "stroke",
+                  fontSize: 9.5,
+                  fontWeight: 800,
+                  offset: index % 2 === 0 ? 12 : 20,
+                }}
+              />
+            );
+          })}
+
+        {selectFrontierAnnotations(data, "canada", annotationLimit)
+          .map((sourcePoint, index) => {
+            const point = chartData.find((item) => item.date === sourcePoint.date);
+            if (!point || point.canada == null) return null;
+
+            return (
+              <ReferenceDot
+                key={`canada-frontier-${point.date}`}
+                x={point.timestamp}
+                y={Number(point.canada)}
+                r={4}
+                fill="#e0668a"
+                stroke="#0b1712"
+                strokeWidth={2}
+                label={{
+                  value: shortModel(point.canada_model),
+                  position: "bottom",
+                  fill: "#f6c3d3",
+                  stroke: "#0b1712",
+                  strokeWidth: 3,
+                  paintOrder: "stroke",
+                  fontSize: 9.5,
+                  fontWeight: 800,
+                  offset: index % 2 === 0 ? 12 : 20,
+                }}
+              />
+            );
+          })}
+
         <Line
           type="stepAfter"
           dataKey="usa"
@@ -347,6 +431,46 @@ function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: 
             dataKey="china_end"
             position="right"
             fill="#b9ff25"
+            fontSize={12}
+            fontWeight={800}
+          />
+        </Line>
+
+        <Line
+          type="stepAfter"
+          dataKey="europe"
+          name="Avrupa"
+          stroke="#f2b134"
+          strokeWidth={3}
+          dot={false}
+          activeDot={{ r: 4 }}
+          connectNulls
+          isAnimationActive={false}
+        >
+          <LabelList
+            dataKey="europe_end"
+            position="right"
+            fill="#f2b134"
+            fontSize={12}
+            fontWeight={800}
+          />
+        </Line>
+
+        <Line
+          type="stepAfter"
+          dataKey="canada"
+          name="Kanada"
+          stroke="#e0668a"
+          strokeWidth={3}
+          dot={false}
+          activeDot={{ r: 4 }}
+          connectNulls
+          isAnimationActive={false}
+        >
+          <LabelList
+            dataKey="canada_end"
+            position="right"
+            fill="#e0668a"
             fontSize={12}
             fontWeight={800}
           />
@@ -456,9 +580,11 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
   useEffect(() => {
     const controller = new AbortController();
     void Promise.all([
-      fetch(`${api}/api/v1/insights/market-dashboard?benchmark=${encodeURIComponent(benchmark)}&days=${days}`, {
-        signal: controller.signal,
-      }).then((response) => {
+      fetch(
+        `${api}/api/v1/insights/market-dashboard?benchmark=${encodeURIComponent(benchmark)}&days=${days}`
+        + (opennessFilter !== "all" ? `&openness=${opennessFilter}` : ""),
+        { signal: controller.signal },
+      ).then((response) => {
         if (!response.ok) throw new Error("Pazar verisi alınamadı");
         return response.json() as Promise<MarketDashboardData>;
       }),
@@ -481,7 +607,7 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [api, days, benchmark]);
+  }, [api, days, benchmark, opennessFilter]);
 
   const opennessRows = useMemo(() => openness?.items ?? [], [openness]);
   const currentGap = dashboard?.summary.frontier_gap ?? null;
@@ -496,16 +622,10 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
     setDays(value);
   };
 
-  const matchesOpennessFilter = (value?: OpennessClass) =>
-    opennessFilter === "all" || value === opennessFilter;
-  const filteredProviders = useMemo(
-    () => (dashboard?.providers ?? []).filter((item) => matchesOpennessFilter(item.openness)),
-    [dashboard, opennessFilter],
-  );
-  const filteredMovers = useMemo(
-    () => (dashboard?.movers ?? []).filter((item) => matchesOpennessFilter(item.openness)),
-    [dashboard, opennessFilter],
-  );
+  // openness is now applied server-side (see the market-dashboard fetch above),
+  // so providers/movers already reflect the selected filter.
+  const filteredProviders = dashboard?.providers ?? [];
+  const filteredMovers = dashboard?.movers ?? [];
   const primaryChart = view === "country"
     ? <CountryChart data={dashboard?.country_trend ?? []} periodDays={days} />
     : view === "provider"
@@ -654,6 +774,12 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
             <div className="market-frontier-leaders">
               <span><i className="usa" />ABD lideri <strong>{lastCountryPoint.usa_model}</strong><small>{lastCountryPoint.usa_organization}</small></span>
               <span><i className="china" />Çin lideri <strong>{lastCountryPoint.china_model}</strong><small>{lastCountryPoint.china_organization}</small></span>
+              {lastCountryPoint.europe_model && (
+                <span><i className="europe" />Avrupa lideri <strong>{lastCountryPoint.europe_model}</strong><small>{lastCountryPoint.europe_organization}</small></span>
+              )}
+              {lastCountryPoint.canada_model && (
+                <span><i className="canada" />Kanada lideri <strong>{lastCountryPoint.canada_model}</strong><small>{lastCountryPoint.canada_organization}</small></span>
+              )}
             </div>
           )}
           <p className="market-method">ⓘ {view === "openness" ? openness?.interpretation : dashboard?.method_note}</p>

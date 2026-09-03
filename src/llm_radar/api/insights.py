@@ -35,6 +35,7 @@ USA_ORGANIZATIONS = {
     "amazon",
     "anthropic",
     "google",
+    "ibm",
     "meta",
     "microsoft",
     "nvidia",
@@ -50,6 +51,7 @@ CHINA_ORGANIZATIONS = {
     "moonshot",
     "qwen",
     "tencent",
+    "xiaomi",
     "z.ai",
     "zai",
     "zhipu",
@@ -64,6 +66,10 @@ EUROPE_ORGANIZATIONS = {
     "aleph alpha",
     "stability ai",
     "stabilityai",
+}
+# Ayni dogrulanabilir yontem: merkezi Kanada'da olan saglayici.
+CANADA_ORGANIZATIONS = {
+    "cohere",
 }
 TURKISH_SIGNALS = (
     "turkish",
@@ -166,6 +172,8 @@ def _organization_region(value: str) -> str | None:
         return "China"
     if any(name in normalized for name in EUROPE_ORGANIZATIONS):
         return "Europe"
+    if any(name in normalized for name in CANADA_ORGANIZATIONS):
+        return "Canada"
     return None
 
 
@@ -509,6 +517,7 @@ def market_dashboard(
     session: DatabaseSession,
     benchmark: str = "arena-text",
     days: Annotated[int, Query(ge=30, le=3650)] = 365,
+    openness: Literal["open_source", "open_weight", "proprietary"] | None = None,
 ) -> dict[str, Any]:
     """Return evidence-backed market KPIs and time series for the analysis dashboard."""
     definition = session.scalar(
@@ -537,6 +546,17 @@ def market_dashboard(
             )
         ).all()
 
+    openness_index = _catalog_openness_index(session)
+    if openness is not None:
+        rows = [
+            row
+            for row in rows
+            if openness_index.get(
+                (canonical_model_name(row.organization), canonical_model_name(row.model_external_id))
+            )
+            == openness
+        ]
+
     by_date: dict[date, dict[str, dict[str, Any]]] = defaultdict(dict)
     model_history: dict[tuple[str, str], dict[date, LeaderboardSnapshot]] = defaultdict(dict)
     for row in rows:
@@ -562,14 +582,22 @@ def market_dashboard(
     frontier_state: dict[str, dict[str, Any] | None] = {
         "USA": None,
         "China": None,
+        "Europe": None,
+        "Canada": None,
     }
+    frontier_regions = (
+        ("USA", "usa"),
+        ("China", "china"),
+        ("Europe", "europe"),
+        ("Canada", "canada"),
+    )
 
     country_trend: list[dict[str, Any]] = []
 
     for published_at, values in sorted(by_date.items()):
         point: dict[str, Any] = {"date": published_at}
 
-        for region, prefix in (("USA", "usa"), ("China", "china")):
+        for region, prefix in frontier_regions:
             candidate = values.get(region)
             current = frontier_state[region]
             changed = False
@@ -605,7 +633,6 @@ def market_dashboard(
         else None
     )
 
-    openness_index = _catalog_openness_index(session)
     movers: list[dict[str, Any]] = []
     for (_, model_name), history in model_history.items():
         ordered = sorted(history.items())
