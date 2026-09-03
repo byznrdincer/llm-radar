@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: "LLM Radar — AI Intelligence Platform",
+  title: "LLM Radar",
   description: "Resmî ve akademik kaynaklardan güncel LLM sıralamaları, karşılaştırmalar ve teknoloji değişimleri.",
   icons: {
     icon: "/favicon.svg",
