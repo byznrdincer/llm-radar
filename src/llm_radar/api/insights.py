@@ -2,7 +2,8 @@ import re
 from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
 from email.utils import parsedate_to_datetime
-from typing import Annotated, Any, Literal
+from types import SimpleNamespace
+from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
@@ -25,6 +26,11 @@ from llm_radar.database.models import (
     PriceObservation,
     Source,
 )
+from llm_radar.api.routes import (
+    _leaderboard_license_index,
+    _resolved_compare_openness,
+    _scoped_catalog_candidates,
+)
 from llm_radar.database.session import get_db
 from llm_radar.model_selection import benchmark_matches
 
@@ -32,6 +38,9 @@ router = APIRouter(prefix="/api/v1")
 DatabaseSession = Annotated[Session, Depends(get_db)]
 
 USA_ORGANIZATIONS = {
+    "ai2",
+    "allen institute for ai",
+    "allenai",
     "amazon",
     "anthropic",
     "google",
@@ -208,23 +217,29 @@ def _strict_catalog_identity_index(
     return {key: model_ids[0] for key, model_ids in candidates.items() if len(model_ids) == 1}
 
 
-def _catalog_openness_index(session: Session) -> dict[tuple[str, str], str | None]:
-    """Resolve (organization, model) leaderboard identities to catalog openness.
+def _resolved_row_openness(
+    model_name: str,
+    organization: str,
+    catalog_index: dict[str, list[tuple[Model, ModelProfile | None, str]]],
+) -> str | None:
+    """Resolve a leaderboard row's openness the same way the catalog does.
 
-    Best-effort match on the same canonical name pair used elsewhere; entries
-    with no catalog match or no profile are simply absent (never guessed).
+    Matches on canonical model name, scoped to the organization the same
+    ambiguity-safe way leaderboard->catalog matching already works elsewhere
+    (a leaderboard's organization string, e.g. "Ai2", often doesn't equal
+    the catalog Company.name, e.g. "Allenai" - matching on model name alone
+    and only trusting it when the organization confirms one candidate, or
+    all candidates agree, avoids both false negatives and false positives).
+    Uses the same resolver as the model catalog and leaderboards (asserted
+    profile value, then a license-based/curated-family fallback) so "Open
+    Source" means the same thing everywhere in the app.
     """
-    index: dict[tuple[str, str], str | None] = {}
-    rows = session.execute(
-        select(Company, Model, ModelProfile)
-        .join(Model, Model.company_id == Company.id)
-        .outerjoin(ModelProfile, ModelProfile.model_id == Model.id)
-    )
-    for company, model, profile in rows:
-        key = (canonical_model_name(company.name), canonical_model_name(model.name))
-        if all(key):
-            index[key] = profile.openness if profile else None
-    return index
+    candidates = _scoped_catalog_candidates(model_name, organization, catalog_index)
+    if len(candidates) != 1:
+        return None
+    model, profile, company_name = candidates[0]
+    company_stub = cast(Company, SimpleNamespace(name=company_name))
+    return _resolved_compare_openness(model, company_stub, profile)
 
 
 @router.get("/insights/radar-score", tags=["insights"])
@@ -546,14 +561,12 @@ def market_dashboard(
             )
         ).all()
 
-    openness_index = _catalog_openness_index(session)
+    catalog_index = _leaderboard_license_index(session)
     if openness is not None:
         rows = [
             row
             for row in rows
-            if openness_index.get(
-                (canonical_model_name(row.organization), canonical_model_name(row.model_external_id))
-            )
+            if _resolved_row_openness(row.model_external_id, row.organization, catalog_index)
             == openness
         ]
 
@@ -645,9 +658,7 @@ def market_dashboard(
                 "model": model_name,
                 "organization": latest_row.organization,
                 "region": _organization_region(latest_row.organization),
-                "openness": openness_index.get(
-                    (canonical_model_name(latest_row.organization), canonical_model_name(model_name))
-                ),
+                "openness": _resolved_row_openness(model_name, latest_row.organization, catalog_index),
                 "delta": round(float(latest_row.score - first_row.score), 2),
                 "score": float(latest_row.score),
             }
@@ -671,9 +682,7 @@ def market_dashboard(
                 "model": row.model_external_id,
                 "score": float(row.score),
                 "region": _organization_region(row.organization),
-                "openness": openness_index.get(
-                    (canonical_model_name(row.organization), canonical_model_name(row.model_external_id))
-                ),
+                "openness": _resolved_row_openness(row.model_external_id, row.organization, catalog_index),
             }
             for row in sorted(best_by_provider.values(), key=lambda item: item.score, reverse=True)[
                 :8
