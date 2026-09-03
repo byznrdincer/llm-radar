@@ -6,14 +6,13 @@ import { useInfiniteScroll } from "../lib/useInfiniteScroll";
 const PAGE_SIZE = 25;
 
 type RadarScoreItem = {
-  rank: number | null;
+  rank: number;
   model_name: string;
   organization: string;
-  score: number | null;
+  score: number;
   coverage: number;
   benchmark_count: number;
   category_count: number;
-  eligible: boolean;
 };
 
 type BenchmarkLeader = {
@@ -109,10 +108,10 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards }: Props)
           <div>
             <p className="kicker">ORTAK GÖRÜNÜM · KOMPOZİT ENDEKS</p>
             <h2>LLM Radar Skoru</h2>
-            <p>Bağımsız benchmark sıralamalarının ağırlıklı ortalamasından üretilen tek bir 0–100 skor. Kendi eval testimiz değil — katalogdaki tüm modeller, skoru olan olmayan hepsi listelenir.</p>
+            <p>Bağımsız benchmark sıralamalarının ağırlıklı ortalamasından üretilen tek bir 0–100 skor. Kendi eval testimiz değil — yalnızca ilgili benchmarklarda gerçekten yer alan modeller listelenir.</p>
           </div>
           <div className="overview-panel-meta">
-            <span>{head?.eligible_count ?? "—"} / {head?.total ?? "—"} skorlu</span>
+            <span>{head?.total ?? "—"} model</span>
             <small>Güncelleme: {formatDate(head?.snapshot_at ?? null)}</small>
           </div>
         </header>
@@ -124,28 +123,19 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards }: Props)
             <>
               {items.map(item => (
                 <div
-                  className={`overview-score-row${item.rank && item.rank <= 3 ? ` rank-${RANK_ACCENT[item.rank - 1]}` : ""}${item.score == null ? " unscored" : ""}`}
+                  className={`overview-score-row${item.rank <= 3 ? ` rank-${RANK_ACCENT[item.rank - 1]}` : ""}`}
                   key={`${item.organization}:${item.model_name}`}
                 >
-                  <b>{item.rank ?? "—"}</b>
+                  <b>{item.rank}</b>
                   <div>
                     <strong>{item.model_name}</strong>
-                    <small>
-                      {item.organization}
-                      {item.score != null && ` · ${item.benchmark_count} benchmark / ${item.category_count} kategori`}
-                    </small>
+                    <small>{item.organization} · {item.benchmark_count} benchmark / {item.category_count} kategori</small>
                   </div>
-                  {item.score != null ? (
-                    <div className="overview-score-value">
-                      <strong>{item.score.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}</strong>
-                      <span><i style={{ width: `${item.score}%` }} /></span>
-                      <small>%{item.coverage} kapsam</small>
-                    </div>
-                  ) : (
-                    <div className="overview-score-value overview-score-value-empty">
-                      <small>Yeterli benchmark verisi yok</small>
-                    </div>
-                  )}
+                  <div className="overview-score-value">
+                    <strong>{item.score.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}</strong>
+                    <span><i style={{ width: `${item.score}%` }} /></span>
+                    <small>%{item.coverage} kapsam</small>
+                  </div>
                 </div>
               ))}
               {hasMore && <div ref={sentinelRef} className="overview-score-sentinel" aria-hidden="true" />}
