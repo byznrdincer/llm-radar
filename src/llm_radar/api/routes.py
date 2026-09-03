@@ -436,16 +436,28 @@ def _scoped_catalog_candidates(
     organization: str,
     catalog_index: dict[str, list[tuple[Model, ModelProfile | None, str]]],
 ) -> list[tuple[Model, ModelProfile | None, str]]:
+    """Narrow same-canonical-name candidates to a single confirmed company.
+
+    A canonical model name alone is not a safe match: distinct companies can
+    share one (e.g. a GGUF re-upload under "Ollama" vs. the original creator).
+    When the organization string doesn't confirm a company and more than one
+    distinct company shares the name, we refuse to guess rather than silently
+    attributing the row to the wrong one.
+    """
     candidates = list(catalog_index.get(canonical_model_name(model_name), []))
-    if not organization:
+    if not candidates:
         return candidates
-    organization_key = canonical_model_name(organization)
-    scoped = [
-        candidate
-        for candidate in candidates
-        if canonical_model_name(candidate[2]) == organization_key
-    ]
-    return scoped or candidates
+    if organization:
+        organization_key = canonical_model_name(organization)
+        scoped = [
+            candidate
+            for candidate in candidates
+            if canonical_model_name(candidate[2]) == organization_key
+        ]
+        if scoped:
+            return scoped
+    distinct_companies = {canonical_model_name(candidate[2]) for candidate in candidates}
+    return candidates if len(distinct_companies) == 1 else []
 
 
 def _catalog_model_name_candidates(model_name: str) -> list[str]:
@@ -510,14 +522,23 @@ def _resolve_catalog_model(
     if not search_rows:
         return None
 
+    # Fuzzy ILIKE search casts a wide net, so an organization match is
+    # required before trusting a result: an unconfirmed or ambiguous match
+    # here would silently attach the row to the wrong catalog model.
     organization_key = canonical_model_name(organization) if organization else ""
     organization_slug = organization.strip().lower()
+    if not organization_key and not organization_slug:
+        return None
+    matched_ids: set[UUID] = set()
+    matched_model: Model | None = None
     for model, company in search_rows:
-        if organization_key and canonical_model_name(company.name) == organization_key:
-            return model
-        if organization_slug and company.slug.lower() == organization_slug:
-            return model
-    return search_rows[0][0]
+        if (organization_key and canonical_model_name(company.name) == organization_key) or (
+            organization_slug and company.slug.lower() == organization_slug
+        ):
+            if model.id not in matched_ids:
+                matched_ids.add(model.id)
+                matched_model = model
+    return matched_model if len(matched_ids) == 1 else None
 
 
 def _resolve_leaderboard_license(
