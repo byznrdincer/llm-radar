@@ -991,6 +991,7 @@ export default function Home() {
     <OverviewIntelligence
         api={API}
         onOpenLeaderboards={() => navigateToSection("leaderboard")}
+        onOpenEvents={() => navigateToSection("events")}
     />
     </>}
 

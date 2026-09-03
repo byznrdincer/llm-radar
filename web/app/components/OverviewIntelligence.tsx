@@ -54,9 +54,35 @@ type RadarScoreData = {
   items: RadarScoreItem[];
 };
 
+type RadarEvent = {
+  id: string;
+  kind: string;
+  title: string;
+  effective_at: string;
+  source: string | null;
+  source_url: string | null;
+  verification_status: string;
+};
+
+type Radar24hData = {
+  total: number;
+  counts: Record<string, number>;
+  items: RadarEvent[];
+};
+
 type Props = {
   api: string;
   onOpenLeaderboards: () => void;
+  onOpenEvents: () => void;
+};
+
+const KIND_LABELS: Record<string, string> = {
+  model_release: "Yeni model",
+  benchmark_leader: "Yeni lider",
+  benchmark_top3: "İlk Top 3",
+  price_change: "Fiyat",
+  capability_change: "Yetenek",
+  provider_update: "API / sağlayıcı",
 };
 
 function formatDate(value: string | null): string {
@@ -65,14 +91,20 @@ function formatDate(value: string | null): string {
     .format(new Date(value));
 }
 
+function formatTime(value: string): string {
+  return new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" })
+    .format(new Date(value));
+}
+
 const RANK_ACCENT = ["gold", "silver", "bronze"] as const;
 
-export default function OverviewIntelligence({ api, onOpenLeaderboards }: Props) {
+export default function OverviewIntelligence({ api, onOpenLeaderboards, onOpenEvents }: Props) {
   const [head, setHead] = useState<Omit<RadarScoreData, "items"> | null>(null);
   const [items, setItems] = useState<RadarScoreItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingMoreRef = useRef(false);
+  const [radar, setRadar] = useState<Radar24hData | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -86,6 +118,15 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards }: Props)
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+    return () => controller.abort();
+  }, [api]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${api}/api/v1/insights/radar-24h?limit=8`, { signal: controller.signal })
+      .then(response => (response.ok ? response.json() : null))
+      .then(data => { if (data) setRadar(data as Radar24hData); })
+      .catch(() => {});
     return () => controller.abort();
   }, [api]);
 
@@ -193,6 +234,42 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards }: Props)
             <small>{head.methodology.version} · Bu bir LLM Radar eval testi değildir.</small>
           </details>
         )}
+      </article>
+
+      <article className="overview-radar-panel">
+        <header className="overview-panel-head">
+          <div>
+            <p className="kicker">CANLI SİNYALLER</p>
+            <h2>Son 24 Saat</h2>
+            <p>Kaynaklı değişim kayıtlarından, tekrarları ayıklanmış özet — yeni model, liderlik değişimi, fiyat ve yetenek hareketleri.</p>
+          </div>
+          <div className="overview-panel-meta">
+            <span>{radar?.total ?? "—"} sinyal</span>
+            <small>Son 24 saat</small>
+          </div>
+        </header>
+
+        <div className="overview-radar-counts">
+          <span><b>{radar?.counts.model_release ?? 0}</b> yeni model</span>
+          <span><b>{(radar?.counts.benchmark_leader ?? 0) + (radar?.counts.benchmark_top3 ?? 0)}</b> benchmark</span>
+          <span><b>{radar?.counts.price_change ?? 0}</b> fiyat</span>
+          <span><b>{radar?.counts.capability_change ?? 0}</b> yetenek</span>
+        </div>
+
+        <div className="overview-radar-list">
+          {radar?.items.length ? radar.items.map(item => (
+            <div className="overview-radar-row" key={item.id}>
+              <span className={`overview-radar-icon ${item.kind}`} aria-hidden="true" />
+              <div>
+                <small>{KIND_LABELS[item.kind] ?? "Gelişme"} · {formatTime(item.effective_at)}</small>
+                <strong>{item.title}</strong>
+                <span>{item.source ?? "Doğrulanmış kaynak"}</span>
+              </div>
+              {item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer" aria-label={`${item.title} kaynağını aç`}>↗</a>}
+            </div>
+          )) : <p className="overview-empty">Son 24 saatte doğrulanmış yüksek sinyal bulunamadı.</p>}
+        </div>
+        <button type="button" className="overview-all-button" onClick={onOpenEvents}>Tüm gelişmeleri aç →</button>
       </article>
     </section>
   );
