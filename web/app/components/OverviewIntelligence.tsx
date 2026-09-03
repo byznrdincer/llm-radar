@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import ModelAvatar from "./ModelAvatar";
 import { useInfiniteScroll } from "../lib/useInfiniteScroll";
+
+function organizationSlug(organization: string) {
+  return organization
+    .trim()
+    .toLocaleLowerCase("en-US")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 const PAGE_SIZE = 25;
 
@@ -127,13 +136,19 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards }: Props)
                   key={`${item.organization}:${item.model_name}`}
                 >
                   <b>{item.rank}</b>
+                  <ModelAvatar
+                    name={item.model_name}
+                    companySlug={organizationSlug(item.organization)}
+                    companyName={item.organization}
+                    size="md"
+                  />
                   <div>
                     <strong>{item.model_name}</strong>
                     <small>{item.organization} · {item.benchmark_count} benchmark / {item.category_count} kategori</small>
                   </div>
                   <div className="overview-score-value">
                     <strong>{item.score.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}</strong>
-                    <span><i style={{ width: `${item.score}%` }} /></span>
+                    <span className="overview-score-track"><i style={{ width: `${item.score}%` }} /></span>
                     <small>%{item.coverage} kapsam</small>
                   </div>
                 </div>
@@ -153,8 +168,18 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards }: Props)
             {(head?.leaders ?? []).map(leader => (
               <div key={leader.benchmark}>
                 <small>{leader.label}</small>
-                <strong>{leader.model_name}</strong>
-                <span>{leader.organization}</span>
+                <div className="overview-leader-model">
+                  <ModelAvatar
+                    name={leader.model_name}
+                    companySlug={organizationSlug(leader.organization)}
+                    companyName={leader.organization}
+                    size="sm"
+                  />
+                  <span>
+                    <strong>{leader.model_name}</strong>
+                    <em>{leader.organization}</em>
+                  </span>
+                </div>
               </div>
             ))}
           </div>
