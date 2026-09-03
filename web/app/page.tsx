@@ -373,7 +373,14 @@ function findLocalModel(modelName: string, organization: string, catalog: ModelI
     });
     if (!candidates.length)
         return null;
-    return candidates.find(model => model.company.name.toLowerCase() === orgKey || model.company.slug === orgKey) ?? candidates[0];
+    const orgMatch = candidates.find(model => model.company.name.toLowerCase() === orgKey || model.company.slug === orgKey);
+    if (orgMatch)
+        return orgMatch;
+    // Organizasyon eslesmedi: isim/slug zaten tek bir adaya indiriyorsa kabul ederiz
+    // (org etiketi farkli yazilmis olabilir), ama birden fazla adayda hangisinin
+    // dogru model oldugunu tahmin etmeyiz - catalog_model_id/kesin eslesme olmadan
+    // ilkini secmek yanlis modeli sessizce gostermek anlamina gelir.
+    return candidates.length === 1 ? candidates[0] : null;
 }
 function daysAgoIso(days: number) { const d = new Date(); d.setDate(d.getDate() - days); return d.toISOString(); }
 const eventMeta: Record<string, {
