@@ -180,15 +180,15 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
         </div>
       </header>
 
-      <section className="turkish-radar" aria-label="Türkiye LLM Skoru">
-        <header className="turkish-radar-head">
-          <h3>Türkiye LLM Skoru</h3>
-          <details className="turkish-radar-info">
-            <summary>Nasıl hesaplanıyor?</summary>
-            <p>LLM Radar Skoru ile aynı motor, aynı kurallarla — yalnızca Türkiye sinyali taşıyan modellere uygulanır. Ayrı bir Türkçe değerlendirme paketi değildir.</p>
-          </details>
-        </header>
-        {radar?.items.length ? (
+      {radar?.items.length ? (
+        <section className="turkish-radar" aria-label="Türkiye LLM Skoru">
+          <header className="turkish-radar-head">
+            <h3>Türkiye LLM Skoru</h3>
+            <details className="turkish-radar-info">
+              <summary>Nasıl hesaplanıyor?</summary>
+              <p>LLM Radar Skoru ile aynı motor, aynı kurallarla — yalnızca Türkiye sinyali taşıyan modellere uygulanır. Ayrı bir Türkçe değerlendirme paketi değildir.</p>
+            </details>
+          </header>
           <ol className="turkish-radar-list">
             {radar.items.map(item => (
               <li key={`${item.organization}:${item.model_name}`}>
@@ -201,10 +201,8 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
               </li>
             ))}
           </ol>
-        ) : (
-          <p className="turkish-radar-empty">Yeterli benchmark verisi olan bir Türkiye modeli yok.</p>
-        )}
-      </section>
+        </section>
+      ) : null}
 
       <div className="turkish-toolbar">
         <label className="turkish-search">
