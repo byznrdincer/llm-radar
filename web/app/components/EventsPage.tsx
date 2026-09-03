@@ -23,6 +23,8 @@ export type FeedEvent = {
   change_percentage: string | null;
   importance: string;
   importance_score: number;
+  model_openness?: string | null;
+  model_level?: string | null;
   detected_at: string;
   evidence?: {
     source?: string;
@@ -385,6 +387,8 @@ function eventQueryParams({
   days,
   query,
   importance,
+  openness,
+  modelLevel,
   sortBy,
 }: {
   offset: number;
@@ -392,6 +396,8 @@ function eventQueryParams({
   days: string;
   query: string;
   importance: string;
+  openness: string;
+  modelLevel: string;
   sortBy: EventSort;
 }): URLSearchParams {
   const params = new URLSearchParams({
@@ -403,12 +409,21 @@ function eventQueryParams({
   if (days !== "any") params.set("since", daysAgoIso(Number(days)));
   if (query.trim()) params.set("search", query.trim());
   if (importance !== "any") params.set("importance", importance);
+  if (openness !== "any") params.set("openness", openness);
+  if (modelLevel !== "any") params.set("model_level", modelLevel);
   return params;
 }
 
 function eventMatchesFilters(
   event: FeedEvent,
-  filters: { category: string; days: string; query: string; importance: string },
+  filters: {
+    category: string;
+    days: string;
+    query: string;
+    importance: string;
+    openness: string;
+    modelLevel: string;
+  },
   locale: string,
 ): boolean {
   if (filters.category !== "any" && event.category !== filters.category) return false;
@@ -417,6 +432,12 @@ function eventMatchesFilters(
     const cutoff = Date.now() - Number(filters.days) * 24 * 60 * 60 * 1000;
     if (new Date(event.detected_at).getTime() < cutoff) return false;
   }
+  // Openness is resolved server-side from the model's canonical profile -
+  // a live-streamed event can't be safely classified client-side, so while
+  // an openness filter is active it's left for the next authoritative fetch
+  // instead of guessing.
+  if (filters.openness !== "any") return false;
+  if (filters.modelLevel !== "any") return false;
   const query = filters.query.trim().toLocaleLowerCase(locale);
   return !query || event.title.toLocaleLowerCase(locale).includes(query);
 }
@@ -506,6 +527,16 @@ const STRINGS: Record<Language, {
   importanceMedium: string;
   importanceLow: string;
   importanceInfo: string;
+  opennessLabel: string;
+  opennessAll: string;
+  opennessOpenSource: string;
+  opennessOpenWeight: string;
+  opennessProprietary: string;
+  modelLevelLabel: string;
+  modelLevelAll: string;
+  modelLevelFrontier: string;
+  modelLevelHigh: string;
+  modelLevelMedium: string;
   sortLabel: string;
   sortRecent: string;
   sortImportance: string;
@@ -547,6 +578,16 @@ const STRINGS: Record<Language, {
     importanceMedium: "Orta",
     importanceLow: "Düşük",
     importanceInfo: "Bilgi",
+    opennessLabel: "Açıklık",
+    opennessAll: "Tümü",
+    opennessOpenSource: "Açık Kaynak",
+    opennessOpenWeight: "Açık Ağırlık",
+    opennessProprietary: "Kapalı Kaynak",
+    modelLevelLabel: "Model seviyesi",
+    modelLevelAll: "Tüm seviyeler",
+    modelLevelFrontier: "Frontier",
+    modelLevelHigh: "Yüksek",
+    modelLevelMedium: "Orta",
     sortLabel: "Sıralama",
     sortRecent: "En yeni",
     sortImportance: "En önemli",
@@ -588,6 +629,16 @@ const STRINGS: Record<Language, {
     importanceMedium: "Medium",
     importanceLow: "Low",
     importanceInfo: "Info",
+    opennessLabel: "Openness",
+    opennessAll: "All",
+    opennessOpenSource: "Open Source",
+    opennessOpenWeight: "Open Weight",
+    opennessProprietary: "Closed Source",
+    modelLevelLabel: "Model level",
+    modelLevelAll: "All levels",
+    modelLevelFrontier: "Frontier",
+    modelLevelHigh: "High",
+    modelLevelMedium: "Medium",
     sortLabel: "Sort",
     sortRecent: "Newest",
     sortImportance: "Most important",
@@ -627,7 +678,9 @@ export default function EventsPage({
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [importance, setImportance] = useState("any");
-  const [sortBy, setSortBy] = useState<EventSort>("recent");
+  const [openness, setOpenness] = useState("any");
+  const [modelLevel, setModelLevel] = useState("any");
+  const [sortBy, setSortBy] = useState<EventSort>("importance");
   const loadingMoreRef = useRef(false);
 
   useEffect(() => {
@@ -652,6 +705,8 @@ export default function EventsPage({
       days,
       query: debouncedQuery,
       importance,
+      openness,
+      modelLevel,
       sortBy,
     });
 
@@ -672,7 +727,7 @@ export default function EventsPage({
       .finally(() => setLoading(false));
 
     return () => controller.abort();
-  }, [api, category, days, debouncedQuery, importance, sortBy]);
+  }, [api, category, days, debouncedQuery, importance, openness, modelLevel, sortBy]);
 
   useEffect(() => {
     const stream = new EventSource(`${api}/api/v1/stream/events`);
@@ -680,7 +735,11 @@ export default function EventsPage({
       try {
         const incoming = JSON.parse(ev.data) as FeedEvent;
         if (isJunkEvent(incoming)) return;
-        if (!eventMatchesFilters(incoming, { category, days, query: debouncedQuery, importance }, locale)) return;
+        if (!eventMatchesFilters(
+          incoming,
+          { category, days, query: debouncedQuery, importance, openness, modelLevel },
+          locale,
+        )) return;
         setEvents(current => {
           if (current.some(event => event.id === incoming.id)) return current;
           const updated = [incoming, ...current];
@@ -694,7 +753,7 @@ export default function EventsPage({
       }
     });
     return () => stream.close();
-  }, [api, category, days, debouncedQuery, importance, sortBy, locale]);
+  }, [api, category, days, debouncedQuery, importance, openness, modelLevel, sortBy, locale]);
 
   const savedCount = Object.keys(savedMap).length;
   const savedEvents = useMemo(() => savedEventList(savedMap).map(record => record.event), [savedMap]);
@@ -713,6 +772,8 @@ export default function EventsPage({
       days,
       query: debouncedQuery,
       importance,
+      openness,
+      modelLevel,
       sortBy,
     });
     const response = await fetch(`${api}/api/v1/events?${params}`);
@@ -859,23 +920,67 @@ export default function EventsPage({
           </div>
         </label>
         <label className="ev-filter">
+          <span>{t.opennessLabel}</span>
+          <div className="ev-select-wrap">
+            <span className="ev-select-icon" aria-hidden="true">◇</span>
+            <select
+              value={openness}
+              onChange={event => {
+                setOpenness(event.target.value);
+                setView("all");
+              }}
+            >
+              <option value="any">{t.opennessAll}</option>
+              <option value="open_source">{t.opennessOpenSource}</option>
+              <option value="open_weight">{t.opennessOpenWeight}</option>
+              <option value="proprietary">{t.opennessProprietary}</option>
+            </select>
+          </div>
+        </label>
+        <label className="ev-filter">
+          <span>{t.modelLevelLabel}</span>
+          <div className="ev-select-wrap">
+            <span className="ev-select-icon" aria-hidden="true">◈</span>
+            <select
+              value={modelLevel}
+              onChange={event => {
+                setModelLevel(event.target.value);
+                setView("all");
+              }}
+            >
+              <option value="any">{t.modelLevelAll}</option>
+              <option value="frontier">{t.modelLevelFrontier}</option>
+              <option value="advanced">{t.modelLevelHigh}</option>
+              <option value="mid">{t.modelLevelMedium}</option>
+            </select>
+          </div>
+        </label>
+        <label className="ev-filter">
           <span>{t.sortLabel}</span>
           <div className="ev-select-wrap">
             <span className="ev-select-icon" aria-hidden="true">↕</span>
             <select value={sortBy} onChange={event => setSortBy(event.target.value as EventSort)}>
-              <option value="recent">{t.sortRecent}</option>
               <option value="importance">{t.sortImportance}</option>
+              <option value="recent">{t.sortRecent}</option>
             </select>
           </div>
         </label>
-        {(query || category !== "any" || days !== "any" || importance !== "any" || sortBy !== "recent") && (
+        {(query
+          || category !== "any"
+          || days !== "any"
+          || importance !== "any"
+          || openness !== "any"
+          || modelLevel !== "any"
+          || sortBy !== "importance") && (
           <button
             type="button"
             className="ev-clear-filters"
             onClick={() => {
               setQuery("");
               setImportance("any");
-              setSortBy("recent");
+              setOpenness("any");
+              setModelLevel("any");
+              setSortBy("importance");
               onCategoryChange("any");
               onDaysChange("any");
               setView("all");

@@ -441,7 +441,10 @@ _KNOWN_OPEN_SOURCE_FAMILY_PREFIXES = (
 
 def _known_open_source_family(model_name: str) -> bool:
     name = _normalized_model_label(model_name)
-    return any(name.startswith(prefix) or f"/{prefix}" in name for prefix in _KNOWN_OPEN_SOURCE_FAMILY_PREFIXES)
+    return any(
+        name.startswith(prefix) or f"/{prefix}" in name
+        for prefix in _KNOWN_OPEN_SOURCE_FAMILY_PREFIXES
+    )
 
 
 def _leaderboard_license_index(
@@ -1790,6 +1793,8 @@ def list_events(
     importance: Literal["critical", "high", "medium", "low", "info"] | None = None,
     since: datetime | None = None,
     min_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    openness: Literal["open_source", "open_weight", "proprietary"] | None = None,
+    model_level: Literal["frontier", "advanced", "mid"] | None = None,
     sort_by: Literal["importance", "recent"] = "importance",
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -1810,15 +1815,57 @@ def list_events(
         filters.append(ChangeEvent.detected_at >= since)
     if min_score is not None:
         filters.append(ChangeEvent.importance_score >= min_score)
-    total = session.scalar(select(func.count()).select_from(ChangeEvent).where(*filters)) or 0
     ordering = (
         (ChangeEvent.importance_score.desc(), ChangeEvent.detected_at.desc())
         if sort_by == "importance"
         else (ChangeEvent.detected_at.desc(),)
     )
-    events = session.scalars(
-        select(ChangeEvent).where(*filters).order_by(*ordering).limit(limit).offset(offset)
-    ).all()
+
+    event_model_metadata: dict[Any, dict[str, str | None]] = {}
+    if openness is not None or model_level is not None:
+        # Openness and model level belong to the model an event is about, not
+        # to the event row. Only direct model events can therefore be filtered
+        # without guessing; papers, companies and leaderboard rows are omitted
+        # while either model-specific filter is active.
+        candidate_filters = [*filters, ChangeEvent.entity_type == "model"]
+        candidates = session.scalars(
+            select(ChangeEvent).where(*candidate_filters).order_by(*ordering)
+        ).all()
+        model_ids = {event.entity_id for event in candidates}
+        if model_ids:
+            rows = session.execute(
+                select(Model, Company, ModelProfile)
+                .join(Company, Company.id == Model.company_id)
+                .outerjoin(ModelProfile, ModelProfile.model_id == Model.id)
+                .where(Model.id.in_(model_ids))
+            ).all()
+            general_matches = selection_matches(session, "general") if model_level else {}
+            for model, company, profile in rows:
+                match = general_matches.get(canonical_model_name(model.name))
+                event_model_metadata[model.id] = {
+                    "openness": _resolved_compare_openness(model, company, profile),
+                    "level": advancedness_tier_for_score(match.score if match else None),
+                }
+        events = [
+            event
+            for event in candidates
+            if (
+                openness is None
+                or event_model_metadata.get(event.entity_id, {}).get("openness") == openness
+            )
+            and (
+                model_level is None
+                or event_model_metadata.get(event.entity_id, {}).get("level") == model_level
+            )
+        ]
+        total = len(events)
+        events = events[offset : offset + limit]
+    else:
+        total = session.scalar(select(func.count()).select_from(ChangeEvent).where(*filters)) or 0
+        events = session.scalars(
+            select(ChangeEvent).where(*filters).order_by(*ordering).limit(limit).offset(offset)
+        ).all()
+
     return {
         "total": total,
         "limit": limit,
@@ -1839,6 +1886,8 @@ def list_events(
                 "importance": event.importance,
                 "importance_score": event.importance_score,
                 "importance_factors": event.importance_factors,
+                "model_openness": event_model_metadata.get(event.entity_id, {}).get("openness"),
+                "model_level": event_model_metadata.get(event.entity_id, {}).get("level"),
                 "evidence": event.evidence,
                 "verification_status": event.verification_status,
                 "detected_at": event.detected_at,

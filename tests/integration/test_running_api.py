@@ -150,6 +150,33 @@ def test_event_feed_exposes_scores_and_categories() -> None:
     assert items
     assert all(0 <= item["importance_score"] <= 100 for item in items)
     assert all(item["category"] for item in items)
+    assert [item["importance_score"] for item in items] == sorted(
+        (item["importance_score"] for item in items), reverse=True
+    )
+
+
+def test_event_model_filters_use_resolved_catalog_metadata() -> None:
+    open_weight = httpx.get(
+        f"{BASE_URL}/api/v1/events",
+        params={"openness": "open_weight", "sort_by": "importance", "limit": 20},
+        timeout=30,
+    )
+    open_weight.raise_for_status()
+    open_items = open_weight.json()["items"]
+    assert open_items
+    assert all(item["entity_type"] == "model" for item in open_items)
+    assert all(item["model_openness"] == "open_weight" for item in open_items)
+
+    frontier = httpx.get(
+        f"{BASE_URL}/api/v1/events",
+        params={"model_level": "frontier", "sort_by": "importance", "limit": 20},
+        timeout=30,
+    )
+    frontier.raise_for_status()
+    frontier_items = frontier.json()["items"]
+    assert frontier_items
+    assert all(item["entity_type"] == "model" for item in frontier_items)
+    assert all(item["model_level"] == "frontier" for item in frontier_items)
 
 
 @pytest.mark.parametrize(
