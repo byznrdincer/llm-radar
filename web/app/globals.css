@@ -1485,8 +1485,16 @@ h1 em { color:#557049; font-style:normal; }
   grid-template-columns: minmax(0, 1.5fr) minmax(300px, .72fr);
 }
 
+.market-chart-grid.frontier-only {
+  grid-template-columns: 1fr;
+}
+
 .market-frontier-panel .market-chart-canvas {
   height: 390px;
+}
+
+.frontier-only .market-frontier-panel .market-chart-canvas {
+  height: 560px;
 }
 
 .market-chart-head-actions {
@@ -1537,5 +1545,9 @@ h1 em { color:#557049; font-style:normal; }
 
   .market-frontier-panel .market-chart-canvas {
     height: 360px;
+  }
+
+  .frontier-only .market-frontier-panel .market-chart-canvas {
+    height: 400px;
   }
 }

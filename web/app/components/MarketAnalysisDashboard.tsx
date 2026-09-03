@@ -712,7 +712,7 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
         </article>
       </div>
 
-      <div className={`market-chart-grid ${view === "country" ? "frontier-mode" : ""}`}>
+      <div className={`market-chart-grid ${view === "country" ? "frontier-mode frontier-only" : ""}`}>
         <article className={`market-panel market-chart-panel ${view === "country" ? "market-frontier-panel" : ""}`}>
           <header>
             <div>
@@ -784,15 +784,17 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
           )}
           <p className="market-method">ⓘ {view === "openness" ? openness?.interpretation : dashboard?.method_note}</p>
         </article>
-        <article className="market-panel market-chart-panel">
-          <header><div><h3>{view === "openness" ? "Ülke frontier eğilimi" : "Açıklık sınıflarının gelişimi"}</h3><p>{view === "openness" ? dashboard?.benchmark.metric : openness?.metric}</p></div><span>Canlı katalog</span></header>
-          <div className="market-chart-canvas">
-            {view === "openness"
-              ? <CountryChart data={dashboard?.country_trend ?? []} periodDays={days} />
-              : <OpennessChart data={opennessRows} />}
-          </div>
-          <p className="market-method">ⓘ {view === "openness" ? dashboard?.method_note : openness?.interpretation}</p>
-        </article>
+        {view !== "country" && (
+          <article className="market-panel market-chart-panel">
+            <header><div><h3>{view === "openness" ? "Ülke frontier eğilimi" : "Açıklık sınıflarının gelişimi"}</h3><p>{view === "openness" ? dashboard?.benchmark.metric : openness?.metric}</p></div><span>Canlı katalog</span></header>
+            <div className="market-chart-canvas">
+              {view === "openness"
+                ? <CountryChart data={dashboard?.country_trend ?? []} periodDays={days} />
+                : <OpennessChart data={opennessRows} />}
+            </div>
+            <p className="market-method">ⓘ {view === "openness" ? dashboard?.method_note : openness?.interpretation}</p>
+          </article>
+        )}
       </div>
 
       <div className="market-bottom-grid">
