@@ -2,7 +2,7 @@ import re
 from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
 from email.utils import parsedate_to_datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
@@ -223,8 +223,14 @@ def _catalog_openness_index(session: Session) -> dict[tuple[str, str], str | Non
 def radar_score(
     session: DatabaseSession,
     limit: Annotated[int, Query(ge=1, le=50)] = 10,
+    origin: Literal["all", "turkish"] = "all",
 ) -> dict[str, Any]:
-    """Return the versioned LLM Radar composite index and source leaders."""
+    """Return the versioned LLM Radar composite index and source leaders.
+
+    origin="turkish" reuses the exact same scoring engine (same
+    normalization, category weights, coverage rules) restricted to the
+    catalog's Turkish-signal model subset - not a separate methodology.
+    """
     definitions = {
         definition.slug: definition
         for definition in session.scalars(
@@ -232,6 +238,7 @@ def radar_score(
         ).all()
     }
     catalog_index = _strict_catalog_identity_index(session)
+    turkish_ids = _turkish_model_ids(session) if origin == "turkish" else None
     inputs: list[RadarScoreInput] = []
     leaders: list[dict[str, Any]] = []
     snapshot_dates: list[date] = []
@@ -284,6 +291,8 @@ def radar_score(
                 if catalog_model_id
                 else f"benchmark:{identity_tuple[0]}::{identity_tuple[1]}"
             )
+            if turkish_ids is not None and catalog_model_id not in turkish_ids:
+                continue
             inputs.append(
                 RadarScoreInput(
                     benchmark=slug,
@@ -301,6 +310,7 @@ def radar_score(
     return {
         "generated_at": datetime.now(UTC),
         "snapshot_at": max(snapshot_dates, default=None),
+        "origin": origin,
         "methodology": result["methodology"],
         "eligible_count": result["eligible_count"],
         "ineligible_count": result["ineligible_count"],
@@ -898,10 +908,10 @@ def _turkish_model_tags(
     return tags
 
 
-def list_turkish_models(
-    session: DatabaseSession,
-    limit: Annotated[int, Query(ge=1, le=200)] = 100,
-) -> dict[str, Any]:
+def _turkish_catalog_rows(
+    session: Session,
+) -> list[tuple[Model, Company, ModelProfile | None, ModelSnapshot | None]]:
+    """Catalog rows (with latest snapshot) that match the Turkish signal set."""
     latest_snapshot = (
         select(
             ModelSnapshot.model_id.label("model_id"),
@@ -921,11 +931,24 @@ def list_turkish_models(
             & (ModelSnapshot.observed_at == latest_snapshot.c.max_observed),
         )
     ).all()
+    return [
+        (model, company, profile, snapshot)
+        for model, company, profile, snapshot in rows
+        if _is_turkish_model(model, company, profile, snapshot)
+    ]
+
+
+def _turkish_model_ids(session: Session) -> set[str]:
+    return {str(model.id) for model, _, _, _ in _turkish_catalog_rows(session)}
+
+
+def list_turkish_models(
+    session: DatabaseSession,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> dict[str, Any]:
     benchmark_index = benchmark_matches(session, "general")
     candidates: list[tuple[Model, Company, ModelProfile | None, ModelSnapshot | None, int]] = []
-    for model, company, profile, snapshot in rows:
-        if not _is_turkish_model(model, company, profile, snapshot):
-            continue
+    for model, company, profile, snapshot in _turkish_catalog_rows(session):
         downloads = (
             int(snapshot.data.get("downloads"))
             if snapshot and isinstance(snapshot.data.get("downloads"), int)

@@ -51,6 +51,21 @@ function isOpenWeight(model: TurkishModel): boolean {
     || model.openness === "open_source";
 }
 
+type TurkishRadarItem = {
+  rank: number;
+  model_name: string;
+  organization: string;
+  score: number;
+  coverage: number;
+  benchmark_count: number;
+  category_count: number;
+};
+
+type TurkishRadarData = {
+  eligible_count: number;
+  items: TurkishRadarItem[];
+};
+
 type Props = {
   api: string;
   bootstrap?: TurkishModel[] | null;
@@ -72,6 +87,16 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
   const [openWeightOnly, setOpenWeightOnly] = useState(false);
   const [sortField, setSortField] = useState<SortField>("downloads");
   const [page, setPage] = useState(1);
+  const [radar, setRadar] = useState<TurkishRadarData | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${api}/api/v1/insights/radar-score?origin=turkish&limit=10`, { signal: controller.signal })
+      .then(response => (response.ok ? response.json() : null))
+      .then(data => { if (data) setRadar(data as TurkishRadarData); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [api]);
 
   useEffect(() => {
     if (!bootstrap?.length) return;
@@ -141,6 +166,31 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
           </div>
         </div>
       </header>
+
+      <section className="turkish-radar" aria-label="Turkiye LLM Score">
+        <header className="turkish-radar-head">
+          <div>
+            <h3>Turkiye LLM Score</h3>
+            <p>Mevcut Radar Score motoruyla (ayni normalizasyon, kategori agirliklari ve kapsam kurallariyla) Turkiye sinyali tasiyan modeller icin hesaplanir. Bu ayri bir Turkce degerlendirme suit'i degildir - ucuncu taraf benchmark sonuclarinin bu alt kumeye uygulanmis halidir.</p>
+          </div>
+        </header>
+        {radar?.items.length ? (
+          <ol className="turkish-radar-list">
+            {radar.items.map(item => (
+              <li key={`${item.organization}:${item.model_name}`}>
+                <b>#{item.rank}</b>
+                <span>
+                  <strong>{item.model_name}</strong>
+                  <small>{item.organization} · {item.benchmark_count} benchmark / {item.category_count} kategori</small>
+                </span>
+                <em>{item.score.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}<small>%{item.coverage} kapsam</small></em>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="turkish-msg">Yeterli benchmark kapsamina ulasan Turkiye modeli bekleniyor.</p>
+        )}
+      </section>
 
       <div className="turkish-toolbar">
         <label className="turkish-search">
