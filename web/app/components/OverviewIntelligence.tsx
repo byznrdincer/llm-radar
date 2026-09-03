@@ -22,6 +22,13 @@ type RadarScoreItem = {
   coverage: number;
   benchmark_count: number;
   category_count: number;
+  openness: string | null;
+};
+
+const OPENNESS_LABELS: Record<string, string> = {
+  open_source: "Open Source",
+  open_weight: "Open Weight",
+  proprietary: "Closed Source",
 };
 
 type BenchmarkLeader = {
@@ -180,7 +187,14 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards, onOpenEv
                     size="md"
                   />
                   <div>
-                    <strong>{item.model_name}</strong>
+                    <span className="overview-model-name-row">
+                      <strong>{item.model_name}</strong>
+                      {item.openness && (
+                        <em className={`overview-openness-badge ${item.openness}`}>
+                          {OPENNESS_LABELS[item.openness] ?? item.openness}
+                        </em>
+                      )}
+                    </span>
                     <small>{item.organization} · {item.benchmark_count} benchmark / {item.category_count} kategori</small>
                   </div>
                   <div className="overview-score-value">

@@ -50,7 +50,13 @@ h1 em { color:#557049; font-style:normal; }
 .overview-score-row:hover{background:#f5f7f0;transform:translateX(2px)}
 .overview-score-row>b{display:grid;place-items:center;width:30px;height:30px;color:#6e961a;background:#eef3e6;border-radius:50%;font-family:var(--font-geist-mono);font-size:13px;font-weight:700}
 .overview-score-row.rank-gold>b{color:#7a5b0a;background:linear-gradient(150deg,#f6e2a3,#eec96b);box-shadow:0 0 0 3px #f6e2a355}.overview-score-row.rank-silver>b{color:#4a4f57;background:linear-gradient(150deg,#e3e6ea,#c9cfd6);box-shadow:0 0 0 3px #e3e6ea55}.overview-score-row.rank-bronze>b{color:#7a4322;background:linear-gradient(150deg,#eccdb0,#dfa778);box-shadow:0 0 0 3px #eccdb055}
-.overview-score-row>div>strong{display:block;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.overview-score-row>div>small{display:block;margin-top:5px;color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.overview-model-name-row{display:flex;align-items:center;gap:8px;min-width:0}
+.overview-model-name-row>strong{display:block;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.overview-openness-badge{flex-shrink:0;padding:2px 8px;border-radius:999px;font-style:normal;font-size:9px;font-weight:800;letter-spacing:.02em;white-space:nowrap}
+.overview-openness-badge.open_source{background:#e6f7cc;color:#3f5f28}
+.overview-openness-badge.open_weight{background:#dcf1ee;color:#1f5850}
+.overview-openness-badge.proprietary{background:#ece7f5;color:#4a3d70}
+.overview-score-row>div>small{display:block;margin-top:5px;color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .overview-score-sentinel{min-height:1px;padding:0}
 .overview-loading-more{padding:14px 0;color:var(--muted);font-size:11px;text-align:center}
 .overview-score-value{text-align:right}.overview-score-value>strong{font-family:var(--font-geist-mono);font-size:23px;font-weight:700;background:linear-gradient(120deg,#345f2c,#6e961a);-webkit-background-clip:text;background-clip:text;color:transparent}

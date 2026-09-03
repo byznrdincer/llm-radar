@@ -243,7 +243,16 @@ def _resolved_row_openness(
         return None
     model, profile, company_name = candidates[0]
     company_stub = cast(Company, SimpleNamespace(name=company_name))
-    return _resolved_compare_openness(model, company_stub, profile)
+    # _known_family_license's verified-model dict is keyed on the
+    # leaderboard-style spelling (e.g. "Nex-N2-Pro"), which can differ from
+    # the catalog's own display name (e.g. "Nex N2 Pro") enough to miss an
+    # exact-match lookup. Use a stub carrying the original name/org but the
+    # catalog Model's real license/is_open_weight fields (never fabricated).
+    model_stub = cast(
+        Model,
+        SimpleNamespace(name=model_name, license=model.license, is_open_weight=model.is_open_weight),
+    )
+    return _resolved_compare_openness(model_stub, company_stub, profile)
 
 
 def _ranked_radar_score(
@@ -344,6 +353,19 @@ def _ranked_radar_score(
     scored_items = [item for item in result["items"] if item.get("catalog_model_id")]
     for rank, item in enumerate(scored_items, start=1):
         item["rank"] = rank
+
+    if scored_items:
+        # Uses the item's own leaderboard-derived model_name/organization
+        # (e.g. "Nex-N2-Pro"), not the catalog's own display name (e.g.
+        # "Nex N2 Pro") - _known_family_license's verified-model dict is
+        # keyed on the leaderboard-style spelling, so resolving via the
+        # catalog Model's own .name here would silently miss it.
+        openness_index = _leaderboard_license_index(session)
+        for item in scored_items:
+            item["openness"] = _resolved_row_openness(
+                item["model_name"], item["organization"], openness_index
+            )
+
     return {
         "snapshot_at": max(snapshot_dates, default=None),
         "methodology": result["methodology"],
