@@ -924,6 +924,11 @@ def list_turkish_models(
                     if snapshot and isinstance(snapshot.data, dict)
                     else None
                 ),
+                "source_url": (
+                    (snapshot.data.get("url") or snapshot.data.get("repository"))
+                    if snapshot and isinstance(snapshot.data, dict)
+                    else None
+                ),
                 "benchmark_score": (
                     benchmark_index[canonical_model_name(model.name)].score
                     if canonical_model_name(model.name) in benchmark_index

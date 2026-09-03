@@ -12,6 +12,7 @@ export type TurkishModel = {
   tags: string[];
   downloads: number | null;
   last_updated: string;
+  source_url?: string | null;
 };
 
 type SortField = "name" | "downloads" | "last_updated";
@@ -200,7 +201,20 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
                   return (
                     <tr key={model.id}>
                       <td>
-                        <strong title={model.name}>{model.name}</strong>
+                        <span className="turkish-name-row">
+                          <strong title={model.name}>{model.name}</strong>
+                          {model.source_url && (
+                            <a
+                              className="turkish-source-link"
+                              href={model.source_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              aria-label={`${model.name} icin kaynagi ac`}
+                            >
+                              {"\u2197"}
+                            </a>
+                          )}
+                        </span>
                         {(base || tags.length > 0) && (
                           <div className="turkish-row-sub">
                             {base && <span className="turkish-base">{base}</span>}
