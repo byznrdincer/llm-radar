@@ -94,6 +94,14 @@ const criterionOptions = [
   ["fine_tuning", "Fine-tuning"],
 ] as const;
 
+const userTypeOptions = [
+  ["developer", "Developer"],
+  ["startup", "Startup"],
+  ["enterprise", "Kurumsal şirket"],
+  ["organization", "Organizasyon"],
+  ["individual", "Bireysel"],
+] as const;
+
 const demandLevels = [
   ["interested", "İlgileniyorum"],
   ["need", "İhtiyacım var"],
@@ -477,6 +485,10 @@ export default function FeedbackPage({ api }: { api: string }) {
   const [usageVolume, setUsageVolume] = useState("");
   const [budgetRange, setBudgetRange] = useState("");
   const [timeline, setTimeline] = useState("");
+  const [userType, setUserType] = useState<string[]>([]);
+  const [fullName, setFullName] = useState("");
+  const [organizationName, setOrganizationName] = useState("");
+  const [userNote, setUserNote] = useState("");
   const [demandState, setDemandState] =
     useState<FormState>("idle");
 
@@ -589,6 +601,10 @@ export default function FeedbackPage({ api }: { api: string }) {
           usage_volume: usageVolume || null,
           budget_range: budgetRange || null,
           timeline: timeline || null,
+          user_type: userType,
+          full_name: fullName.trim() || null,
+          organization_name: organizationName.trim() || null,
+          user_note: userNote.trim() || null,
           context: submissionContext(),
         }),
       });
@@ -607,6 +623,7 @@ export default function FeedbackPage({ api }: { api: string }) {
           usage_volume: usageVolume || null,
           budget_range: budgetRange || null,
           timeline: timeline || null,
+          user_type: userType,
         },
       });
 
@@ -618,6 +635,10 @@ export default function FeedbackPage({ api }: { api: string }) {
       setUsageVolume("");
       setBudgetRange("");
       setTimeline("");
+      setUserType([]);
+      setFullName("");
+      setOrganizationName("");
+      setUserNote("");
       setDemandState("success");
     } catch {
       setDemandState("error");
@@ -877,6 +898,62 @@ export default function FeedbackPage({ api }: { api: string }) {
             {showDemandDetails && (
               <div className="feedback-progressive">
                 <fieldset className="feedback-smart-group">
+                  <legend>Sen kimsin? · opsiyonel</legend>
+
+                  <div className="feedback-choice-row">
+                    {userTypeOptions.map(([value, label]) => (
+                      <button
+                        type="button"
+                        key={value}
+                        className={
+                          userType.includes(value)
+                            ? "feedback-choice active"
+                            : "feedback-choice"
+                        }
+                        onClick={() => {
+                          setUserType((current) =>
+                            toggleValue(current, value),
+                          );
+                          setDemandState("idle");
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="demand-grid">
+                    <label>
+                      <span>Ad soyad · opsiyonel</span>
+
+                      <input
+                        value={fullName}
+                        maxLength={160}
+                        onChange={(event) => {
+                          setFullName(event.target.value);
+                          setDemandState("idle");
+                        }}
+                        placeholder="Adın soyadın"
+                      />
+                    </label>
+
+                    <label>
+                      <span>Şirket / organizasyon · opsiyonel</span>
+
+                      <input
+                        value={organizationName}
+                        maxLength={160}
+                        onChange={(event) => {
+                          setOrganizationName(event.target.value);
+                          setDemandState("idle");
+                        }}
+                        placeholder="Şirket veya organizasyon adı"
+                      />
+                    </label>
+                  </div>
+                </fieldset>
+
+                <fieldset className="feedback-smart-group">
                   <legend>Ne için kullanırsın?</legend>
 
                   <div className="feedback-choice-row">
@@ -1013,6 +1090,20 @@ export default function FeedbackPage({ api }: { api: string }) {
                     </select>
                   </label>
                 </div>
+
+                <label>
+                  <span>Eklemek istediğin bir not var mı? · opsiyonel</span>
+
+                  <textarea
+                    value={userNote}
+                    maxLength={2000}
+                    onChange={(event) => {
+                      setUserNote(event.target.value);
+                      setDemandState("idle");
+                    }}
+                    placeholder="Talebinle ilgili eklemek istediğin bağlam"
+                  />
+                </label>
               </div>
             )}
 

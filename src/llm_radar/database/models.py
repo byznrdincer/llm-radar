@@ -549,6 +549,12 @@ class ModelDemand(Base):
     budget_range: Mapped[str | None] = mapped_column(String(24), nullable=True, index=True)
     deployment_preference: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     timeline: Mapped[str | None] = mapped_column(String(24), nullable=True, index=True)
+
+    user_type: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    full_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    organization_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    user_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     submission_context: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     status: Mapped[str] = mapped_column(String(24), default="new", index=True)
 

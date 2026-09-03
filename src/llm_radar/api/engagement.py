@@ -98,6 +98,14 @@ DemandTimeline = Literal[
     "immediate",
 ]
 
+DemandUserType = Literal[
+    "developer",
+    "startup",
+    "enterprise",
+    "organization",
+    "individual",
+]
+
 
 class SubmissionContext(BaseModel):
     page: str | None = Field(default=None, max_length=240)
@@ -168,7 +176,24 @@ class ModelDemandRequest(BaseModel):
     budget_range: DemandBudgetRange | None = None
     deployment_preference: DemandDeploymentPreference | None = None
     timeline: DemandTimeline | None = None
+
+    user_type: list[DemandUserType] = Field(default_factory=list, max_length=5)
+    full_name: str | None = Field(default=None, max_length=160)
+    organization_name: str | None = Field(default=None, max_length=160)
+    user_note: str | None = Field(default=None, max_length=2000)
+
     context: SubmissionContext | None = None
+
+    @field_validator("user_type")
+    @classmethod
+    def normalize_user_type(cls, values: list[Any]) -> list[Any]:
+        return list(dict.fromkeys(values))
+
+    @field_validator("full_name", "organization_name", "user_note")
+    @classmethod
+    def clean_optional_profile_text(cls, value: str | None) -> str | None:
+        cleaned = value.strip() if value else None
+        return cleaned or None
 
     @field_validator("requested_models")
     @classmethod
@@ -314,6 +339,10 @@ def submit_model_demand(request: ModelDemandRequest, session: DatabaseSession) -
         budget_range=request.budget_range,
         deployment_preference=request.deployment_preference,
         timeline=request.timeline,
+        user_type=request.user_type,
+        full_name=request.full_name,
+        organization_name=request.organization_name,
+        user_note=request.user_note,
         submission_context=(
             request.context.model_dump(exclude_none=True) if request.context else {}
         ),

@@ -87,6 +87,31 @@ def test_model_demand_normalizes_duplicates_and_whitespace() -> None:
     assert request.context.section == "feedback"
 
 
+def test_model_demand_normalizes_profile_fields() -> None:
+    request = ModelDemandRequest(
+        session_id=uuid4(),
+        requested_models=["Qwen"],
+        user_type=["developer", "developer", "startup"],
+        full_name="  Ada Lovelace  ",
+        organization_name="   ",
+        user_note="  Türkçe destek önemli.  ",
+    )
+
+    assert request.user_type == ["developer", "startup"]
+    assert request.full_name == "Ada Lovelace"
+    assert request.organization_name is None
+    assert request.user_note == "Türkçe destek önemli."
+
+
+def test_model_demand_rejects_unknown_user_type() -> None:
+    with pytest.raises(ValidationError):
+        ModelDemandRequest(
+            session_id=uuid4(),
+            requested_models=["Qwen"],
+            user_type=["freelancer"],
+        )
+
+
 def test_feedback_context_rejects_oversized_values() -> None:
     with pytest.raises(ValidationError):
         FeedbackRequest(
