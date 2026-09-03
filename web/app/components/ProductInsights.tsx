@@ -43,7 +43,7 @@ function InterestList({ title, items }: { title: string; items: { name: string; 
       <header><h3>{title}</h3><span>Tümünü gör</span></header>
       {items.length ? (
         <ol>
-          {items.slice(0, 5).map((item, index) => (
+          {items.slice(0, 10).map((item, index) => (
             <li key={item.name}>
               <b>{index + 1}</b>
               <span>{item.name}</span>
@@ -81,7 +81,7 @@ export default function ProductInsights({ api, view, onNavigate, onOpenWeight, t
       .catch(() => null);
     if (view === "popularity") {
       void Promise.all([
-        optional(`${api}/api/v1/analytics/popular?days=${popularDays}&limit=8`),
+        optional(`${api}/api/v1/analytics/popular?days=${popularDays}&limit=10`),
         optional(`${api}/api/v1/analytics/spotlight?period=${spotlightPeriod}&limit=5`),
       ]).then(([popularData, spotlightData]) => {
         if (popularData) setPopular(popularData);
