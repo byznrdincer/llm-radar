@@ -117,14 +117,6 @@ const budgetRangeOptions = [
   ["over_2000", "$2.000+ / ay"],
 ] as const;
 
-const deploymentOptions = [
-  ["", "Belirtmek istemiyorum"],
-  ["no_preference", "Fark etmez"],
-  ["turkey", "Türkiye’de barındırma"],
-  ["private_cloud", "Özel bulut / VPC"],
-  ["on_premise", "Kendi altyapım / on-premise"],
-] as const;
-
 const timelineOptions = [
   ["", "Belirtmek istemiyorum"],
   ["exploring", "Şimdilik araştırıyorum"],
@@ -484,8 +476,6 @@ export default function FeedbackPage({ api }: { api: string }) {
   const [demandLevel, setDemandLevel] = useState("");
   const [usageVolume, setUsageVolume] = useState("");
   const [budgetRange, setBudgetRange] = useState("");
-  const [deploymentPreference, setDeploymentPreference] =
-    useState("");
   const [timeline, setTimeline] = useState("");
   const [demandState, setDemandState] =
     useState<FormState>("idle");
@@ -598,7 +588,6 @@ export default function FeedbackPage({ api }: { api: string }) {
           demand_level: demandLevel || null,
           usage_volume: usageVolume || null,
           budget_range: budgetRange || null,
-          deployment_preference: deploymentPreference || null,
           timeline: timeline || null,
           context: submissionContext(),
         }),
@@ -617,7 +606,6 @@ export default function FeedbackPage({ api }: { api: string }) {
           demand_level: demandLevel || null,
           usage_volume: usageVolume || null,
           budget_range: budgetRange || null,
-          deployment_preference: deploymentPreference || null,
           timeline: timeline || null,
         },
       });
@@ -1001,24 +989,6 @@ export default function FeedbackPage({ api }: { api: string }) {
                       }}
                     >
                       {budgetRangeOptions.map(([value, label]) => (
-                        <option value={value} key={value || "empty"}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label>
-                    <span>Barındırma tercihi</span>
-
-                    <select
-                      value={deploymentPreference}
-                      onChange={(event) => {
-                        setDeploymentPreference(event.target.value);
-                        setDemandState("idle");
-                      }}
-                    >
-                      {deploymentOptions.map(([value, label]) => (
                         <option value={value} key={value || "empty"}>
                           {label}
                         </option>
