@@ -92,7 +92,13 @@ def company_display_name(slug: str) -> str:
     return _COMPANY_DISPLAY_NAMES.get(slug, slug.replace("-", " ").title())
 
 
-def normalize_license(value: str | None) -> str | None:
+def normalize_license(value: str | list[str] | None) -> str | None:
+    # Some sources (e.g. HuggingFace cardData) report a dual/multi-license
+    # model as a list of license identifiers rather than one string. Take the
+    # first asserted value instead of crashing the whole collection run on
+    # one unusually-shaped field.
+    if isinstance(value, list):
+        value = next((item for item in value if isinstance(item, str) and item.strip()), None)
     if not value:
         return None
     key = value.strip().lower()

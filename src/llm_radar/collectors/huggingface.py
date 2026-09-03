@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -18,6 +19,8 @@ from llm_radar.events.schemas import (
     ReliabilityLevel,
 )
 from llm_radar.normalize import normalize_license
+
+logger = logging.getLogger(__name__)
 
 HF_HUB_TASKS = ("text-generation", "image-text-to-text", "text-to-image")
 WEIGHT_SUFFIXES = (".safetensors", ".gguf", ".bin", ".pt", ".pth")
@@ -157,7 +160,18 @@ class HuggingFaceCollector(BaseCollector):
         seen: set[str] = set()
 
         async def ingest(item: dict[str, Any]) -> None:
-            converted = self._to_event(item, collected_at)
+            try:
+                converted = self._to_event(item, collected_at)
+            except Exception:
+                # One unusually-shaped repo (e.g. an unexpected cardData
+                # field type) must not discard every org/task fetched so
+                # far in this run - skip just this item and keep going.
+                logger.warning(
+                    "huggingface: skipped unparseable repo %r",
+                    item.get("id") or item.get("modelId"),
+                    exc_info=True,
+                )
+                return
             if converted is None:
                 return
             event, payload = converted

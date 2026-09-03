@@ -49,6 +49,41 @@ async def test_huggingface_requires_downloadable_weight_evidence(
 
 
 @pytest.mark.asyncio
+async def test_huggingface_survives_list_typed_license_and_keeps_other_repos(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Some repos (e.g. dual-licensed ones) report cardData.license as a
+    list rather than a string - this must not crash the whole run and
+    discard every other repo already fetched in the same collection."""
+    monkeypatch.setattr("llm_radar.collectors.huggingface.WATCHED_HF_ORGS", ("example",))
+    monkeypatch.setattr("llm_radar.collectors.huggingface.HF_HUB_TASKS", ())
+    monkeypatch.setattr("llm_radar.collectors.huggingface.TURKISH_HF_SEARCH_QUERIES", ())
+    monkeypatch.setattr("llm_radar.collectors.huggingface.PINNED_HF_MODELS", ())
+    payload = [
+        {
+            "id": "example/dual-licensed",
+            "cardData": {"license": ["mit", "apache-2.0"]},
+            "siblings": [{"rfilename": "model.safetensors"}],
+        },
+        {
+            "id": "example/normal",
+            "cardData": {"license": "apache-2.0"},
+            "siblings": [{"rfilename": "model.safetensors"}],
+        },
+    ]
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await HuggingFaceCollector(client).collect()
+
+    assert len(result.events) == 2
+    dual = next(e for e in result.events if e.entity_key == "example/dual-licensed")
+    assert dual.payload["license"] == "MIT"
+
+
+@pytest.mark.asyncio
 async def test_huggingface_refreshes_pinned_weight_repositories(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
