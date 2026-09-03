@@ -415,6 +415,35 @@ def _known_family_license(model_name: str, organization: str) -> str | None:
     return None
 
 
+# Model families whose full training pipeline (data + training code, not just
+# downloadable weights) is publicly documented and released - distinct from
+# open_weight, where only the weights are known to be available. Kept as a
+# short, curated list of unambiguous, well-documented cases rather than
+# inferred from a license string, since "open_source" is a stronger claim
+# than any license alone can verify.
+_KNOWN_OPEN_SOURCE_FAMILY_PREFIXES = (
+    "olmo",
+    "pythia",
+    "gpt-neox",
+    "gpt-j",
+    "bloomz",
+    "bloom-",
+    "starcoder",
+    "smollm",
+    "redpajama",
+    "amber",
+    "crystalcoder",
+    "k2-think",
+    "k2-chat",
+    "dolly-v2",
+)
+
+
+def _known_open_source_family(model_name: str) -> bool:
+    name = _normalized_model_label(model_name)
+    return any(name.startswith(prefix) or f"/{prefix}" in name for prefix in _KNOWN_OPEN_SOURCE_FAMILY_PREFIXES)
+
+
 def _leaderboard_license_index(
     session: DatabaseSession,
 ) -> dict[str, list[tuple[Model, ModelProfile | None, str]]]:
@@ -1047,7 +1076,7 @@ def model_facets(session: DatabaseSession) -> dict[str, Any]:
             capabilities[value] = capabilities.get(value, 0) + 1
         license_category = _license_category(profile.license)
         licenses[license_category] = licenses.get(license_category, 0) + 1
-        openness_value = profile.openness or "unknown"
+        openness_value = _resolved_compare_openness(model, company, profile) or "unknown"
         openness[openness_value] = openness.get(openness_value, 0) + 1
         commercial_value = profile.commercial_use_status or "unknown"
         commercial_use[commercial_value] = commercial_use.get(commercial_value, 0) + 1
@@ -1150,12 +1179,13 @@ def search_models(
         filters.append(or_(ModelProfile.openness.is_(None), ModelProfile.openness == "unknown"))
     elif availability:
         filters.append(ModelProfile.openness == availability)
-    if openness:
-        normalized_openness = [item.lower().replace("-", "_") for item in openness]
-        openness_clauses: list[Any] = [ModelProfile.openness.in_(normalized_openness)]
-        if "unknown" in normalized_openness:
-            openness_clauses.append(ModelProfile.openness.is_(None))
-        filters.append(or_(*openness_clauses))
+    # Openness filtering happens in Python (see requires_python_ranking below),
+    # not as a SQL predicate here: the effective openness a row displays can
+    # come from _resolved_compare_openness's license-based/curated-family
+    # fallback, not just the raw ModelProfile.openness column, so a SQL WHERE
+    # on that column alone would silently exclude rows the UI shows as
+    # matching.
+    normalized_openness = [item.lower().replace("-", "_") for item in openness] if openness else []
     license_clause = _license_filter(license or [])
     if license_clause is not None:
         filters.append(license_clause)
@@ -1209,11 +1239,19 @@ def search_models(
     matches = selection_matches(session, match_focus)
     requires_python_ranking = bool(
         normalized_advancedness
+        or normalized_openness
         or benchmark_focus
         or primary_sort_by in {"benchmark_score", "best_match"}
     )
     if requires_python_ranking:
         rows = list(session.execute(query).all())
+        if normalized_openness:
+            rows = [
+                row
+                for row in rows
+                if (_resolved_compare_openness(row[0], row[1], row[2]) or "unknown")
+                in normalized_openness
+            ]
         if benchmark_focus:
             rows = [row for row in rows if canonical_model_name(row[0].name) in matches]
         if normalized_advancedness:
@@ -1302,7 +1340,7 @@ def search_models(
             "tool_calling": profile.supports_tool_calling,
             "reasoning": profile.supports_reasoning,
             "availability": profile.availability,
-            "openness": profile.openness or "unknown",
+            "openness": _resolved_compare_openness(model, company, profile) or "unknown",
             "license": profile.license,
             "license_category": _license_category(profile.license),
             "commercial_use_allowed": profile.commercial_use_allowed,
@@ -1421,6 +1459,8 @@ def _resolved_compare_openness(
 ) -> str | None:
     if profile is not None and profile.openness and profile.openness != "unknown":
         return profile.openness
+    if _known_open_source_family(model.name):
+        return "open_source"
     availability = _resolved_availability(model, profile)
     if availability:
         return availability
