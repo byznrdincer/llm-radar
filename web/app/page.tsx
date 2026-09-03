@@ -949,8 +949,7 @@ export default function Home() {
             const orgKey = item.organization.toLowerCase().trim();
             const key = normalizeModelKey(primaryName);
             const match = items.find(entry => entry.developer.name.toLowerCase() === orgKey || entry.developer.slug === orgKey)
-                ?? items.find(entry => normalizeModelKey(entry.slug) === key || normalizeModelKey(entry.name) === key)
-                ?? items[0];
+                ?? items.find(entry => normalizeModelKey(entry.slug) === key || normalizeModelKey(entry.name) === key);
             if (match) {
                 await openDetailById(match.id);
                 return;
