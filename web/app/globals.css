@@ -24,7 +24,9 @@ nav a { color:var(--muted); text-decoration:none; font-size:13px; font-weight:70
 nav a.active { color:var(--ink); }
 .live-pill { border:1px solid var(--ink); border-radius:999px; padding:8px 12px; font-size:11px; font-weight:900; letter-spacing:.12em; }
 .live-pill span { display:inline-block; width:7px; height:7px; margin-right:7px; border-radius:50%; background:#20c968; box-shadow:0 0 0 4px #20c96822; }
+.topbar-right { display:flex; align-items:center; gap:10px; }
 .language-toggle { position:fixed; top:18px; right:18px; z-index:40; display:flex; gap:2px; padding:3px; border:1px solid var(--ink); border-radius:999px; background:rgba(244,242,236,.92); backdrop-filter:blur(12px); box-shadow:0 4px 18px #00000014; }
+.language-toggle-inline { position:static; z-index:auto; box-shadow:none; }
 .language-toggle button { border:0; background:transparent; border-radius:999px; padding:6px 12px; font-size:11px; font-weight:900; letter-spacing:.08em; color:var(--muted); cursor:pointer; transition:background .15s ease,color .15s ease; }
 .language-toggle button:hover { color:var(--ink); }
 .language-toggle button.active { background:var(--ink); color:var(--lime); }
