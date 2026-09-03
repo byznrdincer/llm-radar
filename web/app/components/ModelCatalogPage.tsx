@@ -544,7 +544,7 @@ export default function ModelCatalogPage(props: Props) {
         }));
     }, [p.facets.modalities]);
     const licenseOptions = useMemo(() => {
-        const fallback = ["mit", "apache_2_0", "llama_community", "other", "unknown"];
+        const fallback = ["mit", "apache_2_0", "llama_community", "model_specific", "other", "unknown"];
         const values = p.facets.licenses.length ? p.facets.licenses : fallback.map(name => ({ name, count: 0 }));
         return values.map(item => ({ value: item.name, count: item.count }));
     }, [p.facets.licenses]);
@@ -643,7 +643,7 @@ export default function ModelCatalogPage(props: Props) {
                                 <h4>Erişim ve lisans</h4>
                                 <div className="catalog-filter-grid">
                                     <MultiSelectFilter className="catalog-filter-wide" title="API sağlayıcısı" values={p.providers} options={p.facets.providers.map(i => ({ value: i.slug, count: i.count }))} onToggle={p.onToggleProvider} onClear={p.onClearProviders} renderLabel={v => p.facets.providers.find(i => i.slug === v)?.name ?? v} />
-                                    <MultiSelectFilter title="Lisans" values={p.licenses} options={licenseOptions} renderLabel={v => ({ mit: "MIT", apache_2_0: "Apache 2.0", llama_community: "Llama Community", other: "Diğer", unknown: "Bilinmiyor" }[v] ?? v)} onToggle={p.onToggleLicense} />
+                                    <MultiSelectFilter title="Lisans" values={p.licenses} options={licenseOptions} renderLabel={v => ({ mit: "MIT", apache_2_0: "Apache 2.0", llama_community: "Llama Community", model_specific: "Modele özel", other: "Diğer", unknown: "Bilinmiyor" }[v] ?? v)} onToggle={p.onToggleLicense} />
                                     <MultiSelectFilter title="Ticari kullanım" values={p.commercialStatuses} options={[{ value: "allowed" }, { value: "restricted" }, { value: "unknown" }]} renderLabel={v => ({ allowed: "İzinli", restricted: "Kısıtlı", unknown: "Bilinmiyor" }[v] ?? v)} onToggle={p.onToggleCommercial} />
                                 </div>
                             </section>
@@ -654,7 +654,7 @@ export default function ModelCatalogPage(props: Props) {
                                     <MultiSelectFilter title="Modalite" values={p.modalities} options={modalityOptions} renderLabel={p.trModality} onToggle={p.onToggleModality} />
                                     <MultiSelectFilter title="Yetenek" values={p.capabilities} options={capOptions} renderLabel={p.trCapability} onToggle={p.onToggleCapability} />
                                     <MultiSelectFilter title="Gelişmişlik" values={p.advancedness} options={[...ADVANCEDNESS_OPTIONS]} renderLabel={v => ADVANCEDNESS_LABELS[v] ?? v} onToggle={p.onToggleAdvancedness} />
-                                    <label><span>Benchmark odağı</span><select value={p.benchmarkFocus} onChange={e => p.onBenchmarkFocusChange(e.target.value)}><option value="any">Genel (varsayılan)</option><option value="general">Genel</option><option value="coding">Coding</option><option value="reasoning">Reasoning</option><option value="agent">Agent</option><option value="multimodal">Multimodal</option></select></label>
+                                    <label><span>Benchmark odağı</span><select value={p.benchmarkFocus} onChange={e => p.onBenchmarkFocusChange(e.target.value)}><option value="any">Farketmez (tüm modeller)</option><option value="general">Genel (yalnızca benchmarklı modeller)</option><option value="coding">Coding (yalnızca benchmarklı modeller)</option><option value="reasoning">Reasoning (yalnızca benchmarklı modeller)</option><option value="agent">Agent (yalnızca benchmarklı modeller)</option><option value="multimodal">Multimodal (yalnızca benchmarklı modeller)</option></select></label>
                                 </div>
                             </section>
                         </div>
