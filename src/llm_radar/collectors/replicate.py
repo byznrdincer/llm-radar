@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
@@ -7,6 +8,8 @@ import httpx
 from llm_radar.collectors.base import BaseCollector, CollectorResult
 from llm_radar.collectors.model_catalog import canonical_model_key, collected_now, model_event
 from llm_radar.events.schemas import EventEnvelope, ReliabilityLevel
+
+logger = logging.getLogger(__name__)
 
 REPLICATE_MODELS_URL = "https://api.replicate.com/v1/models"
 _LLM_INPUT_FIELDS = {
@@ -90,7 +93,19 @@ class ReplicateCollector(BaseCollector):
             raw_next = payload.get("next")
             next_url = str(raw_next) if raw_next else None
             if len(pages) >= 100 and next_url:
-                raise RuntimeError("Replicate catalog pagination exceeded 100 pages")
+                # Replicate's full catalog (mostly image/video/audio models) runs
+                # to many hundreds of pages - far more than this endpoint should
+                # page through on every scheduled run. The API returns models
+                # newest-first, so the first 100 pages already cover the current,
+                # relevant ones; stop here and publish what was gathered instead
+                # of discarding a real page budget's worth of results.
+                logger.warning(
+                    "replicate: catalog has more than 100 pages; stopping at the "
+                    "budget and publishing %d collected models",
+                    len(items),
+                )
+                next_url = None
+                break
 
         collected_at = collected_now()
         events = [

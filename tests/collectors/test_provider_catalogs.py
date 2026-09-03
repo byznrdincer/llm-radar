@@ -358,6 +358,56 @@ async def test_replicate_follows_pagination_and_keeps_open_weight_evidence() -> 
 
 
 @pytest.mark.asyncio
+async def test_replicate_stops_at_page_budget_without_discarding_results() -> None:
+    """A catalog deeper than the page budget should still publish whatever was
+    gathered instead of raising and losing all of it - Replicate's real
+    catalog is larger than 100 pages on every run, so discarding on overflow
+    means the source never publishes anything."""
+
+    def page_response(index: int) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "results": [
+                    {
+                        "owner": "org",
+                        "name": f"model-{index}",
+                        "url": f"https://replicate.com/org/model-{index}",
+                        "weights_url": "https://huggingface.co/org/model",
+                        "latest_version": {
+                            "id": "version-1",
+                            "openapi_schema": {
+                                "components": {
+                                    "schemas": {
+                                        "Input": {
+                                            "properties": {
+                                                "prompt": {"type": "string"},
+                                                "max_tokens": {"type": "integer"},
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                        },
+                    }
+                ],
+                "next": f"{REPLICATE_MODELS_URL}?cursor={index + 1}",
+            },
+        )
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        cursor = request.url.params.get("cursor")
+        index = int(cursor) if cursor else 0
+        return page_response(index)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await ReplicateCollector(client, "replicate-secret").collect()
+
+    assert len(result.raw_payload["pages"]) == 100
+    assert len(result.events) == 100
+
+
+@pytest.mark.asyncio
 async def test_deepinfra_maps_token_prices_and_filters_non_llms() -> None:
     payload = [
         {
