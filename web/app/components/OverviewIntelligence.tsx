@@ -54,20 +54,24 @@ type RadarScoreData = {
   items: RadarScoreItem[];
 };
 
-type RadarEvent = {
-  id: string;
-  kind: string;
+type RadarScoreChangeEvent = {
+  kind: "new_leader" | "entered_top3" | "new_entry";
+  catalog_model_id: string;
+  model_name: string;
+  organization: string;
+  rank: number;
+  previous_rank: number | null;
+  score: number;
   title: string;
-  effective_at: string;
-  source: string | null;
-  source_url: string | null;
-  verification_status: string;
 };
 
-type Radar24hData = {
+type RadarScoreChangesData = {
+  window_hours: number;
+  current_snapshot_at: string | null;
+  compared_snapshot_at: string | null;
+  counts: { new_leader: number; entered_top3: number; new_entry: number };
   total: number;
-  counts: Record<string, number>;
-  items: RadarEvent[];
+  items: RadarScoreChangeEvent[];
 };
 
 type Props = {
@@ -77,22 +81,14 @@ type Props = {
 };
 
 const KIND_LABELS: Record<string, string> = {
-  model_release: "Yeni model",
-  benchmark_leader: "Yeni lider",
-  benchmark_top3: "İlk Top 3",
-  price_change: "Fiyat",
-  capability_change: "Yetenek",
-  provider_update: "API / sağlayıcı",
+  new_leader: "Yeni lider",
+  entered_top3: "Top 3'e girdi",
+  new_entry: "Yeni giriş",
 };
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
   return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "short", year: "numeric" })
-    .format(new Date(value));
-}
-
-function formatTime(value: string): string {
-  return new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" })
     .format(new Date(value));
 }
 
@@ -104,7 +100,7 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards, onOpenEv
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingMoreRef = useRef(false);
-  const [radar, setRadar] = useState<Radar24hData | null>(null);
+  const [radar, setRadar] = useState<RadarScoreChangesData | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -123,9 +119,9 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards, onOpenEv
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${api}/api/v1/insights/radar-24h?limit=8`, { signal: controller.signal })
+    fetch(`${api}/api/v1/insights/radar-score-changes`, { signal: controller.signal })
       .then(response => (response.ok ? response.json() : null))
-      .then(data => { if (data) setRadar(data as Radar24hData); })
+      .then(data => { if (data) setRadar(data as RadarScoreChangesData); })
       .catch(() => {});
     return () => controller.abort();
   }, [api]);
@@ -239,35 +235,39 @@ export default function OverviewIntelligence({ api, onOpenLeaderboards, onOpenEv
       <article className="overview-radar-panel">
         <header className="overview-panel-head">
           <div>
-            <p className="kicker">CANLI SİNYALLER</p>
+            <p className="kicker">KENDİ SIRALAMAMIZDA SON 24 SAAT</p>
             <h2>Son 24 Saat</h2>
-            <p>Kaynaklı değişim kayıtlarından, tekrarları ayıklanmış özet — yeni model, liderlik değişimi, fiyat ve yetenek hareketleri.</p>
+            <p>LLM Radar Skoru'nun aynı metodolojiyle 24 saat önceki haliyle kıyaslanmasından üretilir — yeni giren modeller, Top 3 değişimleri ve yeni liderler.</p>
           </div>
           <div className="overview-panel-meta">
-            <span>{radar?.total ?? "—"} sinyal</span>
-            <small>Son 24 saat</small>
+            <span>{radar?.total ?? "—"} değişiklik</span>
+            <small>{formatDate(radar?.compared_snapshot_at ?? null)} → {formatDate(radar?.current_snapshot_at ?? null)}</small>
           </div>
         </header>
 
         <div className="overview-radar-counts">
-          <span><b>{radar?.counts.model_release ?? 0}</b> yeni model</span>
-          <span><b>{(radar?.counts.benchmark_leader ?? 0) + (radar?.counts.benchmark_top3 ?? 0)}</b> benchmark</span>
-          <span><b>{radar?.counts.price_change ?? 0}</b> fiyat</span>
-          <span><b>{radar?.counts.capability_change ?? 0}</b> yetenek</span>
+          <span><b>{radar?.counts.new_entry ?? 0}</b> yeni giriş</span>
+          <span><b>{radar?.counts.entered_top3 ?? 0}</b> Top 3'e giren</span>
+          <span><b>{radar?.counts.new_leader ?? 0}</b> yeni lider</span>
         </div>
 
         <div className="overview-radar-list">
           {radar?.items.length ? radar.items.map(item => (
-            <div className="overview-radar-row" key={item.id}>
+            <div className="overview-radar-row" key={item.catalog_model_id}>
               <span className={`overview-radar-icon ${item.kind}`} aria-hidden="true" />
+              <ModelAvatar
+                name={item.model_name}
+                companySlug={organizationSlug(item.organization)}
+                companyName={item.organization}
+                size="sm"
+              />
               <div>
-                <small>{KIND_LABELS[item.kind] ?? "Gelişme"} · {formatTime(item.effective_at)}</small>
+                <small>{KIND_LABELS[item.kind] ?? "Değişiklik"}</small>
                 <strong>{item.title}</strong>
-                <span>{item.source ?? "Doğrulanmış kaynak"}</span>
+                <span>{item.organization} · {item.score.toLocaleString("tr-TR", { maximumFractionDigits: 1 })} puan</span>
               </div>
-              {item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer" aria-label={`${item.title} kaynağını aç`}>↗</a>}
             </div>
-          )) : <p className="overview-empty">Son 24 saatte doğrulanmış yüksek sinyal bulunamadı.</p>}
+          )) : <p className="overview-empty">Son 24 saatte LLM Radar Skoru sıralamasında değişiklik yok.</p>}
         </div>
         <button type="button" className="overview-all-button" onClick={onOpenEvents}>Tüm gelişmeleri aç →</button>
       </article>

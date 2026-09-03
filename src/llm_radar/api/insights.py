@@ -246,18 +246,18 @@ def _resolved_row_openness(
     return _resolved_compare_openness(model, company_stub, profile)
 
 
-@router.get("/insights/radar-score", tags=["insights"])
-def radar_score(
-    session: DatabaseSession,
-    limit: Annotated[int, Query(ge=1, le=200)] = 10,
-    offset: Annotated[int, Query(ge=0)] = 0,
-    origin: Literal["all", "turkish"] = "all",
+def _ranked_radar_score(
+    session: Session,
+    origin: Literal["all", "turkish"],
+    as_of: datetime | None = None,
 ) -> dict[str, Any]:
-    """Return the versioned LLM Radar composite index and source leaders.
+    """Build the ranked, catalog-linked Radar Score list.
 
-    origin="turkish" reuses the exact same scoring engine (same
-    normalization, category weights, coverage rules) restricted to the
-    catalog's Turkish-signal model subset - not a separate methodology.
+    as_of=None uses each benchmark's latest snapshot (today's ranking).
+    Passing a past datetime instead uses each benchmark's latest snapshot
+    observed at or before that time, so a past ranking can be recomputed
+    with the exact same methodology and diffed against today's - e.g. to
+    find what changed in the last 24 hours.
     """
     definitions = {
         definition.slug: definition
@@ -275,20 +275,20 @@ def radar_score(
         definition = definitions.get(slug)
         if definition is None:
             continue
-        published_at = session.scalar(
-            select(func.max(LeaderboardSnapshot.published_at)).where(
-                LeaderboardSnapshot.benchmark_id == definition.id
-            )
+        published_at_query = select(func.max(LeaderboardSnapshot.published_at)).where(
+            LeaderboardSnapshot.benchmark_id == definition.id
         )
+        rows_query = select(LeaderboardSnapshot).where(LeaderboardSnapshot.benchmark_id == definition.id)
+        if as_of is not None:
+            published_at_query = published_at_query.where(LeaderboardSnapshot.observed_at <= as_of)
+            rows_query = rows_query.where(LeaderboardSnapshot.observed_at <= as_of)
+        published_at = session.scalar(published_at_query)
         if published_at is None:
             continue
         rows = session.scalars(
-            select(LeaderboardSnapshot)
-            .where(
-                LeaderboardSnapshot.benchmark_id == definition.id,
-                LeaderboardSnapshot.published_at == published_at,
+            rows_query.where(LeaderboardSnapshot.published_at == published_at).order_by(
+                LeaderboardSnapshot.rank.asc()
             )
-            .order_by(LeaderboardSnapshot.rank.asc())
         ).all()
         if not rows:
             continue
@@ -344,18 +344,110 @@ def radar_score(
     scored_items = [item for item in result["items"] if item.get("catalog_model_id")]
     for rank, item in enumerate(scored_items, start=1):
         item["rank"] = rank
+    return {
+        "snapshot_at": max(snapshot_dates, default=None),
+        "methodology": result["methodology"],
+        "ineligible_count": result["ineligible_count"],
+        "active_benchmarks": result["active_benchmarks"],
+        "leaders": leaders,
+        "items": scored_items,
+    }
+
+
+@router.get("/insights/radar-score", tags=["insights"])
+def radar_score(
+    session: DatabaseSession,
+    limit: Annotated[int, Query(ge=1, le=200)] = 10,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    origin: Literal["all", "turkish"] = "all",
+) -> dict[str, Any]:
+    """Return the versioned LLM Radar composite index and source leaders.
+
+    origin="turkish" reuses the exact same scoring engine (same
+    normalization, category weights, coverage rules) restricted to the
+    catalog's Turkish-signal model subset - not a separate methodology.
+    """
+    built = _ranked_radar_score(session, origin)
+    scored_items = built["items"]
     total = len(scored_items)
     return {
         "generated_at": datetime.now(UTC),
-        "snapshot_at": max(snapshot_dates, default=None),
+        "snapshot_at": built["snapshot_at"],
         "origin": origin,
-        "methodology": result["methodology"],
+        "methodology": built["methodology"],
         "eligible_count": total,
-        "ineligible_count": result["ineligible_count"],
+        "ineligible_count": built["ineligible_count"],
         "total": total,
-        "active_benchmarks": result["active_benchmarks"],
-        "leaders": leaders,
+        "active_benchmarks": built["active_benchmarks"],
+        "leaders": built["leaders"],
         "items": scored_items[offset : offset + limit],
+    }
+
+
+@router.get("/insights/radar-score-changes", tags=["insights"])
+def radar_score_changes(session: DatabaseSession) -> dict[str, Any]:
+    """Diff today's LLM Radar Score ranking against the ranking as of 24h ago.
+
+    This is about our own composite leaderboard specifically - which models
+    newly cleared the eligibility bar, entered the top 3, or became the new
+    #1 - recomputed with the exact same methodology at both points in time,
+    not a generic feed of unrelated source events.
+    """
+    now = datetime.now(UTC)
+    cutoff = now - timedelta(hours=24)
+    current = _ranked_radar_score(session, "all")
+    previous = _ranked_radar_score(session, "all", as_of=cutoff)
+    previous_by_id = {item["catalog_model_id"]: item for item in previous["items"]}
+
+    events: list[dict[str, Any]] = []
+    for item in current["items"]:
+        model_id = item["catalog_model_id"]
+        prior = previous_by_id.get(model_id)
+        prior_rank = prior["rank"] if prior is not None else None
+        if item["rank"] == 1 and prior_rank != 1:
+            kind = "new_leader"
+            title = f"{item['model_name']} LLM Radar Skoru'nda yeni lider oldu"
+        elif item["rank"] <= 3 and (prior_rank is None or prior_rank > 3):
+            kind = "entered_top3"
+            title = (
+                f"{item['model_name']} LLM Radar Skoru'nda Top 3'e girdi (#{prior_rank} → #{item['rank']})"
+                if prior_rank is not None
+                else f"{item['model_name']} doğrudan LLM Radar Skoru Top 3'üne girdi"
+            )
+        elif prior is None:
+            kind = "new_entry"
+            title = f"{item['model_name']} LLM Radar Skoru'na girdi (#{item['rank']})"
+        else:
+            continue
+        events.append(
+            {
+                "kind": kind,
+                "catalog_model_id": model_id,
+                "model_name": item["model_name"],
+                "organization": item["organization"],
+                "rank": item["rank"],
+                "previous_rank": prior_rank,
+                "score": item["score"],
+                "title": title,
+            }
+        )
+
+    rank_priority = {"new_leader": 0, "entered_top3": 1, "new_entry": 2}
+    events.sort(key=lambda event: (rank_priority[cast(str, event["kind"])], cast(int, event["rank"])))
+
+    counts = {
+        "new_leader": sum(1 for event in events if event["kind"] == "new_leader"),
+        "entered_top3": sum(1 for event in events if event["kind"] == "entered_top3"),
+        "new_entry": sum(1 for event in events if event["kind"] == "new_entry"),
+    }
+    return {
+        "generated_at": now,
+        "window_hours": 24,
+        "compared_snapshot_at": previous["snapshot_at"],
+        "current_snapshot_at": current["snapshot_at"],
+        "counts": counts,
+        "total": len(events),
+        "items": events,
     }
 
 
