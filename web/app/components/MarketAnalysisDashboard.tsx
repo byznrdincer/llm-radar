@@ -12,6 +12,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceDot,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -21,6 +22,14 @@ import {
 type PeriodDays = 30 | 90 | 365 | 3650;
 type MarketView = "country" | "provider" | "openness";
 
+type BenchmarkOption = {
+  slug: string;
+  name: string;
+  snapshot_count: number;
+  date_count: number;
+  latest_date: string | null;
+};
+
 type CountryPoint = {
   date: string;
   usa: number | null;
@@ -29,6 +38,8 @@ type CountryPoint = {
   china_model: string | null;
   usa_organization: string | null;
   china_organization: string | null;
+  usa_changed?: boolean;
+  china_changed?: boolean;
 };
 
 type MarketModel = {
@@ -120,33 +131,103 @@ function axisDateLabel(value: number, periodDays: PeriodDays): string {
 
 function shortModel(value: string | null): string {
   if (!value) return "";
-  return value.length > 20 ? `${value.slice(0, 18)}…` : value;
+  return value.length > 22 ? `${value.slice(0, 20)}…` : value;
+}
+
+function selectFrontierAnnotations(
+  data: CountryPoint[],
+  side: "usa" | "china",
+  limit: number,
+): CountryPoint[] {
+  const changedKey = side === "usa" ? "usa_changed" : "china_changed";
+  const scoreKey = side === "usa" ? "usa" : "china";
+
+  const changed = data.filter(
+    (point) => Boolean(point[changedKey]) && point[scoreKey] != null,
+  );
+
+  if (changed.length <= limit) return changed;
+
+  // Keep the labels evenly distributed over the selected period. Every model
+  // change is still available in the hover detail; only the visible callouts
+  // are reduced so they do not overlap each other.
+  const selected = Array.from({ length: limit }, (_, index) => {
+    const sourceIndex = Math.round(index * (changed.length - 1) / (limit - 1));
+    return changed[sourceIndex];
+  });
+
+  return selected.filter(
+    (point, index) => index === 0 || point.date !== selected[index - 1].date,
+  );
+}
+
+type CountryChartRow = CountryPoint & {
+  timestamp: number;
+  usa_end: string;
+  china_end: string;
+};
+
+function CountryTooltip({ active, payload }: {
+  active?: boolean;
+  payload?: { payload?: CountryChartRow }[];
+}) {
+  const point = payload?.[0]?.payload;
+  if (!active || !point) return null;
+
+  return (
+    <div className="market-country-tooltip">
+      <strong>{dateLabel(point.date, true)}</strong>
+      <div className="usa">
+        <i />
+        <span><b>ABD · {point.usa == null ? "—" : number.format(point.usa)}</b><small>{point.usa_model ?? "Model bilgisi yok"}{point.usa_organization ? ` · ${point.usa_organization}` : ""}</small></span>
+      </div>
+      <div className="china">
+        <i />
+        <span><b>Çin · {point.china == null ? "—" : number.format(point.china)}</b><small>{point.china_model ?? "Model bilgisi yok"}{point.china_organization ? ` · ${point.china_organization}` : ""}</small></span>
+      </div>
+    </div>
+  );
 }
 
 function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: PeriodDays }) {
-  if (!data.length) return <div className="market-chart-empty">Seçili dönemde ülke verisi yok.</div>;
+  if (!data.length) {
+    return <div className="market-chart-empty">Seçili dönemde ülke verisi yok.</div>;
+  }
+
   const latestTimestamp = Date.parse(`${data[data.length - 1].date}T00:00:00Z`);
   const earliestTimestamp = Date.parse(`${data[0].date}T00:00:00Z`);
+
   const domainStart = periodDays === 3650
     ? (earliestTimestamp === latestTimestamp
         ? latestTimestamp - 30 * 24 * 60 * 60 * 1000
         : earliestTimestamp)
     : latestTimestamp - periodDays * 24 * 60 * 60 * 1000;
+
+  const annotationLimit = periodDays === 3650 ? 5 : periodDays === 365 ? 4 : 3;
+
   const chartData = data.map((point, index) => {
     const last = index === data.length - 1;
+
     return {
       ...point,
       timestamp: Date.parse(`${point.date}T00:00:00Z`),
-      usa_label: last ? shortModel(point.usa_model) : "",
-      china_label: last ? shortModel(point.china_model) : "",
       usa_end: last && point.usa != null ? number.format(point.usa) : "",
       china_end: last && point.china != null ? number.format(point.china) : "",
     };
   });
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={chartData} margin={{ top: 36, right: 62, left: -10, bottom: 2 }}>
-        <CartesianGrid stroke="#34453e" strokeDasharray="3 4" vertical={false} />
+      <LineChart
+        data={chartData}
+        margin={{ top: 55, right: 72, left: 0, bottom: 8 }}
+      >
+        <CartesianGrid
+          stroke="#34453e"
+          strokeDasharray="4 6"
+          vertical={false}
+        />
+
         <XAxis
           dataKey="timestamp"
           type="number"
@@ -155,37 +236,116 @@ function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: 
           tickFormatter={(value) => axisDateLabel(Number(value), periodDays)}
           tick={{ fill: "#93a39a", fontSize: 10 }}
         />
-        <YAxis domain={["dataMin - 10", "dataMax + 10"]} tick={{ fill: "#93a39a", fontSize: 10 }} />
-        <Tooltip
-          contentStyle={CHART_TOOLTIP}
-          labelFormatter={(value) => axisDateLabel(Number(value), periodDays)}
+
+        <YAxis
+          domain={["dataMin - 5", "dataMax + 5"]}
+          tickFormatter={(value) => number.format(Number(value))}
+          tick={{ fill: "#93a39a", fontSize: 10 }}
         />
-        <Legend iconType="line" wrapperStyle={{ color: "#aebcb4", fontSize: "10px" }} />
+
+        <Tooltip content={<CountryTooltip />} />
+
+        <Legend
+          iconType="line"
+          wrapperStyle={{ color: "#aebcb4", fontSize: "10px" }}
+        />
+
+        {selectFrontierAnnotations(data, "usa", annotationLimit)
+          .map((sourcePoint, index) => {
+            const point = chartData.find((item) => item.date === sourcePoint.date);
+            if (!point || point.usa == null) return null;
+
+            return (
+              <ReferenceDot
+                key={`usa-frontier-${point.date}`}
+                x={point.timestamp}
+                y={Number(point.usa)}
+                r={4}
+                fill="#58c7ba"
+                stroke="#0b1712"
+                strokeWidth={2}
+                label={{
+                  value: shortModel(point.usa_model),
+                  position: "top",
+                  fill: "#d5e9e4",
+                  stroke: "#0b1712",
+                  strokeWidth: 3,
+                  paintOrder: "stroke",
+                  fontSize: 9.5,
+                  fontWeight: 800,
+                  offset: index % 2 === 0 ? 12 : 20,
+                }}
+              />
+            );
+          })}
+
+        {selectFrontierAnnotations(data, "china", annotationLimit)
+          .map((sourcePoint, index) => {
+            const point = chartData.find((item) => item.date === sourcePoint.date);
+            if (!point || point.china == null) return null;
+
+            return (
+              <ReferenceDot
+                key={`china-frontier-${point.date}`}
+                x={point.timestamp}
+                y={Number(point.china)}
+                r={4}
+                fill="#b9ff25"
+                stroke="#0b1712"
+                strokeWidth={2}
+                label={{
+                  value: shortModel(point.china_model),
+                  position: "bottom",
+                  fill: "#dff4a7",
+                  stroke: "#0b1712",
+                  strokeWidth: 3,
+                  paintOrder: "stroke",
+                  fontSize: 9.5,
+                  fontWeight: 800,
+                  offset: index % 2 === 0 ? 12 : 20,
+                }}
+              />
+            );
+          })}
+
         <Line
-          type="monotone"
+          type="stepAfter"
           dataKey="usa"
           name="ABD"
           stroke="#58c7ba"
           strokeWidth={3}
-          dot={{ r: 3, fill: "#58c7ba" }}
+          dot={false}
+          activeDot={{ r: 4 }}
           connectNulls
           isAnimationActive={false}
         >
-          <LabelList dataKey="usa_label" position="top" fill="#b9d8d1" fontSize={9} />
-          <LabelList dataKey="usa_end" position="right" fill="#58c7ba" fontSize={12} fontWeight={800} />
+          <LabelList
+            dataKey="usa_end"
+            position="right"
+            fill="#58c7ba"
+            fontSize={12}
+            fontWeight={800}
+          />
         </Line>
+
         <Line
-          type="monotone"
+          type="stepAfter"
           dataKey="china"
           name="Çin"
           stroke="#b9ff25"
           strokeWidth={3}
-          dot={{ r: 3, fill: "#b9ff25" }}
+          dot={false}
+          activeDot={{ r: 4 }}
           connectNulls
           isAnimationActive={false}
         >
-          <LabelList dataKey="china_label" position="bottom" fill="#d6ec9d" fontSize={9} />
-          <LabelList dataKey="china_end" position="right" fill="#b9ff25" fontSize={12} fontWeight={800} />
+          <LabelList
+            dataKey="china_end"
+            position="right"
+            fill="#b9ff25"
+            fontSize={12}
+            fontWeight={800}
+          />
         </Line>
       </LineChart>
     </ResponsiveContainer>
@@ -251,7 +411,9 @@ function OpennessChart({ data }: { data: OpennessData["items"] }) {
 }
 
 export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight }: Props) {
-  const [days, setDays] = useState<PeriodDays>(30);
+  const [days, setDays] = useState<PeriodDays>(3650);
+  const [benchmark, setBenchmark] = useState("arena-text");
+  const [benchmarkOptions, setBenchmarkOptions] = useState<BenchmarkOption[]>([]);
   const [view, setView] = useState<MarketView>("country");
   const [dashboard, setDashboard] = useState<MarketDashboardData | null>(null);
   const [openness, setOpenness] = useState<OpennessData | null>(null);
@@ -260,8 +422,36 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
 
   useEffect(() => {
     const controller = new AbortController();
+
+    void fetch(`${api}/api/v1/insights/frontier-benchmarks`, {
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Benchmark seçenekleri alınamadı");
+        return response.json() as Promise<{ items: BenchmarkOption[] }>;
+      })
+      .then((data) => {
+        setBenchmarkOptions(data.items);
+
+        if (data.items.length) {
+          setBenchmark((current) =>
+            data.items.some((item) => item.slug === current)
+              ? current
+              : data.items[0].slug,
+          );
+        }
+      })
+      .catch((reason: unknown) => {
+        if (reason instanceof DOMException && reason.name === "AbortError") return;
+      });
+
+    return () => controller.abort();
+  }, [api]);
+
+  useEffect(() => {
+    const controller = new AbortController();
     void Promise.all([
-      fetch(`${api}/api/v1/insights/market-dashboard?benchmark=arena-text&days=${days}`, {
+      fetch(`${api}/api/v1/insights/market-dashboard?benchmark=${encodeURIComponent(benchmark)}&days=${days}`, {
         signal: controller.signal,
       }).then((response) => {
         if (!response.ok) throw new Error("Pazar verisi alınamadı");
@@ -286,7 +476,7 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [api, days]);
+  }, [api, days, benchmark]);
 
   const opennessRows = useMemo(() => openness?.items ?? [], [openness]);
   const currentGap = dashboard?.summary.frontier_gap ?? null;
@@ -356,7 +546,7 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
         </div>
         <p className="market-coverage-note">
           <span>VERİ KAPSAMI</span>
-          Arena Text snapshot’ları · {dashboard?.country_trend.length ?? 0} ölçüm noktası
+          {dashboard?.benchmark.name ?? "Benchmark"} · {dashboard?.country_trend.length ?? 0} ölçüm noktası
         </p>
       </div>
 
@@ -377,18 +567,62 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
         </article>
       </div>
 
-      <div className="market-chart-grid">
-        <article className="market-panel market-chart-panel">
+      <div className={`market-chart-grid ${view === "country" ? "frontier-mode" : ""}`}>
+        <article className={`market-panel market-chart-panel ${view === "country" ? "market-frontier-panel" : ""}`}>
           <header>
-            <div><h3>{primaryTitle}</h3><p>{primaryDescription}</p></div>
-            {view === "country" && firstGap != null && currentGap != null ? (
-              <div className="market-gap-chip">
-                <strong>Fark: {number.format(firstGap)} → {number.format(currentGap)}</strong>
-                <small>
-                  {firstCountryPoint ? dateLabel(firstCountryPoint.date, days >= 365) : "—"} → {lastCountryPoint ? dateLabel(lastCountryPoint.date, days >= 365) : "—"}
-                </small>
-              </div>
-            ) : <span>Snapshot {snapshotDate}</span>}
+            <div>
+              <h3>{primaryTitle}</h3>
+              <p>{primaryDescription}</p>
+            </div>
+
+            <div className="market-chart-head-actions">
+              <label className="market-benchmark-picker">
+                <span>Benchmark kaynağı</span>
+                <select
+                  value={benchmark}
+                  onChange={(event) => {
+                    setLoading(true);
+                    setError(false);
+                    setBenchmark(event.target.value);
+                  }}
+                  aria-label="Frontier benchmark kaynağı"
+                >
+                  {(benchmarkOptions.length
+                    ? benchmarkOptions
+                    : [{
+                        slug: benchmark,
+                        name: dashboard?.benchmark.name ?? benchmark,
+                        snapshot_count: 0,
+                        date_count: 0,
+                        latest_date: null,
+                      }]
+                  ).map((option) => (
+                    <option key={option.slug} value={option.slug}>
+                      {option.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {view === "country" && firstGap != null && currentGap != null ? (
+                <div className="market-gap-chip">
+                  <strong>
+                    Fark: {number.format(firstGap)} → {number.format(currentGap)}
+                  </strong>
+                  <small>
+                    {firstCountryPoint
+                      ? dateLabel(firstCountryPoint.date, days >= 365)
+                      : "—"}{" "}
+                    →{" "}
+                    {lastCountryPoint
+                      ? dateLabel(lastCountryPoint.date, days >= 365)
+                      : "—"}
+                  </small>
+                </div>
+              ) : (
+                <span>Snapshot {snapshotDate}</span>
+              )}
+            </div>
           </header>
           <div className="market-chart-canvas">{primaryChart}</div>
           {view === "country" && lastCountryPoint && (

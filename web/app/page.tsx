@@ -340,6 +340,9 @@ function trModality(tag: string) {
     const map: Record<string, string> = { text: "metin", image: "gorsel", audio: "ses", video: "video" };
     return map[tag.toLowerCase()] ?? tag;
 }
+function trCapability(value: string) {
+    return capabilityLabels[value] ?? value.replaceAll("_", " ");
+}
 function normalizeModelKey(value: string) {
     return value.toLowerCase().trim().replace(/_/g, "-");
 }
@@ -560,7 +563,7 @@ export default function Home() {
     const [benchmarkInfoOpen, setBenchmarkInfoOpen] = useState(false);
     const [facets, setFacets] = useState<Facets>({ developers: [], providers: [], families: [], capabilities: [], licenses: [], openness: [], commercial_use: [], benchmark_focuses: [] });
     const [eventCategory, setEventCategory] = useState("any");
-    const [eventDays, setEventDays] = useState("any");
+    const [eventDays, setEventDays] = useState("1");
     const [livebenchCategory, setLivebenchCategory] = useState("overall");
     const [mmluCategory, setMmluCategory] = useState("overall");
     const [sweLiveCategory, setSweLiveCategory] = useState("lite");
@@ -1035,7 +1038,7 @@ export default function Home() {
         onToggleFamily={value => toggleList(value, setFamilies)}
         runtimeCapabilityOptions={runtimeCapabilityOptions}
         trModality={trModality}
-        trCapability={value => capabilityLabels[value] ?? value}
+        trCapability={trCapability}
         models={visible}
         selectedIds={selected.map(item => item.id)}
         onToggleSelect={toggle}

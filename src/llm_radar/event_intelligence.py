@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -61,14 +62,45 @@ _KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("research", ("research", "paper", "study", "araştırma")),
 )
 
+_MODEL_RELEASE_VERBS = (
+    "introducing",
+    "announcing",
+    "announce",
+    "unveiling",
+    "unveil",
+    "released",
+    "launching",
+    "tanıtıyor",
+    "duyurdu",
+)
+_VERSIONED_MODEL_NAME = re.compile(
+    r"\b(?:gemini|gemma|gpt|claude|llama|qwen|deepseek|grok|mistral|phi|ernie|kimi|minimax|nemotron)"
+    r"[\s._-]*(?:v\s*)?\d",
+    re.IGNORECASE,
+)
+_GENERIC_VERSIONED_PRODUCT = re.compile(
+    r"\b(?:[A-Z][A-Za-z0-9._-]*\s+){1,3}(?:v?\d+(?:\.\d+)*|\d+[A-Z])"
+    r"(?:\s+[A-Z][A-Za-z0-9._-]*)?\b"
+)
+
 
 def classify_event(event_type: str, title: str = "", payload: dict[str, Any] | None = None) -> str:
     mapped = _TYPE_CATEGORIES.get(event_type)
     if mapped:
         return mapped
-    haystack = " ".join(
-        (title, str((payload or {}).get("title") or ""), str((payload or {}).get("summary") or ""))
-    ).lower()
+    payload_title = str((payload or {}).get("title") or "")
+    summary = str((payload or {}).get("summary") or "")
+    raw_title = " ".join((title, payload_title)).strip()
+    haystack = " ".join((raw_title, summary)).lower()
+    known_versioned_model = _VERSIONED_MODEL_NAME.search(haystack)
+    generic_versioned_model = _GENERIC_VERSIONED_PRODUCT.search(raw_title) and any(
+        marker in haystack for marker in ("model", "llm", "reasoning", "multimodal")
+    )
+    if event_type == "company.announcement" and (
+        any(verb in haystack for verb in _MODEL_RELEASE_VERBS)
+        and (known_versioned_model or generic_versioned_model or "new model" in haystack)
+    ):
+        return "model_release"
     for category, keywords in _KEYWORDS:
         if any(keyword in haystack for keyword in keywords):
             return category

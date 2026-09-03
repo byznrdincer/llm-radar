@@ -35,6 +35,9 @@ def test_source_catalog_covers_official_labs() -> None:
         "cloudflare-workers-ai",
         "bifrost",
     } <= slugs
+    gemini_news = next(item for item in SOURCE_CATALOG if item.slug == "google-gemini-blog")
+    assert gemini_news.collection_method.value == "rss"
+    assert gemini_news.check_interval_seconds <= 900
 
 
 def test_source_catalog_has_human_facing_links() -> None:

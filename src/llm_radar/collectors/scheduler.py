@@ -5,6 +5,7 @@ from typing import cast
 
 import httpx
 
+from llm_radar.catalog import SOURCE_BY_SLUG
 from llm_radar.collectors.aimlapi import AIMLAPICollector
 from llm_radar.collectors.arena import ArenaCollector
 from llm_radar.collectors.artificial_analysis import ArtificialAnalysisCollector
@@ -38,6 +39,11 @@ from llm_radar.config import get_settings
 logger = logging.getLogger(__name__)
 
 
+def source_interval(slug: str, fallback: int) -> int:
+    spec = SOURCE_BY_SLUG.get(slug)
+    return spec.check_interval_seconds if spec is not None else fallback
+
+
 async def run_job(
     factory: Callable[[httpx.AsyncClient], BaseCollector], interval_seconds: int, delay: int
 ) -> None:
@@ -50,16 +56,28 @@ async def run_job(
 async def main() -> None:
     settings = get_settings()
     jobs: list[tuple[Callable[[httpx.AsyncClient], BaseCollector], int, int]] = [
-        (OpenRouterCollector, settings.collector_interval_seconds, 0),
-        (OpenAIPricingCollector, settings.collector_interval_seconds, 5),
-        (VercelGatewayCollector, settings.collector_interval_seconds, 10),
-        (AIMLAPICollector, settings.collector_interval_seconds, 15),
-        (LiteLLMCollector, settings.collector_interval_seconds, 25),
-        (DeepInfraCollector, settings.collector_interval_seconds, 27),
-        (BifrostCollector, settings.collector_interval_seconds * 4, 29),
+        (
+            OpenRouterCollector,
+            source_interval("openrouter", settings.collector_interval_seconds),
+            0,
+        ),
+        (
+            OpenAIPricingCollector,
+            source_interval("openai-pricing", settings.collector_interval_seconds),
+            5,
+        ),
+        (
+            VercelGatewayCollector,
+            source_interval("vercel-ai-gateway", settings.collector_interval_seconds),
+            10,
+        ),
+        (AIMLAPICollector, source_interval("aimlapi", settings.collector_interval_seconds), 15),
+        (LiteLLMCollector, source_interval("litellm", settings.collector_interval_seconds), 25),
+        (DeepInfraCollector, source_interval("deepinfra", settings.collector_interval_seconds), 27),
+        (BifrostCollector, source_interval("bifrost", settings.collector_interval_seconds), 29),
         (
             lambda client: FireworksCollector(client, settings.fireworks_api_key),
-            settings.collector_interval_seconds,
+            source_interval("fireworks", settings.collector_interval_seconds),
             85,
         ),
         (
@@ -68,24 +86,28 @@ async def main() -> None:
                 settings.cloudflare_account_id,
                 settings.cloudflare_api_token,
             ),
-            settings.collector_interval_seconds,
+            source_interval("cloudflare-workers-ai", settings.collector_interval_seconds),
             95,
         ),
         (
             lambda client: NanoGPTCollector(client, settings.nanogpt_api_key),
-            settings.collector_interval_seconds,
+            source_interval("nanogpt", settings.collector_interval_seconds),
             35,
         ),
-        (HuggingFaceCollector, settings.collector_interval_seconds, 20),
-        (OllamaCollector, settings.collector_interval_seconds * 2, 55),
-        (LMStudioCollector, settings.collector_interval_seconds * 2, 65),
-        (GitHubCollector, settings.collector_interval_seconds, 40),
+        (
+            HuggingFaceCollector,
+            source_interval("huggingface", settings.collector_interval_seconds),
+            20,
+        ),
+        (OllamaCollector, source_interval("ollama", settings.collector_interval_seconds), 55),
+        (LMStudioCollector, source_interval("lmstudio", settings.collector_interval_seconds), 65),
+        (GitHubCollector, source_interval("github", settings.collector_interval_seconds), 40),
         (
             lambda client: GitHubOrganizationCollector(client, "deepseek", "deepseek-ai"),
-            settings.collector_interval_seconds,
+            source_interval("deepseek", settings.collector_interval_seconds),
             45,
         ),
-        (ArxivCollector, settings.collector_interval_seconds, 80),
+        (ArxivCollector, source_interval("arxiv", settings.collector_interval_seconds), 80),
         (ArenaCollector, settings.benchmark_interval_seconds, 30),
         (SweBenchCollector, settings.benchmark_interval_seconds, 60),
         (LiveBenchCollector, settings.benchmark_interval_seconds, 120),
@@ -96,25 +118,29 @@ async def main() -> None:
     ]
     offset = 260
     for slug in rss_sources():
+        interval = SOURCE_BY_SLUG[slug].check_interval_seconds
+        initial_delay = 12 if slug == "google-gemini-blog" else offset
         jobs.append(
             (
                 cast(
                     Callable[[httpx.AsyncClient], BaseCollector],
                     lambda client, name=slug: RssCollector(client, name),
                 ),
-                settings.collector_interval_seconds,
-                offset,
+                interval,
+                initial_delay,
             )
         )
-        offset += 15
+        if slug != "google-gemini-blog":
+            offset += 15
     for slug in html_sources():
+        interval = SOURCE_BY_SLUG[slug].check_interval_seconds
         jobs.append(
             (
                 cast(
                     Callable[[httpx.AsyncClient], BaseCollector],
                     lambda client, name=slug: HtmlNewsCollector(client, name),
                 ),
-                settings.collector_interval_seconds,
+                interval,
                 offset,
             )
         )
@@ -133,7 +159,7 @@ async def main() -> None:
         jobs.append(
             (
                 lambda client: GroqCloudCollector(client, settings.groq_api_key or ""),
-                settings.collector_interval_seconds,
+                source_interval("groqcloud", settings.collector_interval_seconds),
                 50,
             )
         )
@@ -141,7 +167,7 @@ async def main() -> None:
         jobs.append(
             (
                 lambda client: ReplicateCollector(client, settings.replicate_api_token or ""),
-                settings.collector_interval_seconds,
+                source_interval("replicate", settings.collector_interval_seconds),
                 70,
             )
         )
@@ -149,7 +175,7 @@ async def main() -> None:
         jobs.append(
             (
                 lambda client: TogetherCollector(client, settings.together_api_key or ""),
-                settings.collector_interval_seconds,
+                source_interval("together", settings.collector_interval_seconds),
                 75,
             )
         )

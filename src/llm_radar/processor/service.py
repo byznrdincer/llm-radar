@@ -64,6 +64,7 @@ _ANNOUNCEMENT_EVENT_TYPES = {
     EventType.SECURITY_ADVISORY.value,
     EventType.API_UPDATED.value,
 }
+_ANNOUNCEMENT_CHANGE_TYPES = _ANNOUNCEMENT_EVENT_TYPES | {EventType.MODEL_RELEASED.value}
 _TITLE_STOPWORDS = {
     "about",
     "announces",
@@ -521,7 +522,7 @@ def _handle_announcement(
     candidates = session.scalars(
         select(ChangeEvent)
         .where(
-            ChangeEvent.event_type.in_(_ANNOUNCEMENT_EVENT_TYPES),
+            ChangeEvent.event_type.in_(_ANNOUNCEMENT_CHANGE_TYPES),
             ChangeEvent.category == category,
             ChangeEvent.detected_at >= cutoff,
         )
@@ -542,6 +543,11 @@ def _handle_announcement(
         _corroborate_change(corroborating, event, source)
         return []
     event_spec = EVENT_BY_TYPE.get(event.event_type.value)
+    stored_event_type = (
+        EventType.MODEL_RELEASED.value
+        if category == "model_release"
+        else event.event_type.value
+    )
     return [
         _change_event(
             event=event,
@@ -550,6 +556,7 @@ def _handle_announcement(
             entity_id=entity_id,
             title=title,
             new_value=event.payload,
+            event_type=stored_event_type,
         )
     ]
 

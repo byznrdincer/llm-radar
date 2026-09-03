@@ -33,14 +33,18 @@ export type FeedEvent = {
 const CATEGORY_OPTIONS: [string, string][] = [
   ["model_release", "Model Release"],
   ["model_update", "Model Update"],
+  ["ai_agent", "AI Agent"],
   ["benchmark", "Benchmark"],
   ["research", "Research"],
   ["funding", "Funding"],
+  ["acquisition", "Acquisition"],
   ["product_launch", "Product Launch"],
   ["pricing_change", "Pricing Change"],
   ["api_update", "API Update"],
   ["infrastructure", "Infrastructure"],
   ["partnership", "Partnership"],
+  ["regulation", "Regulation"],
+  ["security", "Security"],
 ];
 
 const CATEGORY_CLASS: Record<string, string> = {
@@ -63,6 +67,7 @@ const SOURCE_LABELS: Record<string, string> = {
   arxiv: "arXiv",
   mistral: "Mistral",
   "google-deepmind": "Google DeepMind",
+  "google-gemini-blog": "Google Gemini Blog",
   deepmind: "Google DeepMind",
   openai: "OpenAI",
   anthropic: "Anthropic",
@@ -353,6 +358,49 @@ function daysAgoIso(days: number): string {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
+type EventSort = "recent" | "importance";
+
+function eventQueryParams({
+  offset,
+  category,
+  days,
+  query,
+  importance,
+  sortBy,
+}: {
+  offset: number;
+  category: string;
+  days: string;
+  query: string;
+  importance: string;
+  sortBy: EventSort;
+}): URLSearchParams {
+  const params = new URLSearchParams({
+    limit: String(PAGE_SIZE),
+    offset: String(offset),
+    sort_by: sortBy,
+  });
+  if (category !== "any") params.set("category", category);
+  if (days !== "any") params.set("since", daysAgoIso(Number(days)));
+  if (query.trim()) params.set("search", query.trim());
+  if (importance !== "any") params.set("importance", importance);
+  return params;
+}
+
+function eventMatchesFilters(
+  event: FeedEvent,
+  filters: { category: string; days: string; query: string; importance: string },
+): boolean {
+  if (filters.category !== "any" && event.category !== filters.category) return false;
+  if (filters.importance !== "any" && event.importance !== filters.importance) return false;
+  if (filters.days !== "any") {
+    const cutoff = Date.now() - Number(filters.days) * 24 * 60 * 60 * 1000;
+    if (new Date(event.detected_at).getTime() < cutoff) return false;
+  }
+  const query = filters.query.trim().toLocaleLowerCase("tr-TR");
+  return !query || event.title.toLocaleLowerCase("tr-TR").includes(query);
+}
+
 type EventCardProps = {
   event: FeedEvent;
   saved: boolean;
@@ -424,11 +472,20 @@ export default function EventsPage({
   const [methodOpen, setMethodOpen] = useState(false);
   const [savedMap, setSavedMap] = useState<Record<string, SavedEventRecord>>({});
   const [view, setView] = useState<"all" | "saved">("all");
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [importance, setImportance] = useState("any");
+  const [sortBy, setSortBy] = useState<EventSort>("recent");
   const loadingMoreRef = useRef(false);
 
   useEffect(() => {
     setSavedMap(loadSavedEvents());
   }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedQuery(query), 250);
+    return () => window.clearTimeout(timeout);
+  }, [query]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -437,13 +494,14 @@ export default function EventsPage({
     setTotal(0);
     setNextOffset(0);
 
-    const params = new URLSearchParams({
-      limit: String(PAGE_SIZE),
-      offset: "0",
-      sort_by: "importance",
+    const params = eventQueryParams({
+      offset: 0,
+      category,
+      days,
+      query: debouncedQuery,
+      importance,
+      sortBy,
     });
-    if (category !== "any") params.set("category", category);
-    if (days !== "any") params.set("since", daysAgoIso(Number(days)));
 
     fetch(`${api}/api/v1/events?${params}`, { signal: controller.signal })
       .then(response => {
@@ -462,7 +520,7 @@ export default function EventsPage({
       .finally(() => setLoading(false));
 
     return () => controller.abort();
-  }, [api, category, days]);
+  }, [api, category, days, debouncedQuery, importance, sortBy]);
 
   useEffect(() => {
     const stream = new EventSource(`${api}/api/v1/stream/events`);
@@ -470,9 +528,13 @@ export default function EventsPage({
       try {
         const incoming = JSON.parse(ev.data) as FeedEvent;
         if (isJunkEvent(incoming)) return;
+        if (!eventMatchesFilters(incoming, { category, days, query: debouncedQuery, importance })) return;
         setEvents(current => {
           if (current.some(event => event.id === incoming.id)) return current;
-          return [incoming, ...current];
+          const updated = [incoming, ...current];
+          return sortBy === "recent"
+            ? updated.sort((a, b) => Date.parse(b.detected_at) - Date.parse(a.detected_at))
+            : updated.sort((a, b) => b.importance_score - a.importance_score);
         });
         setTotal(current => current + 1);
       } catch {
@@ -480,7 +542,7 @@ export default function EventsPage({
       }
     });
     return () => stream.close();
-  }, [api]);
+  }, [api, category, days, debouncedQuery, importance, sortBy]);
 
   const savedCount = Object.keys(savedMap).length;
   const savedEvents = useMemo(() => savedEventList(savedMap).map(record => record.event), [savedMap]);
@@ -496,13 +558,14 @@ export default function EventsPage({
     if (!hasMore || loadingMoreRef.current || loadingMore) return;
     loadingMoreRef.current = true;
     setLoadingMore(true);
-    const params = new URLSearchParams({
-      limit: String(PAGE_SIZE),
-      offset: String(nextOffset),
-      sort_by: "importance",
+    const params = eventQueryParams({
+      offset: nextOffset,
+      category,
+      days,
+      query: debouncedQuery,
+      importance,
+      sortBy,
     });
-    if (category !== "any") params.set("category", category);
-    if (days !== "any") params.set("since", daysAgoIso(Number(days)));
 
     fetch(`${api}/api/v1/events?${params}`)
       .then(response => {
@@ -550,6 +613,21 @@ export default function EventsPage({
       )}
 
       <div className="ev-filters">
+        <label className="ev-filter ev-filter-search">
+          <span>Gelişme ara</span>
+          <div className="ev-search-wrap">
+            <span aria-hidden="true">⌕</span>
+            <input
+              type="search"
+              value={query}
+              placeholder="Örn. Gemini 3.8"
+              onChange={event => {
+                setQuery(event.target.value);
+                setView("all");
+              }}
+            />
+          </div>
+        </label>
         <label className="ev-filter">
           <span>Kategori</span>
           <div className="ev-select-wrap">
@@ -580,13 +658,61 @@ export default function EventsPage({
               }}
             >
               <option value="any">Tüm zamanlar</option>
+              <option value="0.25">Son 6 saat</option>
               <option value="1">Son 24 saat</option>
+              <option value="2">Son 48 saat</option>
               <option value="7">Son 7 gün</option>
               <option value="30">Son 30 gün</option>
               <option value="90">Son 90 gün</option>
             </select>
           </div>
         </label>
+        <label className="ev-filter">
+          <span>Önem</span>
+          <div className="ev-select-wrap">
+            <span className="ev-select-icon" aria-hidden="true">◆</span>
+            <select
+              value={importance}
+              onChange={event => {
+                setImportance(event.target.value);
+                setView("all");
+              }}
+            >
+              <option value="any">Tüm seviyeler</option>
+              <option value="critical">Kritik</option>
+              <option value="high">Yüksek</option>
+              <option value="medium">Orta</option>
+              <option value="low">Düşük</option>
+              <option value="info">Bilgi</option>
+            </select>
+          </div>
+        </label>
+        <label className="ev-filter">
+          <span>Sıralama</span>
+          <div className="ev-select-wrap">
+            <span className="ev-select-icon" aria-hidden="true">↕</span>
+            <select value={sortBy} onChange={event => setSortBy(event.target.value as EventSort)}>
+              <option value="recent">En yeni</option>
+              <option value="importance">En önemli</option>
+            </select>
+          </div>
+        </label>
+        {(query || category !== "any" || days !== "any" || importance !== "any" || sortBy !== "recent") && (
+          <button
+            type="button"
+            className="ev-clear-filters"
+            onClick={() => {
+              setQuery("");
+              setImportance("any");
+              setSortBy("recent");
+              onCategoryChange("any");
+              onDaysChange("any");
+              setView("all");
+            }}
+          >
+            Filtreleri temizle
+          </button>
+        )}
       </div>
 
       {featured && (() => {
@@ -702,4 +828,3 @@ export default function EventsPage({
     </section>
   );
 }
-

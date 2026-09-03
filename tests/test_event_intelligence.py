@@ -1,4 +1,6 @@
+from llm_radar.collectors.news import _announcement_type
 from llm_radar.event_intelligence import classify_event, score_importance
+from llm_radar.events.schemas import EventType
 from llm_radar.processor.service import event_title_similarity
 
 
@@ -21,6 +23,32 @@ def test_announcement_categories_cover_document_taxonomy() -> None:
     assert classify_event("company.announcement", "Critical API security update") == "security"
     assert classify_event("product.launched", "New platform") == "product_launch"
     assert classify_event("github.release_published", "v2.0") == "product_launch"
+    assert (
+        classify_event(
+            "company.announcement",
+            "Introducing Gemini 3.8 Flash and 3.8 Flash Cyber",
+        )
+        == "model_release"
+    )
+    assert (
+        _announcement_type({"title": "Introducing Gemini 3.8 Flash"})
+        == EventType.COMPANY_ANNOUNCEMENT
+    )
+    assert (
+        classify_event(
+            "company.announcement",
+            "Introducing agentic video understanding with Gemini",
+        )
+        == "product_launch"
+    )
+    assert (
+        classify_event(
+            "company.announcement",
+            "Introducing Amazon Nova 2 Lite",
+            {"summary": "Our newest efficient reasoning model is now available."},
+        )
+        == "model_release"
+    )
 
 
 def test_similar_cross_source_headlines_can_be_corroborated() -> None:

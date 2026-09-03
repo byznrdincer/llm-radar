@@ -197,18 +197,41 @@ def market_dashboard(
         if previous is None or row.score > previous.score:
             model_history[model_key][row.published_at] = row
 
-    country_trend = [
-        {
-            "date": published_at,
-            "usa": values.get("USA", {}).get("score"),
-            "china": values.get("China", {}).get("score"),
-            "usa_model": values.get("USA", {}).get("model"),
-            "china_model": values.get("China", {}).get("model"),
-            "usa_organization": values.get("USA", {}).get("organization"),
-            "china_organization": values.get("China", {}).get("organization"),
-        }
-        for published_at, values in sorted(by_date.items())
-    ]
+    # Frontier yarışı:
+    # Her tarihte yalnızca o günün liderini göstermek yerine,
+    # tarih boyunca o ana kadar gözlenen en yüksek skoru taşırız.
+    # Yeni bir model rekor kırdığında *_changed=True olur.
+    frontier_state: dict[str, dict[str, Any] | None] = {
+        "USA": None,
+        "China": None,
+    }
+
+    country_trend: list[dict[str, Any]] = []
+
+    for published_at, values in sorted(by_date.items()):
+        point: dict[str, Any] = {"date": published_at}
+
+        for region, prefix in (("USA", "usa"), ("China", "china")):
+            candidate = values.get(region)
+            current = frontier_state[region]
+            changed = False
+
+            if candidate is not None and (
+                current is None or candidate["score"] > current["score"]
+            ):
+                frontier_state[region] = dict(candidate)
+                current = frontier_state[region]
+                changed = True
+
+            point[prefix] = current["score"] if current else None
+            point[f"{prefix}_model"] = current["model"] if current else None
+            point[f"{prefix}_organization"] = (
+                current["organization"] if current else None
+            )
+            point[f"{prefix}_changed"] = changed
+
+        country_trend.append(point)
+
     complete_points = [
         point for point in country_trend if point["usa"] is not None and point["china"] is not None
     ]
@@ -351,10 +374,86 @@ def market_dashboard(
         "movers": movers,
         "insights": insights,
         "method_note": (
-            "Ülke serisi, her snapshot tarihinde ilgili ülkenin en yüksek benchmark skorunu "
-            "gösterir; bileşik veya tahmini skor kullanılmaz."
+            "Ülke serisi, seçili benchmarkta tarih boyunca o ana kadar gözlenen en yüksek "
+            "skoru taşır. Çizgideki sıçramalar yeni bir frontier liderini gösterir; "
+            "bileşik veya tahmini skor kullanılmaz."
         ),
     }
+
+
+@router.get("/insights/frontier-benchmarks", tags=["insights"])
+def frontier_benchmarks(
+    session: DatabaseSession,
+) -> dict[str, Any]:
+    """ABD ve Çin verisi birlikte bulunan benchmarkları döndürür."""
+
+    definitions = session.scalars(
+        select(BenchmarkDefinition).order_by(BenchmarkDefinition.name.asc())
+    ).all()
+
+    items: list[dict[str, Any]] = []
+
+    for definition in definitions:
+        organizations = session.scalars(
+            select(LeaderboardSnapshot.organization)
+            .where(LeaderboardSnapshot.benchmark_id == definition.id)
+            .distinct()
+        ).all()
+
+        regions = {
+            _organization_region(organization)
+            for organization in organizations
+            if organization
+        }
+
+        if not {"USA", "China"}.issubset(regions):
+            continue
+
+        snapshot_count = (
+            session.scalar(
+                select(func.count(LeaderboardSnapshot.id)).where(
+                    LeaderboardSnapshot.benchmark_id == definition.id
+                )
+            )
+            or 0
+        )
+
+        date_count = (
+            session.scalar(
+                select(func.count(func.distinct(LeaderboardSnapshot.published_at))).where(
+                    LeaderboardSnapshot.benchmark_id == definition.id
+                )
+            )
+            or 0
+        )
+
+        if date_count < 2:
+            continue
+
+        latest_date = session.scalar(
+            select(func.max(LeaderboardSnapshot.published_at)).where(
+                LeaderboardSnapshot.benchmark_id == definition.id
+            )
+        )
+
+        items.append(
+            {
+                "slug": definition.slug,
+                "name": definition.name or definition.slug,
+                "snapshot_count": snapshot_count,
+                "date_count": date_count,
+                "latest_date": latest_date,
+            }
+        )
+
+    items.sort(
+        key=lambda item: (
+            item["slug"] != "arena-text",
+            item["name"].lower(),
+        )
+    )
+
+    return {"items": items}
 
 
 @router.get("/insights/country-frontier", tags=["insights"])

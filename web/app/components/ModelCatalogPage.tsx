@@ -380,13 +380,13 @@ function MultiDeveloperPicker({ values, companies, onToggle, onClear, developerS
     );
 }
 
-function MultiSelectFilter({ title, values, options, onToggle, onClear, renderLabel = v => v }: {
+function MultiSelectFilter({ title, values, options, onToggle, onClear, renderLabel = v => v, className }: {
     title: string; values: string[]; options: { value: string; count?: number }[];
-    onToggle: (value: string) => void; onClear?: () => void; renderLabel?: (value: string) => string;
+    onToggle: (value: string) => void; onClear?: () => void; renderLabel?: (value: string) => string; className?: string;
 }) {
     const summary = values.length === 0 ? "Farketmez" : values.length <= 2 ? values.map(renderLabel).join(", ") : `${values.length} seçili`;
     return (
-        <fieldset className="multi-filter">
+        <fieldset className={`multi-filter${className ? ` ${className}` : ""}`}>
             <legend>{title}</legend>
             <details>
                 <summary>{summary}</summary>
@@ -535,6 +535,15 @@ export default function ModelCatalogPage(props: Props) {
     ]).entries()).map(([value, count]) => ({ value, count })), [p.facets.capabilities, p.runtimeCapabilityOptions]);
     const sortSummary = p.sortStack.map(item => `${p.sortLabels[item.field]} ${item.order === "asc" ? "↑" : "↓"}`).join(" · ");
 
+    useEffect(() => {
+        if (!p.advancedOpen) return;
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") p.onAdvancedToggle();
+        };
+        window.addEventListener("keydown", closeOnEscape);
+        return () => window.removeEventListener("keydown", closeOnEscape);
+    }, [p.advancedOpen, p.onAdvancedToggle]);
+
     return (
         <section className="catalog-page" id="models">
             <header className="catalog-top">
@@ -560,36 +569,88 @@ export default function ModelCatalogPage(props: Props) {
                     onClear={p.onClearDevelopers}
                     developerSites={p.developerSites}
                 />
-                <button type="button" className={`catalog-more-btn${p.advancedOpen || p.advancedActive ? " on" : ""}`} onClick={p.onAdvancedToggle}>
-                    Filtreler {p.advancedOpen ? "−" : "+"}
-                </button>
                 <button
                     type="button"
-                    className="reset-filters"
-                    onClick={p.onResetFilters}
+                    className={`catalog-more-btn${p.advancedOpen || p.advancedActive ? " on" : ""}`}
+                    aria-expanded={p.advancedOpen}
+                    aria-controls="advanced-model-filters"
+                    onClick={p.onAdvancedToggle}
                 >
-                    Temizle
+                    <span>Filtreler</span>
+                    {p.activeFilters.length > 0 && <b>{p.activeFilters.length}</b>}
+                    <i aria-hidden="true">{p.advancedOpen ? "→" : "⇥"}</i>
                 </button>
+                {p.advancedActive && (
+                    <button type="button" className="reset-filters" onClick={p.onResetFilters}>Temizle</button>
+                )}
             </div>
 
             {p.advancedOpen && (
-                <div className="catalog-advanced advanced-filters" id="advanced-model-filters">
-                    <p className="catalog-filter-note">Aynı kolonda birden fazla seçim <strong>VEYA</strong>, farklı kolonlar arasında <strong>VE</strong> ile birleşir.</p>
-                    <MultiSelectFilter title="Açıklık" values={p.openness} options={[
-                        { value: "open_source" }, { value: "open_weight" }, { value: "proprietary" },
-                    ]} renderLabel={v => ({ open_source: "Açık kaynak", open_weight: "Açık ağırlık", proprietary: "Kapalı kaynak" }[v] ?? v)} onToggle={p.onToggleOpenness} />
-                    <MultiSelectFilter title="Model ailesi" values={p.families} options={p.facets.families.map(i => ({ value: i.name, count: i.count }))} onToggle={p.onToggleFamily} />
-                    <label><span>Min. context</span><select value={p.minContext} onChange={e => p.onMinContextChange(e.target.value)}><option value="">Farketmez</option><option value="32768">32K+</option><option value="131072">128K+</option><option value="1000000">1M+</option></select></label>
-                    <label><span>Maks. girdi</span><input type="number" min="0" step="0.01" value={p.maxInputPrice} onChange={e => p.onMaxInputPriceChange(e.target.value)} placeholder="USD / 1M" /></label>
-                    <label><span>Maks. çıktı</span><input type="number" min="0" step="0.01" value={p.maxOutputPrice} onChange={e => p.onMaxOutputPriceChange(e.target.value)} placeholder="USD / 1M" /></label>
-                    <MultiSelectFilter title="Sağlayıcı" values={p.providers} options={p.facets.providers.map(i => ({ value: i.slug, count: i.count }))} onToggle={p.onToggleProvider} onClear={p.onClearProviders} renderLabel={v => p.facets.providers.find(i => i.slug === v)?.name ?? v} />
-                    <MultiSelectFilter title="Lisans" values={p.licenses} options={[{ value: "mit" }, { value: "apache_2_0" }, { value: "other" }]} renderLabel={v => ({ mit: "MIT", apache_2_0: "Apache 2.0", other: "Diğer" }[v] ?? v)} onToggle={p.onToggleLicense} />
-                    <MultiSelectFilter title="Ticari kullanım" values={p.commercialStatuses} options={[{ value: "allowed" }, { value: "restricted" }, { value: "unknown" }]} renderLabel={v => ({ allowed: "İzinli", restricted: "Kısıtlı", unknown: "Bilinmiyor" }[v] ?? v)} onToggle={p.onToggleCommercial} />
-                    <MultiSelectFilter title="Modalite" values={p.modalities} options={[{ value: "text" }, { value: "image" }, { value: "audio" }, { value: "video" }]} renderLabel={p.trModality} onToggle={p.onToggleModality} />
-                    <MultiSelectFilter title="Yetenek" values={p.capabilities} options={capOptions} renderLabel={p.trCapability} onToggle={p.onToggleCapability} />
-                    <MultiSelectFilter title="Gelişmişlik" values={p.advancedness} options={[...ADVANCEDNESS_OPTIONS]} renderLabel={v => ADVANCEDNESS_LABELS[v] ?? v} onToggle={p.onToggleAdvancedness} />
-                    <label><span>Benchmark odağı</span><select value={p.benchmarkFocus} onChange={e => p.onBenchmarkFocusChange(e.target.value)}><option value="any">Genel (varsayılan)</option><option value="general">Genel</option><option value="coding">Coding</option><option value="reasoning">Reasoning</option><option value="agent">Agent</option><option value="multimodal">Multimodal</option></select></label>
-                    <button type="button" className="reset-filters" onClick={p.onResetFilters}>Sıfırla</button>
+                <div
+                    className="catalog-filter-layer"
+                    onMouseDown={event => {
+                        if (event.target === event.currentTarget) p.onAdvancedToggle();
+                    }}
+                >
+                    <aside
+                        className="catalog-filter-drawer"
+                        id="advanced-model-filters"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="catalog-filter-title"
+                    >
+                        <header className="catalog-filter-drawer-head">
+                            <div>
+                                <p className="kicker">MODEL KATALOĞU</p>
+                                <h3 id="catalog-filter-title">Filtreler</h3>
+                                <span>Sonuçları ihtiyacına göre daralt.</span>
+                            </div>
+                            <button type="button" onClick={p.onAdvancedToggle} aria-label="Filtreleri kapat">×</button>
+                        </header>
+
+                        <div className="catalog-filter-drawer-body">
+                            <p className="catalog-filter-note">Aynı alandaki seçimler <strong>VEYA</strong>, farklı alanlar <strong>VE</strong> mantığıyla çalışır.</p>
+
+                            <section className="catalog-filter-section">
+                                <h4>Model özellikleri</h4>
+                                <div className="catalog-filter-grid">
+                                    <MultiSelectFilter title="Açıklık" values={p.openness} options={[
+                                        { value: "open_source" }, { value: "open_weight" }, { value: "proprietary" },
+                                    ]} renderLabel={v => ({ open_source: "Açık kaynak", open_weight: "Açık ağırlık", proprietary: "Kapalı kaynak" }[v] ?? v)} onToggle={p.onToggleOpenness} />
+                                    <MultiSelectFilter className="catalog-filter-wide" title="Model ailesi" values={p.families} options={p.facets.families.map(i => ({ value: i.name, count: i.count }))} onToggle={p.onToggleFamily} />
+                                    <label><span>Min. context</span><select value={p.minContext} onChange={e => p.onMinContextChange(e.target.value)}><option value="">Farketmez</option><option value="32768">32K+</option><option value="131072">128K+</option><option value="1000000">1M+</option></select></label>
+                                    <label><span>Maks. girdi</span><input type="number" min="0" step="0.01" value={p.maxInputPrice} onChange={e => p.onMaxInputPriceChange(e.target.value)} placeholder="USD / 1M" /></label>
+                                    <label><span>Maks. çıktı</span><input type="number" min="0" step="0.01" value={p.maxOutputPrice} onChange={e => p.onMaxOutputPriceChange(e.target.value)} placeholder="USD / 1M" /></label>
+                                </div>
+                            </section>
+
+                            <section className="catalog-filter-section">
+                                <h4>Erişim ve lisans</h4>
+                                <div className="catalog-filter-grid">
+                                    <MultiSelectFilter className="catalog-filter-wide" title="API sağlayıcısı" values={p.providers} options={p.facets.providers.map(i => ({ value: i.slug, count: i.count }))} onToggle={p.onToggleProvider} onClear={p.onClearProviders} renderLabel={v => p.facets.providers.find(i => i.slug === v)?.name ?? v} />
+                                    <MultiSelectFilter title="Lisans" values={p.licenses} options={[{ value: "mit" }, { value: "apache_2_0" }, { value: "other" }]} renderLabel={v => ({ mit: "MIT", apache_2_0: "Apache 2.0", other: "Diğer" }[v] ?? v)} onToggle={p.onToggleLicense} />
+                                    <MultiSelectFilter title="Ticari kullanım" values={p.commercialStatuses} options={[{ value: "allowed" }, { value: "restricted" }, { value: "unknown" }]} renderLabel={v => ({ allowed: "İzinli", restricted: "Kısıtlı", unknown: "Bilinmiyor" }[v] ?? v)} onToggle={p.onToggleCommercial} />
+                                </div>
+                            </section>
+
+                            <section className="catalog-filter-section">
+                                <h4>Yetenek ve performans</h4>
+                                <div className="catalog-filter-grid">
+                                    <MultiSelectFilter title="Modalite" values={p.modalities} options={[{ value: "text" }, { value: "image" }, { value: "audio" }, { value: "video" }]} renderLabel={p.trModality} onToggle={p.onToggleModality} />
+                                    <MultiSelectFilter title="Yetenek" values={p.capabilities} options={capOptions} renderLabel={p.trCapability} onToggle={p.onToggleCapability} />
+                                    <MultiSelectFilter title="Gelişmişlik" values={p.advancedness} options={[...ADVANCEDNESS_OPTIONS]} renderLabel={v => ADVANCEDNESS_LABELS[v] ?? v} onToggle={p.onToggleAdvancedness} />
+                                    <label><span>Benchmark odağı</span><select value={p.benchmarkFocus} onChange={e => p.onBenchmarkFocusChange(e.target.value)}><option value="any">Genel (varsayılan)</option><option value="general">Genel</option><option value="coding">Coding</option><option value="reasoning">Reasoning</option><option value="agent">Agent</option><option value="multimodal">Multimodal</option></select></label>
+                                </div>
+                            </section>
+                        </div>
+
+                        <footer className="catalog-filter-drawer-actions">
+                            <button type="button" className="catalog-filter-drawer-reset" onClick={p.onResetFilters}>Tümünü temizle</button>
+                            <button type="button" className="catalog-filter-drawer-apply" onClick={p.onAdvancedToggle}>
+                                {p.profileLoading ? "Sonuçlar hazırlanıyor…" : `${p.resultTotal.toLocaleString("tr-TR")} modeli göster`}
+                            </button>
+                        </footer>
+                    </aside>
                 </div>
             )}
 

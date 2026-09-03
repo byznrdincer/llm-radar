@@ -238,7 +238,9 @@ def _normalize_sort_specs(
     return specs
 
 
-def _build_sql_order_by(sort_specs: list[tuple[str, str]], sort_columns: dict[str, Any]) -> list[Any]:
+def _build_sql_order_by(
+    sort_specs: list[tuple[str, str]], sort_columns: dict[str, Any]
+) -> list[Any]:
     ordering: list[Any] = []
     for field, order in sort_specs:
         if field in {"benchmark_score", "best_match"}:
@@ -1081,7 +1083,10 @@ def search_models(
         allowed = set(ADVANCEDNESS_TIERS) | {"unscored"}
         unknown = normalized_advancedness - allowed
         if unknown:
-            raise HTTPException(status_code=422, detail=f"Unknown advancedness tier: {sorted(unknown)[0]}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown advancedness tier: {sorted(unknown)[0]}",
+            )
     sort_specs = _normalize_sort_specs(sort_by, sort_order)
     for field, _ in sort_specs:
         if not re.fullmatch(SORT_FIELD_PATTERN, field):
@@ -1197,7 +1202,11 @@ def search_models(
                 )
             ]
         if primary_sort_by in {"benchmark_score", "best_match"}:
-            score_direction = 1 if primary_sort_by == "benchmark_score" and primary_sort_order == "asc" else -1
+            score_direction = (
+                1
+                if primary_sort_by == "benchmark_score" and primary_sort_order == "asc"
+                else -1
+            )
             rows.sort(
                 key=lambda row: (
                     canonical_model_name(row[0].name) not in matches,
@@ -1711,6 +1720,7 @@ def list_events(
     session: DatabaseSession,
     event_type: str | None = None,
     category: str | None = None,
+    search: Annotated[str | None, Query(max_length=160)] = None,
     importance: Literal["critical", "high", "medium", "low", "info"] | None = None,
     since: datetime | None = None,
     min_score: Annotated[int | None, Query(ge=0, le=100)] = None,
@@ -1725,6 +1735,9 @@ def list_events(
         if category not in EVENT_CATEGORIES:
             raise HTTPException(status_code=422, detail="Unknown event category")
         filters.append(ChangeEvent.category == category)
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        filters.append(or_(ChangeEvent.title.ilike(term), ChangeEvent.description.ilike(term)))
     if importance:
         filters.append(ChangeEvent.importance == importance)
     if since is not None:

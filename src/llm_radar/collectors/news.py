@@ -1,4 +1,7 @@
+import re
 from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
+from html import unescape
 from typing import Any
 from urllib.parse import urljoin
 from xml.etree import ElementTree
@@ -17,6 +20,8 @@ from llm_radar.events.schemas import (
 RSS = "{http://www.w3.org/2005/Atom}"
 
 _EVENT_TYPE_BY_CATEGORY = {
+    "model_update": EventType.MODEL_UPDATED,
+    "research": EventType.RESEARCH_PUBLISHED,
     "ai_agent": EventType.AI_AGENT_UPDATED,
     "product_launch": EventType.PRODUCT_LAUNCHED,
     "funding": EventType.FUNDING_ANNOUNCED,
@@ -27,6 +32,25 @@ _EVENT_TYPE_BY_CATEGORY = {
     "security": EventType.SECURITY_ADVISORY,
     "api_update": EventType.API_UPDATED,
 }
+
+
+def _published_at(value: str, fallback: datetime) -> datetime:
+    if not value:
+        return fallback
+    try:
+        parsed = parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return fallback
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _plain_text(value: str) -> str:
+    return " ".join(unescape(re.sub(r"<[^>]+>", " ", value)).split())
 
 
 def _announcement_type(payload: dict[str, Any]) -> EventType:
@@ -76,7 +100,7 @@ class RssCollector(BaseCollector):
                 link_node = next((child for child in entry if _local(child.tag) == "link"), None)
                 if link_node is not None:
                     link = link_node.attrib.get("href") or (link_node.text or "")
-            summary = _findtext(entry, ("summary", "description"))
+            summary = _plain_text(_findtext(entry, ("summary", "description")))
             published = _findtext(entry, ("published", "updated", "pubDate"))
             if not title:
                 continue
@@ -93,12 +117,13 @@ class RssCollector(BaseCollector):
             }
             items.append(payload)
             event_type = _announcement_type(payload)
+            occurred_at = _published_at(published, collected_at)
             events.append(
                 EventEnvelope(
                     event_type=event_type,
                     source=self.name,
                     entity_key=url,
-                    occurred_at=collected_at,
+                    occurred_at=occurred_at,
                     collected_at=collected_at,
                     payload=payload,
                     importance=Importance(importance_for(event_type.value, payload).value),

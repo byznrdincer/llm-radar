@@ -58,7 +58,7 @@ export type ModelDetailData = {
     license: string | null;
     commercial_use_status?: string | null;
     observed_at?: string | null;
-  } | null;
+  };
   description: string | null;
   tokenizer: string | null;
   created: number | null;
@@ -168,7 +168,7 @@ function isPublicHttpUrl(value: string | null) {
   }
 }
 
-function useCasesFor(model: ModelDetailData, capabilities: string[], modalities: string[]) {
+function deriveUseCases(model: ModelDetailData, capabilities: string[], modalities: string[]) {
   const benchmarkText = model.benchmarks.map(item => `${item.benchmark} ${item.benchmark_slug}`).join(" ").toLowerCase();
   const capabilitySet = new Set(capabilities.map(item => item.toLowerCase()));
   const items: Array<{ icon: string; title: string; description: string }> = [];
@@ -236,7 +236,7 @@ export default function ModelDetailDrawer({
         model.profile?.streaming ? "streaming" : null,
       ]).filter(item => !modalities.includes(item.toLowerCase()))
     : [];
-  const useCases = model ? useCasesFor(model, capabilities, modalities) : [];
+  const useCases = model ? deriveUseCases(model, capabilities, modalities) : [];
   const openness = model?.profile?.openness ?? null;
   const availability = model?.profile?.availability ?? null;
   const license = model?.profile?.license ?? null;
