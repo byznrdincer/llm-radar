@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     cloudflare_api_token: str | None = None
     github_token: str | None = None
     huggingface_token: str | None = None
-    hf_org_limit: int = 50
+    hf_org_limit: int = 80
     hf_task_limit: int = 30
     admin_api_token: str | None = None
     smtp_url: str | None = None
