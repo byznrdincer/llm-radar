@@ -101,9 +101,9 @@ export const SCENARIO_LABELS: Record<string, string> = {
 };
 
 const ACCESS_LABELS: Record<string, string> = {
-    open_source: "Açık kaynak",
-    open_weight: "Açık ağırlık",
-    proprietary: "Kapalı kaynak",
+    open_source: "Open Source",
+    open_weight: "Open Weight",
+    proprietary: "Closed Source",
     unknown: "Bilinmiyor",
 };
 

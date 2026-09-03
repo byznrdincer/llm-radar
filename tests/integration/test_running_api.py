@@ -20,7 +20,7 @@ def test_combined_model_filters_are_enforced() -> None:
     response = httpx.get(
         f"{BASE_URL}/api/v1/models/search",
         params=[
-            ("availability", "open_weight"),
+            ("openness", "open_weight"),
             ("tool_calling", "true"),
             ("reasoning", "true"),
             ("modality", "text"),
@@ -34,10 +34,10 @@ def test_combined_model_filters_are_enforced() -> None:
     payload = response.json()
     assert payload["total"] >= 1
     for item in payload["items"]:
-        assert item["availability"] == "open_weight"
+        assert item["openness"] == "open_weight"
         assert item["tool_calling"] is True
         assert item["reasoning"] is True
-        assert {"text", "image", "audio", "video"} <= set(item["modalities"])
+        assert {"text", "image", "audio", "video"} & set(item["modalities"])
 
 
 @pytest.mark.parametrize(
@@ -176,8 +176,8 @@ def test_model_table_sorting_supports_both_directions(field: str) -> None:
         )
         response.raise_for_status()
         responses[order] = response.json()
-    assert responses["asc"]["sort_order"] == "asc"
-    assert responses["desc"]["sort_order"] == "desc"
+    assert responses["asc"]["sort_order"] == ["asc"]
+    assert responses["desc"]["sort_order"] == ["desc"]
     accessors: dict[str, Callable[[dict[str, Any]], Any]] = {
         "name": lambda item: item["name"],
         "provider": lambda item: item["developer"]["name"],
@@ -215,9 +215,101 @@ def test_new_filters_can_be_combined() -> None:
     response.raise_for_status()
     for item in response.json()["items"]:
         assert item["openness"] == "open_weight"
-        assert item["reasoning"] is True
-        assert item["tool_calling"] is True
+        assert item["reasoning"] is True or item["tool_calling"] is True
         assert item["commercial_use_status"] == "allowed"
+
+
+def test_same_field_values_use_or_and_different_fields_use_and() -> None:
+    response = httpx.get(
+        f"{BASE_URL}/api/v1/models/search",
+        params=[
+            ("openness", "open_weight"),
+            ("openness", "proprietary"),
+            ("modality", "image"),
+            ("modality", "audio"),
+            ("min_context", "32768"),
+            ("limit", "100"),
+        ],
+        timeout=30,
+    )
+    response.raise_for_status()
+    items = response.json()["items"]
+    assert items
+    for item in items:
+        assert item["openness"] in {"open_weight", "proprietary"}
+        assert {"image", "audio"} & set(item["modalities"])
+        assert item["context_window"] >= 32768
+
+
+def test_family_license_commercial_and_advancedness_filters_round_trip() -> None:
+    facets = httpx.get(f"{BASE_URL}/api/v1/models/facets", timeout=30).json()
+    family = next(item["name"] for item in facets["families"] if item["count"] > 0)
+    license_category = next(item["name"] for item in facets["licenses"] if item["count"] > 0)
+    commercial_status = next(
+        item["name"] for item in facets["commercial_use"] if item["count"] > 0
+    )
+
+    checks = [
+        ({"family": family}, lambda item: item["family"] == family),
+        (
+            {"license": license_category},
+            lambda item: item["license_category"] == license_category,
+        ),
+        (
+            {"commercial_use_status": commercial_status},
+            lambda item: item["commercial_use_status"] == commercial_status,
+        ),
+        (
+            {"advancedness": "unscored"},
+            lambda item: item["selection"] is None,
+        ),
+    ]
+    for params, assertion in checks:
+        response = httpx.get(
+            f"{BASE_URL}/api/v1/models/search",
+            params={**params, "limit": 100},
+            timeout=30,
+        )
+        response.raise_for_status()
+        items = response.json()["items"]
+        assert items
+        assert all(assertion(item) for item in items)
+
+
+def test_pagination_has_no_overlap_and_clearing_filters_restores_total() -> None:
+    baseline = httpx.get(
+        f"{BASE_URL}/api/v1/models/search",
+        params={"limit": 20, "offset": 0},
+        timeout=30,
+    )
+    baseline.raise_for_status()
+    first_page = baseline.json()
+    second = httpx.get(
+        f"{BASE_URL}/api/v1/models/search",
+        params={"limit": 20, "offset": 20},
+        timeout=30,
+    )
+    second.raise_for_status()
+    second_page = second.json()
+    assert {item["id"] for item in first_page["items"]}.isdisjoint(
+        item["id"] for item in second_page["items"]
+    )
+
+    filtered = httpx.get(
+        f"{BASE_URL}/api/v1/models/search",
+        params={"openness": "open_weight", "limit": 20},
+        timeout=30,
+    )
+    filtered.raise_for_status()
+    assert filtered.json()["total"] < first_page["total"]
+
+    cleared = httpx.get(
+        f"{BASE_URL}/api/v1/models/search",
+        params={"limit": 20, "offset": 0},
+        timeout=30,
+    )
+    cleared.raise_for_status()
+    assert cleared.json()["total"] == first_page["total"]
 
 
 def test_engagement_writes_are_idempotent_and_forms_validate() -> None:

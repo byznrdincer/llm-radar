@@ -402,7 +402,7 @@ function OpennessChart({ data }: { data: OpennessData["items"] }) {
         <YAxis tick={{ fill: "#93a39a", fontSize: 10 }} />
         <Tooltip contentStyle={CHART_TOOLTIP} />
         <Legend iconType="circle" wrapperStyle={{ color: "#aebcb4", fontSize: "10px" }} />
-        <Area type="monotone" dataKey="proprietary" name="Proprietary" stackId="1" stroke="#a990e6" fill="url(#proprietaryArea)" isAnimationActive={false} />
+        <Area type="monotone" dataKey="proprietary" name="Closed Source" stackId="1" stroke="#a990e6" fill="url(#proprietaryArea)" isAnimationActive={false} />
         <Area type="monotone" dataKey="open_weight" name="Open Weight" stackId="1" stroke="#58c7ba" fill="url(#openWeightArea)" isAnimationActive={false} />
         <Area type="monotone" dataKey="open_source" name="Open Source" stackId="1" stroke="#b9ff25" fill="url(#openSourceArea)" isAnimationActive={false} />
       </AreaChart>

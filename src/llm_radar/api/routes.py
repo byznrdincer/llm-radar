@@ -626,6 +626,11 @@ def _leaderboard_response(
                 "category": row.category,
                 "leaderboard_publish_date": row.published_at,
                 "catalog_model_id": str(catalog_model.id) if catalog_model is not None else None,
+                "openness": (
+                    catalog_model.profile.openness
+                    if catalog_model is not None and catalog_model.profile is not None
+                    else None
+                ),
                 "details": details,
             }
         )

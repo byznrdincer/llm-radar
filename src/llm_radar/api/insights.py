@@ -1,20 +1,29 @@
+import re
 from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
+from email.utils import parsedate_to_datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from llm_radar.composite import canonical_model_name
+from llm_radar.composite import (
+    RADAR_SCORE_BENCHMARKS,
+    RadarScoreInput,
+    build_radar_scores,
+    canonical_model_name,
+)
 from llm_radar.database.models import (
     BenchmarkDefinition,
+    ChangeEvent,
     Company,
     LeaderboardSnapshot,
     Model,
     ModelProfile,
     ModelSnapshot,
     PriceObservation,
+    Source,
 )
 from llm_radar.database.session import get_db
 from llm_radar.model_selection import benchmark_matches
@@ -85,6 +94,26 @@ MARKET_BENCHMARKS = {
     },
 }
 
+RADAR_EVENT_TYPES = {
+    "model.released",
+    "leaderboard.changed",
+    "price.changed",
+    "cache_price.changed",
+    "capability.changed",
+    "context.changed",
+    "api.updated",
+    "company.announcement",
+    "product.launched",
+    "github.release_published",
+}
+PUBLISHED_EVENT_TYPES = {
+    "model.released",
+    "api.updated",
+    "company.announcement",
+    "product.launched",
+    "github.release_published",
+}
+
 
 def _turkish_haystack(
     model: Model,
@@ -144,6 +173,282 @@ def _count_models_between(session: Session, start: date, end: date) -> int:
         )
         or 0
     )
+
+
+def _strict_catalog_identity_index(
+    session: Session,
+) -> dict[tuple[str, str], str]:
+    """Resolve only unique organization + normalized-name catalog matches."""
+    candidates: dict[tuple[str, str], list[str]] = defaultdict(list)
+    rows = session.execute(select(Model, Company).join(Company, Company.id == Model.company_id))
+    for model, company in rows:
+        key = (canonical_model_name(company.name), canonical_model_name(model.name))
+        if all(key):
+            candidates[key].append(str(model.id))
+    return {key: model_ids[0] for key, model_ids in candidates.items() if len(model_ids) == 1}
+
+
+@router.get("/insights/radar-score", tags=["insights"])
+def radar_score(
+    session: DatabaseSession,
+    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+) -> dict[str, Any]:
+    """Return the versioned LLM Radar composite index and source leaders."""
+    definitions = {
+        definition.slug: definition
+        for definition in session.scalars(
+            select(BenchmarkDefinition).where(BenchmarkDefinition.slug.in_(RADAR_SCORE_BENCHMARKS))
+        ).all()
+    }
+    catalog_index = _strict_catalog_identity_index(session)
+    inputs: list[RadarScoreInput] = []
+    leaders: list[dict[str, Any]] = []
+    snapshot_dates: list[date] = []
+
+    for slug, (category_group, label) in RADAR_SCORE_BENCHMARKS.items():
+        definition = definitions.get(slug)
+        if definition is None:
+            continue
+        published_at = session.scalar(
+            select(func.max(LeaderboardSnapshot.published_at)).where(
+                LeaderboardSnapshot.benchmark_id == definition.id
+            )
+        )
+        if published_at is None:
+            continue
+        rows = session.scalars(
+            select(LeaderboardSnapshot)
+            .where(
+                LeaderboardSnapshot.benchmark_id == definition.id,
+                LeaderboardSnapshot.published_at == published_at,
+            )
+            .order_by(LeaderboardSnapshot.rank.asc())
+        ).all()
+        if not rows:
+            continue
+        field_size = max(len(rows), max(row.rank for row in rows))
+        snapshot_dates.append(published_at)
+        leader = rows[0]
+        leaders.append(
+            {
+                "benchmark": slug,
+                "label": label,
+                "category": category_group,
+                "model_name": leader.model_external_id,
+                "organization": leader.organization,
+                "rank": leader.rank,
+                "score": float(leader.score),
+                "published_at": leader.published_at,
+                "methodology_url": definition.methodology_url,
+            }
+        )
+        for row in rows:
+            identity_tuple = (
+                canonical_model_name(row.organization),
+                canonical_model_name(row.model_external_id),
+            )
+            catalog_model_id = catalog_index.get(identity_tuple)
+            identity_key = (
+                f"catalog:{catalog_model_id}"
+                if catalog_model_id
+                else f"benchmark:{identity_tuple[0]}::{identity_tuple[1]}"
+            )
+            inputs.append(
+                RadarScoreInput(
+                    benchmark=slug,
+                    model_name=row.model_external_id,
+                    organization=row.organization,
+                    rank=row.rank,
+                    field_size=field_size,
+                    published_at=row.published_at,
+                    identity_key=identity_key,
+                    catalog_model_id=catalog_model_id,
+                )
+            )
+
+    result = build_radar_scores(inputs)
+    return {
+        "generated_at": datetime.now(UTC),
+        "snapshot_at": max(snapshot_dates, default=None),
+        "methodology": result["methodology"],
+        "eligible_count": result["eligible_count"],
+        "ineligible_count": result["ineligible_count"],
+        "active_benchmarks": result["active_benchmarks"],
+        "leaders": leaders,
+        "items": result["items"][:limit],
+    }
+
+
+def _coerce_event_datetime(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        try:
+            parsed = parsedate_to_datetime(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _event_effective_at(event: ChangeEvent) -> datetime:
+    values = event.new_value if isinstance(event.new_value, dict) else {}
+    if event.event_type in PUBLISHED_EVENT_TYPES:
+        for field in ("published_at", "created_at", "last_modified", "release_date"):
+            published_at = _coerce_event_datetime(values.get(field))
+            if published_at is not None:
+                return published_at
+        title_date = re.search(
+            r"\b(January|February|March|April|May|June|July|August|September|"
+            r"October|November|December)\s+(\d{1,2}),\s+(\d{4})",
+            event.title,
+        )
+        if title_date:
+            return datetime.strptime(title_date.group(0), "%B %d, %Y").replace(tzinfo=UTC)
+    detected_at = event.detected_at
+    if detected_at.tzinfo is None:
+        detected_at = detected_at.replace(tzinfo=UTC)
+    return detected_at.astimezone(UTC)
+
+
+def _event_source_url(event: ChangeEvent, source: Source | None) -> str | None:
+    evidence = event.evidence if isinstance(event.evidence, dict) else {}
+    values = event.new_value if isinstance(event.new_value, dict) else {}
+    for value in (evidence.get("source_url"), values.get("url"), source.url if source else None):
+        if isinstance(value, str) and value.startswith(("https://", "http://")):
+            return value
+    return None
+
+
+def _radar_event_kind(event: ChangeEvent) -> str | None:
+    if event.event_type == "model.released":
+        return "model_release"
+    if event.event_type == "leaderboard.changed":
+        before = next(iter((event.old_value or {}).values()), None)
+        after = next(iter((event.new_value or {}).values()), None)
+        try:
+            before_rank = int(before) if before is not None else None
+            after_rank = int(after)
+        except (TypeError, ValueError):
+            return None
+        if after_rank == 1 and before_rank != 1:
+            return "benchmark_leader"
+        if after_rank <= 3 and (before_rank is None or before_rank > 3):
+            return "benchmark_top3"
+        return None
+    if event.event_type in {"price.changed", "cache_price.changed"}:
+        return "price_change"
+    if event.event_type in {"capability.changed", "context.changed"}:
+        return "capability_change"
+    if event.event_type in {
+        "api.updated",
+        "company.announcement",
+        "product.launched",
+        "github.release_published",
+    }:
+        if len(event.title.strip()) < 8:
+            return None
+        return "provider_update"
+    return None
+
+
+@router.get("/insights/radar-24h", tags=["insights"])
+def radar_24h(
+    session: DatabaseSession,
+    limit: Annotated[int, Query(ge=1, le=20)] = 8,
+) -> dict[str, Any]:
+    """Summarize source-backed events whose effective time is within 24 hours."""
+    now = datetime.now(UTC)
+    cutoff = now - timedelta(hours=24)
+    rows = session.execute(
+        select(ChangeEvent, Source)
+        .outerjoin(Source, Source.id == ChangeEvent.source_id)
+        .where(
+            ChangeEvent.detected_at >= cutoff,
+            ChangeEvent.event_type.in_(RADAR_EVENT_TYPES),
+        )
+        .order_by(ChangeEvent.importance_score.desc(), ChangeEvent.detected_at.desc())
+        .limit(10000)
+    ).all()
+    items: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str | None]] = set()
+    counts: dict[str, int] = {
+        "model_release": 0,
+        "benchmark_leader": 0,
+        "benchmark_top3": 0,
+        "price_change": 0,
+        "capability_change": 0,
+        "provider_update": 0,
+    }
+    for event, source in rows:
+        effective_at = _event_effective_at(event)
+        if effective_at < cutoff or effective_at > now + timedelta(minutes=5):
+            continue
+        kind = _radar_event_kind(event)
+        if kind is None:
+            continue
+        source_url = _event_source_url(event, source)
+        dedup_key = (kind, event.title.strip().lower(), source_url)
+        if dedup_key in seen:
+            continue
+        seen.add(dedup_key)
+        counts[kind] += 1
+        items.append(
+            {
+                "id": str(event.id),
+                "kind": kind,
+                "event_type": event.event_type,
+                "title": event.title,
+                "description": event.description,
+                "importance": event.importance,
+                "importance_score": event.importance_score,
+                "effective_at": effective_at,
+                "detected_at": event.detected_at,
+                "source": source.name if source else (event.evidence or {}).get("source"),
+                "source_url": source_url,
+                "verification_status": event.verification_status,
+            }
+        )
+
+    kind_priority = {
+        "model_release": 5,
+        "benchmark_leader": 4,
+        "benchmark_top3": 4,
+        "price_change": 3,
+        "capability_change": 2,
+        "provider_update": 1,
+    }
+    items.sort(
+        key=lambda item: (
+            -kind_priority[item["kind"]],
+            -item["importance_score"],
+            -item["effective_at"].timestamp(),
+        )
+    )
+    featured: list[dict[str, Any]] = []
+    selected_ids: set[str] = set()
+    for kind in kind_priority:
+        match = next((item for item in items if item["kind"] == kind), None)
+        if match is not None and len(featured) < limit:
+            featured.append(match)
+            selected_ids.add(match["id"])
+    for item in items:
+        if len(featured) >= limit:
+            break
+        if item["id"] not in selected_ids:
+            featured.append(item)
+            selected_ids.add(item["id"])
+    return {
+        "generated_at": now,
+        "window": {"hours": 24, "from": cutoff, "to": now},
+        "basis": "source_backed_change_events",
+        "counts": counts,
+        "total": len(items),
+        "items": featured,
+    }
 
 
 @router.get("/insights/market-dashboard", tags=["insights"])
@@ -216,18 +521,14 @@ def market_dashboard(
             current = frontier_state[region]
             changed = False
 
-            if candidate is not None and (
-                current is None or candidate["score"] > current["score"]
-            ):
+            if candidate is not None and (current is None or candidate["score"] > current["score"]):
                 frontier_state[region] = dict(candidate)
                 current = frontier_state[region]
                 changed = True
 
             point[prefix] = current["score"] if current else None
             point[f"{prefix}_model"] = current["model"] if current else None
-            point[f"{prefix}_organization"] = (
-                current["organization"] if current else None
-            )
+            point[f"{prefix}_organization"] = current["organization"] if current else None
             point[f"{prefix}_changed"] = changed
 
         country_trend.append(point)
@@ -401,9 +702,7 @@ def frontier_benchmarks(
         ).all()
 
         regions = {
-            _organization_region(organization)
-            for organization in organizations
-            if organization
+            _organization_region(organization) for organization in organizations if organization
         }
 
         if not {"USA", "China"}.issubset(regions):

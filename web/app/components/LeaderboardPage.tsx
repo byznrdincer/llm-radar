@@ -16,6 +16,7 @@ export type LeaderboardItem = {
     category: string;
     leaderboard_publish_date: string;
     catalog_model_id: string | null;
+    openness: string | null;
     details: Record<string, unknown>;
 };
 
@@ -123,15 +124,26 @@ const viewHints: Record<LeaderboardView, string> = {
 
 const tabGroups = ["Genel", "Kodlama", "Bilgi", "Agent"] as const;
 
-function sourceBadge(license: string | null | undefined) {
-    const normalized = (license ?? "").trim().toLowerCase();
-    if (normalized === "not applicable" || normalized === "n/a")
+function sourceBadge(
+    openness: string | null | undefined,
+    license: string | null | undefined,
+) {
+    const normalized = (openness ?? "").trim().toLowerCase();
+
+    if (normalized === "open_source")
+        return { label: "Open Source", description: "Açık kaynak model", kind: "open" };
+
+    if (normalized === "open_weight")
+        return { label: "Open Weight", description: "Model ağırlıkları indirilebilir", kind: "open" };
+
+    if (normalized === "proprietary")
+        return { label: "Closed Source", description: "Kapalı model / servis erişimi", kind: "closed" };
+
+    const normalizedLicense = (license ?? "").trim().toLowerCase();
+    if (normalizedLicense === "not applicable" || normalizedLicense === "n/a")
         return { label: "N/A", description: "Tek bir modele ait olmayan benchmark girdisi", kind: "na" };
-    if (!normalized || normalized === "unknown")
-        return { label: "?", description: "Ağırlık erişimi henüz doğrulanmadı", kind: "unknown" };
-    if (normalized.includes("proprietary") || normalized.includes("closed source") || normalized.includes("closed-source"))
-        return { label: "Kapalı", description: "Kapalı ağırlık / yalnızca servis", kind: "closed" };
-    return { label: "Açık", description: "İndirilebilir açık ağırlık", kind: "open" };
+
+    return { label: "?", description: "Açıklık sınıfı henüz doğrulanmadı", kind: "unknown" };
 }
 
 function resolveBoard(view: LeaderboardView, boards: Boards): Leaderboard | null {
@@ -213,6 +225,9 @@ export default function LeaderboardPage({
 }: Props) {
     const board = resolveBoard(view, boards);
     const [visibleCount, setVisibleCount] = useState(20);
+    const [opennessFilter, setOpennessFilter] = useState<
+        "all" | "open_source" | "open_weight" | "proprietary"
+    >("all");
     const isArena = view === "general";
     const isSwe = view === "coding";
     const isSweLive = view === "swe-live";
@@ -221,8 +236,12 @@ export default function LeaderboardPage({
     const isMmlu = view === "mmlu-pro";
     const scoreLabel = isArena ? "Arena Rating" : isSwe || isSweLive ? "Çözüm oranı" : isTau ? "Pass@1" : "Puan";
     const allItems = board?.items ?? [];
-    const visibleItems = allItems.slice(0, visibleCount);
-    const hasMore = visibleCount < allItems.length;
+    const filteredItems = opennessFilter === "all"
+        ? allItems
+        : allItems.filter(item => item.openness === opennessFilter);
+
+    const visibleItems = filteredItems.slice(0, visibleCount);
+    const hasMore = visibleCount < filteredItems.length;
     const ratings = allItems.map(item => item.rating);
     const maximumRating = ratings.length ? Math.max(...ratings) : 0;
     const minimumRating = ratings.length ? Math.min(...ratings) : 0;
@@ -269,6 +288,29 @@ export default function LeaderboardPage({
 
             {(isLive && view === "livebench") || isMmlu || isSweLive || isTau ? (
                 <div className="lb-filter-bar">
+                    <div className="lb-filter-group" role="group" aria-label="Model açıklığı">
+                        <span>Açıklık</span>
+                        <div className="lb-filter-pills">
+                            {([
+                                ["all", "Tümü"],
+                                ["open_source", "Open Source"],
+                                ["open_weight", "Open Weight"],
+                                ["proprietary", "Closed Source"],
+                            ] as const).map(([value, label]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    className={opennessFilter === value ? "active" : ""}
+                                    onClick={() => {
+                                        setOpennessFilter(value);
+                                        setVisibleCount(20);
+                                    }}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     {isLive && view === "livebench" && (
                         <div className="lb-filter-group" role="group" aria-label="LiveBench kategorisi">
                             <span>Alt kategori</span>
@@ -369,7 +411,7 @@ export default function LeaderboardPage({
                             </thead>
                             <tbody>
                                 {visibleItems.map(item => {
-                                    const badge = sourceBadge(item.license);
+                                    const badge = sourceBadge(item.openness, item.license);
                                     return (
                                         <tr key={`${item.rank}-${item.model_name}`}>
                                             <td className="lb-col-rank">

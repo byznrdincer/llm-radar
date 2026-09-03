@@ -62,16 +62,10 @@ _KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("research", ("research", "paper", "study", "araştırma")),
 )
 
-_MODEL_RELEASE_VERBS = (
-    "introducing",
-    "announcing",
-    "announce",
-    "unveiling",
-    "unveil",
-    "released",
-    "launching",
-    "tanıtıyor",
-    "duyurdu",
+_MODEL_RELEASE_PREFIX = re.compile(
+    r"\b(?:introducing|announcing|announce|announces|unveiling|unveils|launching|launches|"
+    r"releasing|releases|released|tanıtıyor|duyurdu)\s+(?:the\s+)?(?P<subject>[^:|—]{1,100})",
+    re.IGNORECASE,
 )
 _VERSIONED_MODEL_NAME = re.compile(
     r"\b(?:gemini|gemma|gpt|claude|llama|qwen|deepseek|grok|mistral|phi|ernie|kimi|minimax|nemotron)"
@@ -79,9 +73,25 @@ _VERSIONED_MODEL_NAME = re.compile(
     re.IGNORECASE,
 )
 _GENERIC_VERSIONED_PRODUCT = re.compile(
-    r"\b(?:[A-Z][A-Za-z0-9._-]*\s+){1,3}(?:v?\d+(?:\.\d+)*|\d+[A-Z])"
+    r"\b(?:[A-Z][A-Za-z0-9._-]*\s+){1,3}(?P<version>v?\d+(?:\.\d+)*|\d+[A-Z])"
     r"(?:\s+[A-Z][A-Za-z0-9._-]*)?\b"
 )
+
+
+def _looks_like_model_release(title: str, haystack: str) -> bool:
+    release = _MODEL_RELEASE_PREFIX.search(title)
+    if release is None:
+        return False
+    subject = release.group("subject").strip()
+    if _VERSIONED_MODEL_NAME.match(subject):
+        return True
+    generic = _GENERIC_VERSIONED_PRODUCT.match(subject)
+    if generic is None:
+        return "new model" in haystack
+    version = generic.group("version").lower().removeprefix("v")
+    if version.isdigit() and 1900 <= int(version) <= 2099:
+        return False
+    return any(marker in haystack for marker in ("model", "llm", "reasoning", "multimodal"))
 
 
 def classify_event(event_type: str, title: str = "", payload: dict[str, Any] | None = None) -> str:
@@ -92,14 +102,7 @@ def classify_event(event_type: str, title: str = "", payload: dict[str, Any] | N
     summary = str((payload or {}).get("summary") or "")
     raw_title = " ".join((title, payload_title)).strip()
     haystack = " ".join((raw_title, summary)).lower()
-    known_versioned_model = _VERSIONED_MODEL_NAME.search(haystack)
-    generic_versioned_model = _GENERIC_VERSIONED_PRODUCT.search(raw_title) and any(
-        marker in haystack for marker in ("model", "llm", "reasoning", "multimodal")
-    )
-    if event_type == "company.announcement" and (
-        any(verb in haystack for verb in _MODEL_RELEASE_VERBS)
-        and (known_versioned_model or generic_versioned_model or "new model" in haystack)
-    ):
+    if event_type == "company.announcement" and _looks_like_model_release(raw_title, haystack):
         return "model_release"
     for category, keywords in _KEYWORDS:
         if any(keyword in haystack for keyword in keywords):

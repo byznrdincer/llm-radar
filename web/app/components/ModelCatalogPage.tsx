@@ -54,7 +54,9 @@ export type CatalogFacets = {
     developers: { slug: string; name: string; count: number; website_url?: string | null }[];
     providers: { slug: string; name: string; count: number }[];
     families: { name: string; count: number }[];
+    modalities: { name: string; count: number }[];
     capabilities: { name: string; count: number }[];
+    licenses: { name: string; count: number }[];
 };
 
 export const ADVANCEDNESS_LABELS: Record<string, string> = {
@@ -533,6 +535,19 @@ export default function ModelCatalogPage(props: Props) {
         ["reasoning", 0], ["coding", 0], ["tool_calling", 0],
         ...p.facets.capabilities.map(i => [i.name, i.count] as [string, number]),
     ]).entries()).map(([value, count]) => ({ value, count })), [p.facets.capabilities, p.runtimeCapabilityOptions]);
+    const modalityOptions = useMemo(() => {
+        const preferred = ["text", "image", "audio", "video", "file", "pdf"];
+        const counts = new Map(p.facets.modalities.map(item => [item.name, item.count]));
+        return Array.from(new Set([...preferred, ...counts.keys()])).map(value => ({
+            value,
+            count: counts.get(value),
+        }));
+    }, [p.facets.modalities]);
+    const licenseOptions = useMemo(() => {
+        const fallback = ["mit", "apache_2_0", "llama_community", "other", "unknown"];
+        const values = p.facets.licenses.length ? p.facets.licenses : fallback.map(name => ({ name, count: 0 }));
+        return values.map(item => ({ value: item.name, count: item.count }));
+    }, [p.facets.licenses]);
     const sortSummary = p.sortStack.map(item => `${p.sortLabels[item.field]} ${item.order === "asc" ? "↑" : "↓"}`).join(" · ");
 
     useEffect(() => {
@@ -616,7 +631,7 @@ export default function ModelCatalogPage(props: Props) {
                                 <div className="catalog-filter-grid">
                                     <MultiSelectFilter title="Açıklık" values={p.openness} options={[
                                         { value: "open_source" }, { value: "open_weight" }, { value: "proprietary" },
-                                    ]} renderLabel={v => ({ open_source: "Açık kaynak", open_weight: "Açık ağırlık", proprietary: "Kapalı kaynak" }[v] ?? v)} onToggle={p.onToggleOpenness} />
+                                    ]} renderLabel={v => ({ open_source: "Open Source", open_weight: "Open Weight", proprietary: "Closed Source" }[v] ?? v)} onToggle={p.onToggleOpenness} />
                                     <MultiSelectFilter className="catalog-filter-wide" title="Model ailesi" values={p.families} options={p.facets.families.map(i => ({ value: i.name, count: i.count }))} onToggle={p.onToggleFamily} />
                                     <label><span>Min. context</span><select value={p.minContext} onChange={e => p.onMinContextChange(e.target.value)}><option value="">Farketmez</option><option value="32768">32K+</option><option value="131072">128K+</option><option value="1000000">1M+</option></select></label>
                                     <label><span>Maks. girdi</span><input type="number" min="0" step="0.01" value={p.maxInputPrice} onChange={e => p.onMaxInputPriceChange(e.target.value)} placeholder="USD / 1M" /></label>
@@ -628,7 +643,7 @@ export default function ModelCatalogPage(props: Props) {
                                 <h4>Erişim ve lisans</h4>
                                 <div className="catalog-filter-grid">
                                     <MultiSelectFilter className="catalog-filter-wide" title="API sağlayıcısı" values={p.providers} options={p.facets.providers.map(i => ({ value: i.slug, count: i.count }))} onToggle={p.onToggleProvider} onClear={p.onClearProviders} renderLabel={v => p.facets.providers.find(i => i.slug === v)?.name ?? v} />
-                                    <MultiSelectFilter title="Lisans" values={p.licenses} options={[{ value: "mit" }, { value: "apache_2_0" }, { value: "other" }]} renderLabel={v => ({ mit: "MIT", apache_2_0: "Apache 2.0", other: "Diğer" }[v] ?? v)} onToggle={p.onToggleLicense} />
+                                    <MultiSelectFilter title="Lisans" values={p.licenses} options={licenseOptions} renderLabel={v => ({ mit: "MIT", apache_2_0: "Apache 2.0", llama_community: "Llama Community", other: "Diğer", unknown: "Bilinmiyor" }[v] ?? v)} onToggle={p.onToggleLicense} />
                                     <MultiSelectFilter title="Ticari kullanım" values={p.commercialStatuses} options={[{ value: "allowed" }, { value: "restricted" }, { value: "unknown" }]} renderLabel={v => ({ allowed: "İzinli", restricted: "Kısıtlı", unknown: "Bilinmiyor" }[v] ?? v)} onToggle={p.onToggleCommercial} />
                                 </div>
                             </section>
@@ -636,7 +651,7 @@ export default function ModelCatalogPage(props: Props) {
                             <section className="catalog-filter-section">
                                 <h4>Yetenek ve performans</h4>
                                 <div className="catalog-filter-grid">
-                                    <MultiSelectFilter title="Modalite" values={p.modalities} options={[{ value: "text" }, { value: "image" }, { value: "audio" }, { value: "video" }]} renderLabel={p.trModality} onToggle={p.onToggleModality} />
+                                    <MultiSelectFilter title="Modalite" values={p.modalities} options={modalityOptions} renderLabel={p.trModality} onToggle={p.onToggleModality} />
                                     <MultiSelectFilter title="Yetenek" values={p.capabilities} options={capOptions} renderLabel={p.trCapability} onToggle={p.onToggleCapability} />
                                     <MultiSelectFilter title="Gelişmişlik" values={p.advancedness} options={[...ADVANCEDNESS_OPTIONS]} renderLabel={v => ADVANCEDNESS_LABELS[v] ?? v} onToggle={p.onToggleAdvancedness} />
                                     <label><span>Benchmark odağı</span><select value={p.benchmarkFocus} onChange={e => p.onBenchmarkFocusChange(e.target.value)}><option value="any">Genel (varsayılan)</option><option value="general">Genel</option><option value="coding">Coding</option><option value="reasoning">Reasoning</option><option value="agent">Agent</option><option value="multimodal">Multimodal</option></select></label>

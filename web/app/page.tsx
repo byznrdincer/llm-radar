@@ -11,6 +11,7 @@ import ResearchPage, { type ResearchBootstrap } from "./components/ResearchPage"
 import TechnologyRadarPage from "./components/TechnologyRadarPage";
 import SourcesPage from "./components/SourcesPage";
 import ModelDetailDrawer, { type ModelDetailData } from "./components/ModelDetailDrawer";
+import OverviewIntelligence from "./components/OverviewIntelligence";
 import type { TurkishModel } from "./components/TurkishLLMPage";
 import { trackEvent } from "./lib/analytics";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
@@ -306,6 +307,10 @@ type Facets = {
         name: string;
         count: number;
     }[];
+    modalities: {
+        name: string;
+        count: number;
+    }[];
     capabilities: {
         name: string;
         count: number;
@@ -337,7 +342,7 @@ function compact(value: number) { if (value >= 1000000)
     return `${(value / 1000000).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}M`; if (value >= 1000)
     return `${(value / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}K`; return value.toLocaleString("tr-TR"); }
 function trModality(tag: string) {
-    const map: Record<string, string> = { text: "metin", image: "gorsel", audio: "ses", video: "video" };
+    const map: Record<string, string> = { text: "metin", image: "görsel", audio: "ses", video: "video", file: "dosya", pdf: "PDF" };
     return map[tag.toLowerCase()] ?? tag;
 }
 function trCapability(value: string) {
@@ -539,6 +544,7 @@ export default function Home() {
     const [researchBootstrap, setResearchBootstrap] = useState<ResearchBootstrap | null>(null);
     const [turkishBootstrap, setTurkishBootstrap] = useState<TurkishModel[] | null>(null);
     const skipInitialCatalogFetchRef = useRef(true);
+    const catalogRequestIdRef = useRef(0);
     const [minContext, setMinContext] = useState("");
     const [maxInputPrice, setMaxInputPrice] = useState("");
     const [maxOutputPrice, setMaxOutputPrice] = useState("");
@@ -561,7 +567,7 @@ export default function Home() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activeSection, setActiveSection] = useState("overview");
     const [benchmarkInfoOpen, setBenchmarkInfoOpen] = useState(false);
-    const [facets, setFacets] = useState<Facets>({ developers: [], providers: [], families: [], capabilities: [], licenses: [], openness: [], commercial_use: [], benchmark_focuses: [] });
+    const [facets, setFacets] = useState<Facets>({ developers: [], providers: [], families: [], modalities: [], capabilities: [], licenses: [], openness: [], commercial_use: [], benchmark_focuses: [] });
     const [eventCategory, setEventCategory] = useState("any");
     const [eventDays, setEventDays] = useState("1");
     const [livebenchCategory, setLivebenchCategory] = useState("overall");
@@ -571,6 +577,7 @@ export default function Home() {
     useEffect(() => {
         const controller = new AbortController();
         const { signal } = controller;
+        const requestId = ++catalogRequestIdRef.current;
         const bootParams = new URLSearchParams({
             limit: String(PAGE_SIZE),
             offset: "0",
@@ -582,7 +589,7 @@ export default function Home() {
         fetch(`${API}/api/v1/models/search?${bootParams}`, { signal })
             .then(r => r.ok ? r.json() : null)
             .then(data => {
-                if (data?.items) {
+                if (requestId === catalogRequestIdRef.current && data?.items) {
                     setProfileResults(mapSearchModels(data.items as SearchModelItem[]));
                     setProfileTotal(Number(data.total ?? 0));
                 }
@@ -744,6 +751,7 @@ export default function Home() {
         modalities.forEach(item => params.append("modality", item));
         capabilities.forEach(item => params.append("capability", item));
         const controller = new AbortController();
+        const requestId = ++catalogRequestIdRef.current;
         const debounceMs = query.trim() ? 250 : 0;
         const timer = window.setTimeout(() => {
             setProfileLoading(true);
@@ -754,6 +762,8 @@ export default function Home() {
                     return response.json();
                 })
                 .then(data => {
+                    if (requestId !== catalogRequestIdRef.current)
+                        return;
                     setProfileTotal(data.total);
                     const mapped = mapSearchModels(data.items as SearchModelItem[]);
                     setProfileResults(current => {
@@ -763,9 +773,12 @@ export default function Home() {
                         return [...(current ?? []), ...mapped.filter(item => !seen.has(item.id))];
                     });
                 })
-                .catch(error => { if (error.name !== "AbortError")
+                .catch(error => { if (requestId === catalogRequestIdRef.current && error.name !== "AbortError")
                     setError(true); })
-                .finally(() => setProfileLoading(false));
+                .finally(() => {
+                    if (requestId === catalogRequestIdRef.current)
+                        setProfileLoading(false);
+                });
         }, debounceMs);
         return () => { window.clearTimeout(timer); controller.abort(); };
     }, [serverFiltering, page, query, developers, providers, families, minContext, maxInputPrice, maxOutputPrice, openness, licenses, commercialStatuses, modalities, capabilities, advancedness, benchmarkFocus, sortStack, filterActive]);
@@ -778,7 +791,7 @@ export default function Home() {
     const filtered = serverFiltering ? (profileResults ?? []) : models;
     const resultTotal = serverFiltering ? profileTotal : stats.models;
     const catalogHasMore = serverFiltering && filtered.length < resultTotal;
-    const catalogBootReady = profileResults !== null && profileResults.length > 0;
+    const catalogBootReady = profileResults !== null;
     const visible = serverFiltering ? filtered : filtered.slice(0, PAGE_SIZE);
     function toggle(model: ModelItem) {
         setSelected(current => {
@@ -844,7 +857,7 @@ export default function Home() {
         chips.push({ key: "ctx", label: `${Number(minContext).toLocaleString("tr-TR")}+ ctx`, clear: () => { setMinContext(""); setPage(1); } }); if (maxInputPrice)
         chips.push({ key: "in", label: `Girdi ≤ $${maxInputPrice}`, clear: () => { setMaxInputPrice(""); setPage(1); } }); if (maxOutputPrice)
         chips.push({ key: "out", label: `Çıktı ≤ $${maxOutputPrice}`, clear: () => { setMaxOutputPrice(""); setPage(1); } }); if (benchmarkFocus !== "any")
-        chips.push({ key: "bench", label: `Odağı: ${benchmarkFocus}`, clear: () => { setBenchmarkFocus("any"); setPage(1); } }); advancedness.forEach(item => chips.push({ key: `adv-${item}`, label: ADVANCEDNESS_LABELS[item] ?? item, clear: () => toggleAdvancedness(item) })); families.forEach(item => chips.push({ key: `family-${item}`, label: item, clear: () => toggleList(item, setFamilies) })); openness.forEach(item => chips.push({ key: `open-${item}`, label: opennessLabels[item] ?? item, clear: () => toggleList(item, setOpenness) })); licenses.forEach(item => chips.push({ key: `license-${item}`, label: item.replaceAll("_", " "), clear: () => toggleList(item, setLicenses) })); commercialStatuses.forEach(item => chips.push({ key: `commercial-${item}`, label: `Ticari: ${item.replaceAll("_", " ")}`, clear: () => toggleList(item, setCommercialStatuses) })); modalities.forEach(item => chips.push({ key: `mod-${item}`, label: trModality(item), clear: () => toggleModality(item) })); capabilities.forEach(item => chips.push({ key: `cap-${item}`, label: trCapability(item), clear: () => toggleCapability(item) })); return chips; }, [query, developers, sortStack, providers, minContext, maxInputPrice, maxOutputPrice, benchmarkFocus, families, openness, licenses, commercialStatuses, modalities, capabilities, companies, facets.providers]);
+        chips.push({ key: "bench", label: `Odağı: ${benchmarkFocus}`, clear: () => { setBenchmarkFocus("any"); setPage(1); } }); advancedness.forEach(item => chips.push({ key: `adv-${item}`, label: ADVANCEDNESS_LABELS[item] ?? item, clear: () => toggleAdvancedness(item) })); families.forEach(item => chips.push({ key: `family-${item}`, label: item, clear: () => toggleList(item, setFamilies) })); openness.forEach(item => chips.push({ key: `open-${item}`, label: opennessLabels[item] ?? item, clear: () => toggleList(item, setOpenness) })); licenses.forEach(item => chips.push({ key: `license-${item}`, label: item.replaceAll("_", " "), clear: () => toggleList(item, setLicenses) })); commercialStatuses.forEach(item => chips.push({ key: `commercial-${item}`, label: `Ticari: ${item.replaceAll("_", " ")}`, clear: () => toggleList(item, setCommercialStatuses) })); modalities.forEach(item => chips.push({ key: `mod-${item}`, label: trModality(item), clear: () => toggleModality(item) })); capabilities.forEach(item => chips.push({ key: `cap-${item}`, label: trCapability(item), clear: () => toggleCapability(item) })); return chips; }, [query, developers, sortStack, providers, minContext, maxInputPrice, maxOutputPrice, benchmarkFocus, advancedness, families, openness, licenses, commercialStatuses, modalities, capabilities, companies, facets.providers]);
     useEffect(() => {
         if (activeSection !== "models" || query.trim().length < 2)
             return;
@@ -854,9 +867,9 @@ export default function Home() {
     useEffect(() => {
         if (activeSection !== "models" || !filterActive)
             return;
-        const timer = window.setTimeout(() => trackEvent(API, "filter_applied", { filters: { developers, providers, families, min_context: minContext || null, max_input_price: maxInputPrice || null, max_output_price: maxOutputPrice || null, openness, licenses, commercial_use: commercialStatuses, modalities, capabilities, benchmark_focus: benchmarkFocus } }), 700);
+        const timer = window.setTimeout(() => trackEvent(API, "filter_applied", { filters: { developers, providers, families, min_context: minContext || null, max_input_price: maxInputPrice || null, max_output_price: maxOutputPrice || null, openness, licenses, commercial_use: commercialStatuses, modalities, capabilities, advancedness, benchmark_focus: benchmarkFocus } }), 700);
         return () => window.clearTimeout(timer);
-    }, [activeSection, filterActive, developers, providers, families, minContext, maxInputPrice, maxOutputPrice, openness, licenses, commercialStatuses, modalities, capabilities, benchmarkFocus]);
+    }, [activeSection, filterActive, developers, providers, families, minContext, maxInputPrice, maxOutputPrice, openness, licenses, commercialStatuses, modalities, capabilities, advancedness, benchmarkFocus]);
     async function openDetailById(modelId: string) {
         setDetailLoading(true);
         setDetail(null);
@@ -968,6 +981,11 @@ export default function Home() {
     <section className="hero" id="overview"><div><p className="eyebrow">LLM INTELLIGENCE PLATFORM</p><h1>Yapay zekâ dünyasının<br /><em>nabzını tut.</em></h1><p className="hero-copy">Modelleri, fiyatları ve teknoloji değişimlerini tek merkezden, kaynaklarıyla birlikte takip et.</p></div><div className="radar"><span className="orbit orbit-one"/><span className="orbit orbit-two"/><span className="orbit orbit-three"/><span className="sweep"/><span className="dot dot-one"/><span className="dot dot-two"/><span className="dot dot-three"/><b>{stats.models || "—"}</b><small>İZLENEN MODEL</small></div></section>
     {error && <div className="error">API bağlantısı kurulamadı. Backend servisinin çalıştığını kontrol et.</div>}
     <section className="metric-grid">{[["İzlenen model", stats.models], ["Takip edilen firma", stats.companies], ["Fiyat gözlemi", stats.price_observations], ["Tespit edilen olay", stats.change_events]].map(([label, value]) => <article className="metric" key={String(label)}><p>{label}</p><strong>{loading ? "—" : compact(Number(value))}</strong><span>● Güncel veri</span></article>)}</section>
+    <OverviewIntelligence
+        api={API}
+        onOpenLeaderboards={() => navigateToSection("leaderboard")}
+        onOpenEvents={() => navigateToSection("events")}
+    />
     </>}
 
     {activeSection === "leaderboard" && (
@@ -994,7 +1012,7 @@ export default function Home() {
         loading={!catalogBootReady && loading}
         modelCount={stats.models}
         resultTotal={resultTotal}
-        profileLoading={profileLoading && !catalogBootReady}
+        profileLoading={profileLoading}
         query={query}
         onQueryChange={value => { setQuery(value); setPage(1); }}
         developers={developers}

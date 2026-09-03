@@ -503,21 +503,27 @@ def _handle_announcement(
     session: Session, event: EventEnvelope, source: Source
 ) -> list[ChangeEvent]:
     entity_id = uuid5(NAMESPACE_URL, event.entity_key)
+    title = str(event.payload.get("title") or event.payload.get("name") or event.entity_key)
+    category = classify_event(
+        event.event_type.value,
+        title,
+        event.payload,
+    )
+    stored_event_type = (
+        EventType.MODEL_RELEASED.value
+        if category == "model_release"
+        else event.event_type.value
+    )
     existing = session.scalar(
         select(ChangeEvent).where(
-            ChangeEvent.event_type == event.event_type.value,
-            ChangeEvent.title == str(event.payload.get("title") or event.entity_key)[:240],
+            ChangeEvent.entity_id == entity_id,
+            ChangeEvent.title == title[:240],
         )
     )
     if existing is not None:
         if existing.source_id != source.id:
             _corroborate_change(existing, event, source)
         return []
-    category = classify_event(
-        event.event_type.value,
-        str(event.payload.get("title") or ""),
-        event.payload,
-    )
     cutoff = event.collected_at - timedelta(days=7)
     candidates = session.scalars(
         select(ChangeEvent)
@@ -529,7 +535,6 @@ def _handle_announcement(
         .order_by(ChangeEvent.detected_at.desc())
         .limit(200)
     ).all()
-    title = str(event.payload.get("title") or event.payload.get("name") or event.entity_key)
     corroborating = next(
         (
             candidate
@@ -542,12 +547,7 @@ def _handle_announcement(
     if corroborating is not None:
         _corroborate_change(corroborating, event, source)
         return []
-    event_spec = EVENT_BY_TYPE.get(event.event_type.value)
-    stored_event_type = (
-        EventType.MODEL_RELEASED.value
-        if category == "model_release"
-        else event.event_type.value
-    )
+    event_spec = EVENT_BY_TYPE.get(stored_event_type)
     return [
         _change_event(
             event=event,

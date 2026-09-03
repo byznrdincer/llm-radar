@@ -44,6 +44,22 @@ def test_announcement_categories_cover_document_taxonomy() -> None:
     assert (
         classify_event(
             "company.announcement",
+            "The latest AI news we announced in August 2026",
+            {"summary": "A roundup of model and product updates."},
+        )
+        == "model_update"
+    )
+    assert (
+        classify_event(
+            "company.announcement",
+            "Introducing computer use in Gemini 3.5 Flash",
+            {"summary": "A new feature for the Gemini model."},
+        )
+        == "product_launch"
+    )
+    assert (
+        classify_event(
+            "company.announcement",
             "Introducing Amazon Nova 2 Lite",
             {"summary": "Our newest efficient reasoning model is now available."},
         )

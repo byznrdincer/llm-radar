@@ -105,9 +105,9 @@ const capabilityLabels: Record<string, string> = {
 };
 
 const opennessLabels: Record<string, string> = {
-  open_source: "Açık kaynak",
-  open_weight: "Açık ağırlık",
-  proprietary: "Kapalı kaynak",
+  open_source: "Open Source",
+  open_weight: "Open Weight",
+  proprietary: "Closed Source",
   unknown: "Açıklık bilinmiyor",
 };
 
@@ -115,9 +115,9 @@ const availabilityLabels: Record<string, string> = {
   api: "API erişimi",
   hosted: "Barındırılan API",
   local: "Yerel kullanım",
-  open_source: "Açık kaynak",
-  open_weight: "Açık ağırlık",
-  proprietary: "Kapalı kaynak",
+  open_source: "Open Source",
+  open_weight: "Open Weight",
+  proprietary: "Closed Source",
   unknown: "Erişim bilinmiyor",
 };
 
