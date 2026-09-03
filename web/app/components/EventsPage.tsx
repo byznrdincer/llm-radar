@@ -351,6 +351,17 @@ function scoreLabel(importance: string, score: number): string {
   return `${importance.toUpperCase()} - ${score}`;
 }
 
+function modelLevelLabel(level: string | null | undefined, language: Language): string | null {
+  if (!level) return null;
+  const labels: Record<string, Record<Language, string>> = {
+    frontier: { tr: "Frontier", en: "Frontier" },
+    advanced: { tr: "Yüksek", en: "High" },
+    mid: { tr: "Orta", en: "Medium" },
+    entry: { tr: "Başlangıç", en: "Entry" },
+  };
+  return labels[level]?.[language] ?? null;
+}
+
 function BookmarkIcon({ filled }: { filled: boolean }) {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -379,7 +390,26 @@ function daysAgoIso(days: number): string {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
-type EventSort = "recent" | "importance";
+type EventSort = "priority" | "recent" | "importance";
+
+const MODEL_LEVEL_ORDER: Record<string, number> = {
+  frontier: 0,
+  advanced: 1,
+  mid: 2,
+  entry: 3,
+};
+
+function compareEvents(a: FeedEvent, b: FeedEvent, sortBy: EventSort): number {
+  if (sortBy === "recent") return Date.parse(b.detected_at) - Date.parse(a.detected_at);
+  if (sortBy === "importance") {
+    return b.importance_score - a.importance_score
+      || Date.parse(b.detected_at) - Date.parse(a.detected_at);
+  }
+  return (MODEL_LEVEL_ORDER[a.model_level ?? ""] ?? 4)
+    - (MODEL_LEVEL_ORDER[b.model_level ?? ""] ?? 4)
+    || b.importance_score - a.importance_score
+    || Date.parse(b.detected_at) - Date.parse(a.detected_at);
+}
 
 function eventQueryParams({
   offset,
@@ -453,6 +483,7 @@ function EventCard({ event, saved, onToggleSave }: EventCardProps) {
   const org = organization(event);
   const url = sourceUrl(event);
   const summary = eventSummary(event, language, locale);
+  const levelLabel = modelLevelLabel(event.model_level, language);
 
   return (
     <article className="ev-card">
@@ -467,6 +498,7 @@ function EventCard({ event, saved, onToggleSave }: EventCardProps) {
         />
         <div className="ev-badges">
           <span className={`ev-cat ev-${categoryClass(event)}`}>{categoryLabel(event)}</span>
+          {levelLabel && <span className={`ev-model-level ${event.model_level}`}>{levelLabel}</span>}
           <span className={`ev-score ${event.importance}`}>
             {scoreLabel(event.importance, event.importance_score)}
           </span>
@@ -538,6 +570,7 @@ const STRINGS: Record<Language, {
   modelLevelHigh: string;
   modelLevelMedium: string;
   sortLabel: string;
+  sortPriority: string;
   sortRecent: string;
   sortImportance: string;
   clearFilters: string;
@@ -589,6 +622,7 @@ const STRINGS: Record<Language, {
     modelLevelHigh: "Yüksek",
     modelLevelMedium: "Orta",
     sortLabel: "Sıralama",
+    sortPriority: "Öncelikli modeller",
     sortRecent: "En yeni",
     sortImportance: "En önemli",
     clearFilters: "Filtreleri temizle",
@@ -640,6 +674,7 @@ const STRINGS: Record<Language, {
     modelLevelHigh: "High",
     modelLevelMedium: "Medium",
     sortLabel: "Sort",
+    sortPriority: "Priority models",
     sortRecent: "Newest",
     sortImportance: "Most important",
     clearFilters: "Clear filters",
@@ -680,7 +715,7 @@ export default function EventsPage({
   const [importance, setImportance] = useState("any");
   const [openness, setOpenness] = useState("any");
   const [modelLevel, setModelLevel] = useState("any");
-  const [sortBy, setSortBy] = useState<EventSort>("importance");
+  const [sortBy, setSortBy] = useState<EventSort>("priority");
   const loadingMoreRef = useRef(false);
 
   useEffect(() => {
@@ -743,9 +778,7 @@ export default function EventsPage({
         setEvents(current => {
           if (current.some(event => event.id === incoming.id)) return current;
           const updated = [incoming, ...current];
-          return sortBy === "recent"
-            ? updated.sort((a, b) => Date.parse(b.detected_at) - Date.parse(a.detected_at))
-            : updated.sort((a, b) => b.importance_score - a.importance_score);
+          return updated.sort((a, b) => compareEvents(a, b, sortBy));
         });
         setTotal(current => current + 1);
       } catch {
@@ -960,6 +993,7 @@ export default function EventsPage({
           <div className="ev-select-wrap">
             <span className="ev-select-icon" aria-hidden="true">↕</span>
             <select value={sortBy} onChange={event => setSortBy(event.target.value as EventSort)}>
+              <option value="priority">{t.sortPriority}</option>
               <option value="importance">{t.sortImportance}</option>
               <option value="recent">{t.sortRecent}</option>
             </select>
@@ -971,7 +1005,7 @@ export default function EventsPage({
           || importance !== "any"
           || openness !== "any"
           || modelLevel !== "any"
-          || sortBy !== "importance") && (
+          || sortBy !== "priority") && (
           <button
             type="button"
             className="ev-clear-filters"
@@ -980,7 +1014,7 @@ export default function EventsPage({
               setImportance("any");
               setOpenness("any");
               setModelLevel("any");
-              setSortBy("importance");
+              setSortBy("priority");
               onCategoryChange("any");
               onDaysChange("any");
               setView("all");
@@ -996,6 +1030,7 @@ export default function EventsPage({
         const url = sourceUrl(featured);
         const summary = eventSummary(featured, language, locale);
         const tags = eventTags(featured);
+        const levelLabel = modelLevelLabel(featured.model_level, language);
         return (
           <div className="ev-featured-block">
             <p className="ev-block-label">{t.featured}</p>
@@ -1014,6 +1049,9 @@ export default function EventsPage({
               <div className="ev-featured-body">
                 <div className="ev-badges">
                   <span className={`ev-cat ev-${categoryClass(featured)}`}>{categoryLabel(featured)}</span>
+                  {levelLabel && (
+                    <span className={`ev-model-level ${featured.model_level}`}>{levelLabel}</span>
+                  )}
                   <span className={`ev-score ${featured.importance}`}>
                     {scoreLabel(featured.importance, featured.importance_score)}
                   </span>

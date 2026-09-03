@@ -1795,7 +1795,7 @@ def list_events(
     min_score: Annotated[int | None, Query(ge=0, le=100)] = None,
     openness: Literal["open_source", "open_weight", "proprietary"] | None = None,
     model_level: Literal["frontier", "advanced", "mid"] | None = None,
-    sort_by: Literal["importance", "recent"] = "importance",
+    sort_by: Literal["priority", "importance", "recent"] = "importance",
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> dict[str, Any]:
@@ -1822,12 +1822,14 @@ def list_events(
     )
 
     event_model_metadata: dict[Any, dict[str, str | None]] = {}
-    if openness is not None or model_level is not None:
+    if openness is not None or model_level is not None or sort_by == "priority":
         # Openness and model level belong to the model an event is about, not
         # to the event row. Only direct model events can therefore be filtered
         # without guessing; papers, companies and leaderboard rows are omitted
         # while either model-specific filter is active.
-        candidate_filters = [*filters, ChangeEvent.entity_type == "model"]
+        candidate_filters = list(filters)
+        if openness is not None or model_level is not None:
+            candidate_filters.append(ChangeEvent.entity_type == "model")
         candidates = session.scalars(
             select(ChangeEvent).where(*candidate_filters).order_by(*ordering)
         ).all()
@@ -1839,7 +1841,11 @@ def list_events(
                 .outerjoin(ModelProfile, ModelProfile.model_id == Model.id)
                 .where(Model.id.in_(model_ids))
             ).all()
-            general_matches = selection_matches(session, "general") if model_level else {}
+            general_matches = (
+                selection_matches(session, "general")
+                if model_level is not None or sort_by == "priority"
+                else {}
+            )
             for model, company, profile in rows:
                 match = general_matches.get(canonical_model_name(model.name))
                 event_model_metadata[model.id] = {
@@ -1858,6 +1864,17 @@ def list_events(
                 or event_model_metadata.get(event.entity_id, {}).get("level") == model_level
             )
         ]
+        if sort_by == "priority":
+            level_rank = {"frontier": 0, "advanced": 1, "mid": 2, "entry": 3}
+            events.sort(
+                key=lambda event: (
+                    level_rank.get(
+                        event_model_metadata.get(event.entity_id, {}).get("level"), 4
+                    ),
+                    -event.importance_score,
+                    -event.detected_at.timestamp(),
+                )
+            )
         total = len(events)
         events = events[offset : offset + limit]
     else:

@@ -179,6 +179,27 @@ def test_event_model_filters_use_resolved_catalog_metadata() -> None:
     assert all(item["model_level"] == "frontier" for item in frontier_items)
 
 
+def test_event_priority_sort_puts_stronger_model_levels_first() -> None:
+    response = httpx.get(
+        f"{BASE_URL}/api/v1/events",
+        params={"sort_by": "priority", "limit": 100},
+        timeout=30,
+    )
+    response.raise_for_status()
+    items = response.json()["items"]
+    assert items
+
+    level_rank = {"frontier": 0, "advanced": 1, "mid": 2, "entry": 3}
+    sort_keys = [
+        (
+            level_rank.get(item["model_level"], 4),
+            -item["importance_score"],
+        )
+        for item in items
+    ]
+    assert sort_keys == sorted(sort_keys)
+
+
 @pytest.mark.parametrize(
     "field",
     [
