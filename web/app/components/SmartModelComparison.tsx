@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import ModelAvatar from "./ModelAvatar";
+import { useLanguage } from "../lib/i18n";
 import {
     buildDimensionMatrix,
     buildInsights,
@@ -41,11 +42,11 @@ function numeric(value: string | null | undefined) {
 }
 
 function formatBoolBadge(value: string) {
-    if (value === "Var")
-        return <span className="cmp-badge cmp-badge-yes">Var</span>;
-    if (value === "Yok")
-        return <span className="cmp-badge cmp-badge-no">Yok</span>;
-    if (value === "Bilinmiyor")
+    if (value === "Var" || value === "Yes")
+        return <span className="cmp-badge cmp-badge-yes">{value}</span>;
+    if (value === "Yok" || value === "No")
+        return <span className="cmp-badge cmp-badge-no">{value}</span>;
+    if (value === "Bilinmiyor" || value === "Unknown")
         return <span className="cmp-badge cmp-badge-na">?</span>;
     return value;
 }
@@ -59,6 +60,52 @@ type Props = {
 };
 
 function ComparisonCharts({ models, profiles }: Props) {
+    const { language } = useLanguage();
+    const t = language === "tr"
+        ? {
+            radarAria: "Radar grafiği",
+            radarKicker: "RADAR",
+            radarTitle: "Çok boyutlu profil",
+            priceAria: "Fiyat grafiği",
+            priceKicker: "USD / 1M",
+            priceTitle: "Token fiyatı",
+            contextAria: "Context grafiği",
+            contextKicker: "K TOKEN",
+            contextTitle: "Context kapasitesi",
+            input: "Girdi",
+            output: "Çıktı",
+            cached: "Cached",
+            contextK: "Context (K)",
+            metricContext: "Context",
+            metricInput: "Girdi",
+            metricOutput: "Çıktı",
+            metricModality: "Modalite",
+            metricTool: "Tool",
+            metricReasoning: "Reasoning",
+            metricBenchmark: "Benchmark",
+        }
+        : {
+            radarAria: "Radar chart",
+            radarKicker: "RADAR",
+            radarTitle: "Multi-dimensional profile",
+            priceAria: "Price chart",
+            priceKicker: "USD / 1M",
+            priceTitle: "Token price",
+            contextAria: "Context chart",
+            contextKicker: "K TOKENS",
+            contextTitle: "Context capacity",
+            input: "Input",
+            output: "Output",
+            cached: "Cached",
+            contextK: "Context (K)",
+            metricContext: "Context",
+            metricInput: "Input",
+            metricOutput: "Output",
+            metricModality: "Modality",
+            metricTool: "Tool",
+            metricReasoning: "Reasoning",
+            metricBenchmark: "Benchmark",
+        };
     const entries = models.map(model => {
         const features = profiles[model.id]?.features;
         const modalities = features?.modalities?.length ? features.modalities : (model.capabilities.input_modalities ?? []);
@@ -88,13 +135,13 @@ function ComparisonCharts({ models, profiles }: Props) {
         return Math.round(20 + ((max - value) / (max - min)) * 80);
     };
     const metrics = [
-        { metric: "Context", score: (entry: typeof entries[number]) => Math.round(((entry.context ?? 0) / maxContext) * 100) },
-        { metric: "Girdi", score: (entry: typeof entries[number]) => priceAdvantage(entry.input, "input") },
-        { metric: "Çıktı", score: (entry: typeof entries[number]) => priceAdvantage(entry.output, "output") },
-        { metric: "Modalite", score: (entry: typeof entries[number]) => Math.min(100, entry.modalityCount * 25) },
-        { metric: "Tool", score: (entry: typeof entries[number]) => entry.toolCalling === true ? 100 : 0 },
-        { metric: "Reasoning", score: (entry: typeof entries[number]) => entry.reasoning === true ? 100 : 0 },
-        { metric: "Benchmark", score: (entry: typeof entries[number]) => {
+        { metric: t.metricContext, score: (entry: typeof entries[number]) => Math.round(((entry.context ?? 0) / maxContext) * 100) },
+        { metric: t.metricInput, score: (entry: typeof entries[number]) => priceAdvantage(entry.input, "input") },
+        { metric: t.metricOutput, score: (entry: typeof entries[number]) => priceAdvantage(entry.output, "output") },
+        { metric: t.metricModality, score: (entry: typeof entries[number]) => Math.min(100, entry.modalityCount * 25) },
+        { metric: t.metricTool, score: (entry: typeof entries[number]) => entry.toolCalling === true ? 100 : 0 },
+        { metric: t.metricReasoning, score: (entry: typeof entries[number]) => entry.reasoning === true ? 100 : 0 },
+        { metric: t.metricBenchmark, score: (entry: typeof entries[number]) => {
             const model = models.find(item => item.id === entry.id);
             return model?.selection?.benchmark_score ?? 0;
         } },
@@ -104,12 +151,12 @@ function ComparisonCharts({ models, profiles }: Props) {
         entries.forEach(entry => { row[entry.id] = item.score(entry); });
         return row;
     });
-    const priceData = entries.map(entry => ({ name: entry.name, Girdi: entry.input, "Çıktı": entry.output, "Cached": entry.cached }));
-    const contextData = entries.map(entry => ({ name: entry.name, "Context (K)": entry.context == null ? null : Math.round((entry.context / 1024) * 10) / 10 }));
+    const priceData = entries.map(entry => ({ name: entry.name, input: entry.input, output: entry.output, cached: entry.cached }));
+    const contextData = entries.map(entry => ({ name: entry.name, contextK: entry.context == null ? null : Math.round((entry.context / 1024) * 10) / 10 }));
     return (
         <div className="cmp-chart-grid">
-            <article className="cmp-chart cmp-chart-radar" role="img" aria-label="Radar grafiği">
-                <header><p>Çok boyutlu profil</p><span>RADAR</span></header>
+            <article className="cmp-chart cmp-chart-radar" role="img" aria-label={t.radarAria}>
+                <header><p>{t.radarTitle}</p><span>{t.radarKicker}</span></header>
                 <div className="cmp-chart-body cmp-chart-body-tall">
                     <ResponsiveContainer width="100%" height="100%">
                         <RadarChart data={radarData} outerRadius="68%">
@@ -125,8 +172,8 @@ function ComparisonCharts({ models, profiles }: Props) {
                     </ResponsiveContainer>
                 </div>
             </article>
-            <article className="cmp-chart" role="img" aria-label="Fiyat grafiği">
-                <header><p>Token fiyatı</p><span>USD / 1M</span></header>
+            <article className="cmp-chart" role="img" aria-label={t.priceAria}>
+                <header><p>{t.priceTitle}</p><span>{t.priceKicker}</span></header>
                 <div className="cmp-chart-body">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={priceData} margin={{ top: 8, right: 4, left: -20, bottom: 16 }}>
@@ -135,15 +182,15 @@ function ComparisonCharts({ models, profiles }: Props) {
                             <YAxis tick={{ fill: "#7a8a82", fontSize: 9 }} />
                             <Tooltip contentStyle={{ background: "#1a2420", border: "1px solid #3a4a44", borderRadius: 8 }} />
                             <Legend wrapperStyle={{ fontSize: 10 }} />
-                            <Bar dataKey="Girdi" fill="#3d8f84" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                            <Bar dataKey="Çıktı" fill="#8b72c4" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                            <Bar dataKey="Cached" fill="#8cb43a" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                            <Bar dataKey="input" name={t.input} fill="#3d8f84" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                            <Bar dataKey="output" name={t.output} fill="#8b72c4" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                            <Bar dataKey="cached" name={t.cached} fill="#8cb43a" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
             </article>
-            <article className="cmp-chart" role="img" aria-label="Context grafiği">
-                <header><p>Context kapasitesi</p><span>K TOKEN</span></header>
+            <article className="cmp-chart" role="img" aria-label={t.contextAria}>
+                <header><p>{t.contextTitle}</p><span>{t.contextKicker}</span></header>
                 <div className="cmp-chart-body">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={contextData} margin={{ top: 8, right: 4, left: -20, bottom: 16 }}>
@@ -151,7 +198,7 @@ function ComparisonCharts({ models, profiles }: Props) {
                             <XAxis dataKey="name" tick={{ fill: "#9eaea4", fontSize: 9 }} interval={0} angle={-10} textAnchor="end" />
                             <YAxis tick={{ fill: "#7a8a82", fontSize: 9 }} />
                             <Tooltip contentStyle={{ background: "#1a2420", border: "1px solid #3a4a44", borderRadius: 8 }} />
-                            <Bar dataKey="Context (K)" fill="#8cb43a" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                            <Bar dataKey="contextK" name={t.contextK} fill="#8cb43a" radius={[4, 4, 0, 0]} isAnimationActive={false} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -161,14 +208,15 @@ function ComparisonCharts({ models, profiles }: Props) {
 }
 
 export default function SmartModelComparison({ models, profiles, developerSites = {}, onRemove, onInspect }: Props) {
+    const { language, locale } = useLanguage();
     const snapshots = models.map(model => buildSnapshot(
         model,
         profiles[model.id]?.features,
         profiles[model.id]?.selection,
     ));
-    const scenarios = buildScenarioPicks(snapshots);
-    const insights = buildInsights(snapshots);
-    const matrix = buildDimensionMatrix(snapshots);
+    const scenarios = buildScenarioPicks(snapshots, language);
+    const insights = buildInsights(snapshots, language, locale);
+    const matrix = buildDimensionMatrix(snapshots, language, locale);
 
     return (
         <div className="smart-compare">
@@ -181,7 +229,7 @@ export default function SmartModelComparison({ models, profiles, developerSites 
                                 type="button"
                                 className="cmp-hero-remove"
                                 onClick={() => onRemove(model)}
-                                aria-label={`${model.name} modelini karşılaştırmadan çıkar`}
+                                aria-label={language === "tr" ? `${model.name} modelini karşılaştırmadan çıkar` : `Remove ${model.name} from comparison`}
                             >
                                 ×
                             </button>
@@ -199,11 +247,11 @@ export default function SmartModelComparison({ models, profiles, developerSites 
                         <h3 className="cmp-hero-name">{model.name}</h3>
                         <div className="cmp-hero-stats">
                             <span>{snapshots[index]?.context ? `${(snapshots[index].context! / 1000).toFixed(0)}K ctx` : "— ctx"}</span>
-                            <span>{snapshots[index]?.inputPrice != null ? `$${snapshots[index].inputPrice}` : "—"} girdi</span>
+                            <span>{snapshots[index]?.inputPrice != null ? `$${snapshots[index].inputPrice}` : "—"} {language === "tr" ? "girdi" : "input"}</span>
                         </div>
                         {onInspect && (
                             <button type="button" className="cmp-hero-detail" onClick={() => onInspect(model)}>
-                                Tüm ayrıntılar
+                                {language === "tr" ? "Tüm ayrıntılar" : "All details"}
                             </button>
                         )}
                     </article>
@@ -213,8 +261,8 @@ export default function SmartModelComparison({ models, profiles, developerSites 
             <section className="cmp-panel" aria-labelledby="compare-charts-title">
                 <header className="cmp-panel-head">
                     <div>
-                        <p className="kicker">GRAFİKLER</p>
-                        <h3 id="compare-charts-title">Görsel karşılaştırma</h3>
+                        <p className="kicker">{language === "tr" ? "GRAFİKLER" : "CHARTS"}</p>
+                        <h3 id="compare-charts-title">{language === "tr" ? "Görsel karşılaştırma" : "Visual comparison"}</h3>
                     </div>
                 </header>
                 <ComparisonCharts models={models} profiles={profiles} developerSites={developerSites} />
@@ -223,10 +271,10 @@ export default function SmartModelComparison({ models, profiles, developerSites 
             <section className="cmp-panel" aria-labelledby="compare-insights-title">
                 <header className="cmp-panel-head">
                     <div>
-                        <p className="kicker">AKILLI ÖZET</p>
-                        <h3 id="compare-insights-title">Avantaj & dezavantaj</h3>
+                        <p className="kicker">{language === "tr" ? "AKILLI ÖZET" : "SMART SUMMARY"}</p>
+                        <h3 id="compare-insights-title">{language === "tr" ? "Avantaj & dezavantaj" : "Pros & cons"}</h3>
                     </div>
-                    <p>Rakiplere göre otomatik çıkarılan güçlü ve zayıf yönler.</p>
+                    <p>{language === "tr" ? "Rakiplere göre otomatik çıkarılan güçlü ve zayıf yönler." : "Strengths and weaknesses automatically derived relative to the competition."}</p>
                 </header>
                 <div className="cmp-insight-grid">
                     {insights.map((item, index) => (
@@ -237,19 +285,19 @@ export default function SmartModelComparison({ models, profiles, developerSites 
                             </header>
                             <div className="cmp-insight-body">
                                 <div>
-                                    <span className="cmp-insight-label cmp-insight-label-pro">+ Avantajlar</span>
+                                    <span className="cmp-insight-label cmp-insight-label-pro">{language === "tr" ? "+ Avantajlar" : "+ Pros"}</span>
                                     <div className="cmp-tag-list">
                                         {item.pros.length
                                             ? item.pros.map(point => <span key={point} className="cmp-tag cmp-tag-pro">{point}</span>)
-                                            : <span className="cmp-tag cmp-tag-empty">Belirgin avantaj yok</span>}
+                                            : <span className="cmp-tag cmp-tag-empty">{language === "tr" ? "Belirgin avantaj yok" : "No clear advantage"}</span>}
                                     </div>
                                 </div>
                                 <div>
-                                    <span className="cmp-insight-label cmp-insight-label-con">− Dezavantajlar</span>
+                                    <span className="cmp-insight-label cmp-insight-label-con">{language === "tr" ? "− Dezavantajlar" : "− Cons"}</span>
                                     <div className="cmp-tag-list">
                                         {item.cons.length
                                             ? item.cons.map(point => <span key={point} className="cmp-tag cmp-tag-con">{point}</span>)
-                                            : <span className="cmp-tag cmp-tag-empty">Belirgin dezavantaj yok</span>}
+                                            : <span className="cmp-tag cmp-tag-empty">{language === "tr" ? "Belirgin dezavantaj yok" : "No clear disadvantage"}</span>}
                                     </div>
                                 </div>
                             </div>
@@ -261,10 +309,10 @@ export default function SmartModelComparison({ models, profiles, developerSites 
             <section className="cmp-panel" aria-labelledby="compare-scenarios-title">
                 <header className="cmp-panel-head">
                     <div>
-                        <p className="kicker">SENARYO ÖNERİSİ</p>
-                        <h3 id="compare-scenarios-title">Hangi iş için hangi model?</h3>
+                        <p className="kicker">{language === "tr" ? "SENARYO ÖNERİSİ" : "SCENARIO SUGGESTIONS"}</p>
+                        <h3 id="compare-scenarios-title">{language === "tr" ? "Hangi iş için hangi model?" : "Which model for which job?"}</h3>
                     </div>
-                    <p>8 kullanım senaryosu için ağırlıklı skor.</p>
+                    <p>{language === "tr" ? "8 kullanım senaryosu için ağırlıklı skor." : "Weighted score across 8 use-case scenarios."}</p>
                 </header>
                 <div className="cmp-scenario-grid">
                     {scenarios.map(item => {
@@ -273,8 +321,8 @@ export default function SmartModelComparison({ models, profiles, developerSites 
                             <article key={item.id} className={item.winnerId ? "cmp-scenario-card is-winner" : "cmp-scenario-card"} style={winnerIndex >= 0 ? { "--cmp-accent": MODEL_ACCENTS[winnerIndex] } as CSSProperties : undefined}>
                                 <div className="cmp-scenario-icon" aria-hidden="true">{SCENARIO_ICONS[item.id] ?? "•"}</div>
                                 <div className="cmp-scenario-main">
-                                    <p>{SCENARIO_LABELS[item.id] ?? item.label}</p>
-                                    <strong>{item.winnerName ?? "Yetersiz veri"}</strong>
+                                    <p>{SCENARIO_LABELS[language][item.id] ?? item.label}</p>
+                                    <strong>{item.winnerName ?? (language === "tr" ? "Yetersiz veri" : "Insufficient data")}</strong>
                                     <small>{item.reason}</small>
                                 </div>
                                 {item.scores.some(score => score.score != null) && (
@@ -299,14 +347,14 @@ export default function SmartModelComparison({ models, profiles, developerSites 
             <section className="cmp-panel" aria-labelledby="compare-matrix-title">
                 <header className="cmp-panel-head">
                     <div>
-                        <p className="kicker">BOYUT MATRİSİ</p>
-                        <h3 id="compare-matrix-title">Tüm ölçütler</h3>
+                        <p className="kicker">{language === "tr" ? "BOYUT MATRİSİ" : "DIMENSION MATRIX"}</p>
+                        <h3 id="compare-matrix-title">{language === "tr" ? "Tüm ölçütler" : "All metrics"}</h3>
                     </div>
-                    <p>Fiyat, context, benchmark ve yetenekler.</p>
+                    <p>{language === "tr" ? "Fiyat, context, benchmark ve yetenekler." : "Price, context, benchmark, and capabilities."}</p>
                 </header>
                 <div className="cmp-matrix" style={{ "--cmp-cols": models.length } as CSSProperties}>
                     <div className="cmp-matrix-head">
-                        <span>Ölçüt</span>
+                        <span>{language === "tr" ? "Ölçüt" : "Metric"}</span>
                         {models.map((model, index) => (
                             <span key={model.id} className="cmp-matrix-model" style={{ "--cmp-accent": MODEL_ACCENTS[index] } as CSSProperties}>
                                 <ModelAvatar name={model.name} companySlug={model.company.slug} companyName={model.company.name} websiteUrl={developerSites[model.company.slug]} size="sm" />
@@ -324,7 +372,7 @@ export default function SmartModelComparison({ models, profiles, developerSites 
                                 return (
                                     <span key={model.id} className={isWinner ? "cmp-matrix-value is-winner" : "cmp-matrix-value"} style={{ "--cmp-accent": MODEL_ACCENTS[index] } as CSSProperties}>
                                         {isBool ? formatBoolBadge(raw) : raw}
-                                        {isWinner && <em className="cmp-win-mark" aria-label="Bu ölçütte öne çıkan">★</em>}
+                                        {isWinner && <em className="cmp-win-mark" aria-label={language === "tr" ? "Bu ölçütte öne çıkan" : "Leader on this metric"}>★</em>}
                                     </span>
                                 );
                             })}

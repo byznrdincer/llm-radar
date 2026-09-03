@@ -16,6 +16,98 @@ import {
   type TechnologySlug,
 } from "../lib/technologyContent";
 import { toPublicSourceUrl } from "../lib/publicSourceUrl";
+import { useLanguage, type Language } from "../lib/i18n";
+
+const STRINGS: Record<Language, {
+  eyebrow: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  timeRangeLabel: string;
+  daysSuffix: string;
+  methodology: string;
+  featuredTitle: string;
+  featuredSubtitle: string;
+  allTechTitle: string;
+  daySummary: (days: number) => string;
+  footCta: string;
+  methodModalTitle: string;
+  methodModalBody: string;
+  methodModalNote: string;
+  modalClose: string;
+  back: string;
+  openDetail: (title: string) => string;
+  whatIsTitle: (title: string) => string;
+  whyTrackTitle: string;
+  recentDevelopments: string;
+  allDevelopments: string;
+  openSource: string;
+  relatedModels: string;
+  relatedResearch: string;
+  loading: string;
+  noMatchingPapers: string;
+  developments: string;
+}> = {
+  tr: {
+    eyebrow: "TEKNOLOJİ RADARI",
+    heroTitle: "Yükselen teknolojileri takip et.",
+    heroSubtitle: "LLM ekosistemindeki önemli hareketleri tek bakışta görün.",
+    timeRangeLabel: "Zaman aralığı",
+    daysSuffix: "gün",
+    methodology: "Metodoloji",
+    featuredTitle: "Öne çıkanlar",
+    featuredSubtitle: "Seçili dönemin en görünür teknoloji sinyalleri",
+    allTechTitle: "Tüm teknolojiler",
+    daySummary: days => `${days} günlük gelişme özeti`,
+    footCta: "Tüm teknolojileri ve gelişmeleri keşfet →",
+    methodModalTitle: "Skorlama metodolojisi",
+    methodModalBody:
+      "Teknoloji Radarı, GitHub sürümleri, araştırma metinleri ve resmî duyurulardan gelen gelişmeleri anahtar kelime eşleştirmesiyle gruplar. Yükseliş oranı, seçili dönemdeki gelişme sayısının bir önceki eşit döneme göre değişimini gösterir.",
+    methodModalNote: "Veriler uydurulmaz; yalnızca kayıtlı ve teknolojiyle eşleşen gelişmeler sayılır.",
+    modalClose: "×",
+    back: "← Teknoloji Radarı",
+    openDetail: title => `${title} detayını aç`,
+    whatIsTitle: title => `${title} nedir?`,
+    whyTrackTitle: "Neden takip ediyoruz?",
+    recentDevelopments: "Son gelişmeler",
+    allDevelopments: "Tüm gelişmeler →",
+    openSource: "Kaynağı aç",
+    relatedModels: "İlgili modeller",
+    relatedResearch: "İlgili araştırmalar",
+    loading: "Yükleniyor…",
+    noMatchingPapers: "Henüz eşleşen makale yok.",
+    developments: "gelişme",
+  },
+  en: {
+    eyebrow: "TECHNOLOGY RADAR",
+    heroTitle: "Track the technologies on the rise.",
+    heroSubtitle: "See the key moves in the LLM ecosystem at a glance.",
+    timeRangeLabel: "Time range",
+    daysSuffix: "days",
+    methodology: "Methodology",
+    featuredTitle: "Featured",
+    featuredSubtitle: "The most visible technology signals of the selected period",
+    allTechTitle: "All technologies",
+    daySummary: days => `${days}-day development summary`,
+    footCta: "Explore all technologies and developments →",
+    methodModalTitle: "Scoring methodology",
+    methodModalBody:
+      "Technology Radar groups developments from GitHub releases, research texts, and official announcements using keyword matching. The rise rate shows how the number of developments in the selected period changed compared to the prior equal-length period.",
+    methodModalNote: "Data is never fabricated; only recorded developments that match the technology are counted.",
+    modalClose: "×",
+    back: "← Technology Radar",
+    openDetail: title => `Open ${title} details`,
+    whatIsTitle: title => `What is ${title}?`,
+    whyTrackTitle: "Why we track it",
+    recentDevelopments: "Recent developments",
+    allDevelopments: "All developments →",
+    openSource: "Open source",
+    relatedModels: "Related models",
+    relatedResearch: "Related research",
+    loading: "Loading…",
+    noMatchingPapers: "No matching papers yet.",
+    developments: "developments",
+  },
+};
 
 type TechnologySignal = {
   slug: string;
@@ -50,11 +142,11 @@ type Props = {
 
 type DayRange = 7 | 30 | 90;
 
-function formatDate(value: string | null | undefined): string {
+function formatDate(value: string | null | undefined, locale: string): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" });
+  return date.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
 }
 
 function eventSourceUrl(event: FeedEvent): string | null {
@@ -170,6 +262,8 @@ function useTechMetrics(events: FeedEvent[], slug: TechnologySlug, days: DayRang
 }
 
 export default function TechnologyRadarPage({ api, signals = [], onViewAllEvents }: Props) {
+  const { language, locale } = useLanguage();
+  const t = STRINGS[language];
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [selected, setSelected] = useState<TechnologySlug | null>(null);
   const [researchResult, setResearchResult] = useState<{ slug: TechnologySlug | null; items: ResearchItem[] }>({
@@ -190,7 +284,7 @@ export default function TechnologyRadarPage({ api, signals = [], onViewAllEvents
   useEffect(() => {
     if (!selected) return;
     let ignore = false;
-    const copy = TECHNOLOGY_COPY[selected];
+    const copy = TECHNOLOGY_COPY.tr[selected];
     fetch(`${api}/api/v1/research?q=${encodeURIComponent(copy.researchQuery)}&limit=3`)
       .then(r => (r.ok ? r.json() : null))
       .then(data => {
@@ -236,14 +330,14 @@ export default function TechnologyRadarPage({ api, signals = [], onViewAllEvents
     <section className="tr-page tr-page-dark" id="radar">
       <header className="tr-hero">
         <div className="tr-hero-copy">
-          <p className="tr-eyebrow">TEKNOLOJİ RADARI</p>
-          <h2>Yükselen teknolojileri takip et.</h2>
+          <p className="tr-eyebrow">{t.eyebrow}</p>
+          <h2>{t.heroTitle}</h2>
           <p className="tr-subtitle">
-            LLM ekosistemindeki önemli hareketleri tek bakışta görün.
+            {t.heroSubtitle}
           </p>
         </div>
         <div className="tr-hero-tools">
-          <div className="tr-range-tabs" role="tablist" aria-label="Zaman aralığı">
+          <div className="tr-range-tabs" role="tablist" aria-label={t.timeRangeLabel}>
             {([7, 30, 90] as DayRange[]).map(value => (
               <button
                 key={value}
@@ -253,20 +347,20 @@ export default function TechnologyRadarPage({ api, signals = [], onViewAllEvents
                 className={days === value ? "active" : ""}
                 onClick={() => setDays(value)}
               >
-                {value} gün
+                {value} {t.daysSuffix}
               </button>
             ))}
           </div>
           <button type="button" className="tr-method-link" onClick={() => setMethodOpen(true)}>
-            Metodoloji
+            {t.methodology}
           </button>
         </div>
       </header>
 
       <section className="tr-section">
         <div className="tr-section-title">
-          <h3>Öne çıkanlar</h3>
-          <p>Seçili dönemin en görünür teknoloji sinyalleri</p>
+          <h3>{t.featuredTitle}</h3>
+          <p>{t.featuredSubtitle}</p>
         </div>
         <div className="tr-featured-row">
           {FEATURED_SLUGS.map(slug => (
@@ -285,8 +379,8 @@ export default function TechnologyRadarPage({ api, signals = [], onViewAllEvents
       <section className="tr-section">
         <div className="tr-section-head">
           <div className="tr-section-title">
-            <h3>Tüm teknolojiler</h3>
-            <p>{days} günlük gelişme özeti</p>
+            <h3>{t.allTechTitle}</h3>
+            <p>{t.daySummary(days)}</p>
           </div>
         </div>
 
@@ -307,7 +401,7 @@ export default function TechnologyRadarPage({ api, signals = [], onViewAllEvents
       {onViewAllEvents && (
         <footer className="tr-foot-cta">
           <button type="button" onClick={onViewAllEvents}>
-            Tüm teknolojileri ve gelişmeleri keşfet →
+            {t.footCta}
           </button>
         </footer>
       )}
@@ -315,15 +409,13 @@ export default function TechnologyRadarPage({ api, signals = [], onViewAllEvents
       {methodOpen && (
         <div className="tr-modal-backdrop" role="presentation" onMouseDown={e => { if (e.target === e.currentTarget) setMethodOpen(false); }}>
           <div className="tr-modal" role="dialog" aria-modal="true">
-            <button type="button" className="tr-modal-close" onClick={() => setMethodOpen(false)}>×</button>
-            <h3>Skorlama metodolojisi</h3>
+            <button type="button" className="tr-modal-close" onClick={() => setMethodOpen(false)}>{t.modalClose}</button>
+            <h3>{t.methodModalTitle}</h3>
             <p>
-              Teknoloji Radarı, GitHub sürümleri, araştırma metinleri ve resmî duyurulardan gelen gelişmeleri
-              anahtar kelime eşleştirmesiyle gruplar. Yükseliş oranı, seçili dönemdeki gelişme sayısının bir
-              önceki eşit döneme göre değişimini gösterir.
+              {t.methodModalBody}
             </p>
             <p className="tr-muted">
-              Veriler uydurulmaz; yalnızca kayıtlı ve teknolojiyle eşleşen gelişmeler sayılır.
+              {t.methodModalNote}
             </p>
           </div>
         </div>
@@ -363,7 +455,9 @@ function TechnologyDetail({
   onBack,
   onViewAllEvents,
 }: DetailProps) {
-  const copy = TECHNOLOGY_COPY[slug];
+  const { language, locale } = useLanguage();
+  const t = STRINGS[language];
+  const copy = TECHNOLOGY_COPY[language][slug];
   const metrics = useTechMetrics(events, slug, days, signal);
   const brands = relatedBrandsFromEvents(events, slug);
   const colors = ACCENT_COLORS[copy.accent];
@@ -371,7 +465,7 @@ function TechnologyDetail({
   return (
     <section className="tr-page tr-page-dark" id="radar">
       <button type="button" className="tr-back" onClick={onBack}>
-        ← Teknoloji Radarı
+        {t.back}
       </button>
 
       <header className="tr-detail-hero">
@@ -382,8 +476,8 @@ function TechnologyDetail({
           <p className="tr-detail-kicker">{copy.subtitle}</p>
           <h2>{copy.title}</h2>
           <div className="tr-detail-meta">
-            <span className={`tr-trend tr-trend-${metrics.status}`}>{trendLabel(metrics.status)}</span>
-            <span>{metrics.current} gelişme ({days} gün)</span>
+            <span className={`tr-trend tr-trend-${metrics.status}`}>{trendLabel(metrics.status, language)}</span>
+            <span>{metrics.current} {t.developments} ({days} {t.daysSuffix})</span>
             {metrics.growth !== 0 && (
               <span className={metrics.growth > 0 ? "tr-up" : "tr-down"}>
                 {metrics.growth > 0 ? "+" : ""}{metrics.growth}%
@@ -395,21 +489,21 @@ function TechnologyDetail({
 
       <div className="tr-detail-grid">
         <article className="tr-detail-block">
-          <h3>{copy.title} nedir?</h3>
+          <h3>{t.whatIsTitle(copy.title)}</h3>
           <p>{copy.whatIs}</p>
         </article>
 
         <article className="tr-detail-block">
-          <h3>Neden takip ediyoruz?</h3>
+          <h3>{t.whyTrackTitle}</h3>
           <p>{copy.whyTrack}</p>
         </article>
 
         <article className="tr-detail-block tr-detail-wide">
           <div className="tr-detail-head">
-            <h3>Son gelişmeler</h3>
+            <h3>{t.recentDevelopments}</h3>
             {onViewAllEvents && (
               <button type="button" className="tr-link-btn" onClick={onViewAllEvents}>
-                Tüm gelişmeler →
+                {t.allDevelopments}
               </button>
             )}
           </div>
@@ -421,10 +515,10 @@ function TechnologyDetail({
                   <li key={event.id}>
                     <div>
                       <strong>{event.title}</strong>
-                      <time>{formatDate(event.detected_at)}</time>
+                      <time>{formatDate(event.detected_at, locale)}</time>
                     </div>
                     {url && (
-                      <a href={url} target="_blank" rel="noreferrer" aria-label="Kaynağı aç">↗</a>
+                      <a href={url} target="_blank" rel="noreferrer" aria-label={t.openSource}>↗</a>
                     )}
                   </li>
                 );
@@ -436,7 +530,7 @@ function TechnologyDetail({
         </article>
 
         <article className="tr-detail-block">
-          <h3>İlgili modeller</h3>
+          <h3>{t.relatedModels}</h3>
           <div className="tr-brand-row">
             {brands.map(name => (
               <span key={name} className="tr-brand-chip">{name}</span>
@@ -445,20 +539,20 @@ function TechnologyDetail({
         </article>
 
         <article className="tr-detail-block">
-          <h3>İlgili araştırmalar</h3>
+          <h3>{t.relatedResearch}</h3>
           {papersLoading ? (
-            <p className="tr-muted">Yükleniyor…</p>
+            <p className="tr-muted">{t.loading}</p>
           ) : papers.length ? (
             <ul className="tr-paper-list">
               {papers.map(paper => (
                 <li key={paper.id}>
                   <a href={paper.url} target="_blank" rel="noreferrer">{paper.title}</a>
-                  <time>{formatDate(paper.published_at)}</time>
+                  <time>{formatDate(paper.published_at, locale)}</time>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="tr-muted">Henüz eşleşen makale yok.</p>
+            <p className="tr-muted">{t.noMatchingPapers}</p>
           )}
         </article>
       </div>
@@ -467,13 +561,15 @@ function TechnologyDetail({
 }
 
 function FeaturedCard({ slug, days, events, signal, onOpen }: CardProps) {
-  const copy = TECHNOLOGY_COPY[slug];
+  const { language } = useLanguage();
+  const t = STRINGS[language];
+  const copy = TECHNOLOGY_COPY[language][slug];
   const colors = ACCENT_COLORS[copy.accent];
   const metrics = useTechMetrics(events, slug, days, signal);
 
   return (
     <article className="tr-featured-card" style={{ ["--tr-accent" as string]: colors.main, ["--tr-accent-soft" as string]: colors.soft }}>
-      <button type="button" className="tr-card-hit" onClick={onOpen} aria-label={`${copy.title} detayını aç`} />
+      <button type="button" className="tr-card-hit" onClick={onOpen} aria-label={t.openDetail(copy.title)} />
       <div className="tr-featured-main">
         <div className="tr-icon-wrap" style={{ background: colors.soft, borderColor: colors.glow }}>
           <TechIcon slug={slug} accent={copy.accent} />
@@ -487,9 +583,9 @@ function FeaturedCard({ slug, days, events, signal, onOpen }: CardProps) {
         </div>
       </div>
       <footer className="tr-card-metrics">
-        <span><strong>{metrics.current}</strong> gelişme <small>· {days} gün</small></span>
+        <span><strong>{metrics.current}</strong> {t.developments} <small>· {days} {t.daysSuffix}</small></span>
         <span className={`tr-trend tr-trend-${metrics.status}`}>
-          {metrics.status === "rising" ? "↗" : metrics.status === "falling" ? "↘" : "→"} {trendLabel(metrics.status)}
+          {metrics.status === "rising" ? "↗" : metrics.status === "falling" ? "↘" : "→"} {trendLabel(metrics.status, language)}
         </span>
       </footer>
     </article>
@@ -497,13 +593,15 @@ function FeaturedCard({ slug, days, events, signal, onOpen }: CardProps) {
 }
 
 function TechnologyListCard({ slug, days, events, signal, onOpen }: CardProps) {
-  const copy = TECHNOLOGY_COPY[slug];
+  const { language } = useLanguage();
+  const t = STRINGS[language];
+  const copy = TECHNOLOGY_COPY[language][slug];
   const colors = ACCENT_COLORS[copy.accent];
   const metrics = useTechMetrics(events, slug, days, signal);
 
   return (
     <article className="tr-compact-card" style={{ ["--tr-accent" as string]: colors.main, ["--tr-accent-soft" as string]: colors.soft }}>
-      <button type="button" className="tr-card-hit" onClick={onOpen} aria-label={`${copy.title} detayını aç`} />
+      <button type="button" className="tr-card-hit" onClick={onOpen} aria-label={t.openDetail(copy.title)} />
       <div className="tr-icon-wrap sm" style={{ background: colors.soft, borderColor: colors.glow }}>
         <TechIcon slug={slug} accent={copy.accent} />
       </div>
@@ -513,9 +611,9 @@ function TechnologyListCard({ slug, days, events, signal, onOpen }: CardProps) {
       </div>
       <div className="tr-compact-meta">
         <span className={`tr-trend tr-trend-${metrics.status}`}>
-          {metrics.status === "rising" ? "↗" : metrics.status === "falling" ? "↘" : "→"} {trendLabel(metrics.status)}
+          {metrics.status === "rising" ? "↗" : metrics.status === "falling" ? "↘" : "→"} {trendLabel(metrics.status, language)}
         </span>
-        <strong>{metrics.current}<small> gelişme</small></strong>
+        <strong>{metrics.current}<small> {t.developments}</small></strong>
       </div>
       <span className="tr-card-arrow">›</span>
     </article>

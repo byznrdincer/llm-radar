@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ModelAvatar from "./ModelAvatar";
 import { useInfiniteScroll } from "../lib/useInfiniteScroll";
+import { useLanguage, type Language } from "../lib/i18n";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -59,12 +60,21 @@ export type CatalogFacets = {
     licenses: { name: string; count: number }[];
 };
 
-export const ADVANCEDNESS_LABELS: Record<string, string> = {
-    entry: "Giriş",
-    mid: "Orta",
-    advanced: "Gelişmiş",
-    frontier: "Frontier",
-    unscored: "Benchmark yok",
+export const ADVANCEDNESS_LABELS: Record<Language, Record<string, string>> = {
+    tr: {
+        entry: "Giriş",
+        mid: "Orta",
+        advanced: "Gelişmiş",
+        frontier: "Frontier",
+        unscored: "Benchmark yok",
+    },
+    en: {
+        entry: "Entry",
+        mid: "Mid",
+        advanced: "Advanced",
+        frontier: "Frontier",
+        unscored: "No benchmark",
+    },
 };
 
 export const ADVANCEDNESS_OPTIONS = [
@@ -75,12 +85,12 @@ export const ADVANCEDNESS_OPTIONS = [
     { value: "unscored" },
 ] as const;
 
-function advancednessBadge(model: CatalogModel) {
+function advancednessBadge(model: CatalogModel, language: Language) {
     const tier = model.selection?.advancedness_tier;
     const score = model.selection?.benchmark_score;
     if (!tier && score == null)
         return <span className="catalog-tier catalog-tier-na">—</span>;
-    const label = tier ? (ADVANCEDNESS_LABELS[tier] ?? tier) : "—";
+    const label = tier ? (ADVANCEDNESS_LABELS[language][tier] ?? tier) : "—";
     return (
         <span className={`catalog-tier catalog-tier-${tier ?? "na"}`} title={score != null ? `Benchmark: ${score}` : undefined}>
             {label}
@@ -164,6 +174,7 @@ function CatalogSearchInput({ query, onQueryChange, companies, developerSites, o
     developerSites: Record<string, string | null | undefined>;
     onToggleDeveloper: (slug: string) => void;
 }) {
+    const { language } = useLanguage();
     const rootRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -266,7 +277,7 @@ function CatalogSearchInput({ query, onQueryChange, companies, developerSites, o
                     onChange={e => { onQueryChange(e.target.value); setOpen(true); }}
                     onFocus={() => setOpen(true)}
                     onKeyDown={onKeyDown}
-                    placeholder="Model veya geliştirici ara"
+                    placeholder={language === "tr" ? "Model veya geliştirici ara" : "Search for a model or developer"}
                     role="combobox"
                     aria-expanded={showMenu}
                     aria-autocomplete="list"
@@ -275,10 +286,10 @@ function CatalogSearchInput({ query, onQueryChange, companies, developerSites, o
             </label>
             {showMenu && (
                 <div className="catalog-search-menu" id="catalog-search-suggestions" role="listbox">
-                    {loading && suggestions.length === 0 && <p className="catalog-search-hint">Aranıyor…</p>}
+                    {loading && suggestions.length === 0 && <p className="catalog-search-hint">{language === "tr" ? "Aranıyor…" : "Searching…"}</p>}
                     {developerSuggestions.length > 0 && (
                         <div className="catalog-search-group">
-                            <p className="catalog-search-label">Geliştiriciler</p>
+                            <p className="catalog-search-label">{language === "tr" ? "Geliştiriciler" : "Developers"}</p>
                             {developerSuggestions.map((item, index) => (
                                 <button
                                     key={item.slug}
@@ -297,7 +308,7 @@ function CatalogSearchInput({ query, onQueryChange, companies, developerSites, o
                     )}
                     {models.length > 0 && (
                         <div className="catalog-search-group">
-                            <p className="catalog-search-label">Modeller</p>
+                            <p className="catalog-search-label">{language === "tr" ? "Modeller" : "Models"}</p>
                             {models.map((item, index) => {
                                 const rowIndex = developerSuggestions.length + index;
                                 return (
@@ -317,7 +328,7 @@ function CatalogSearchInput({ query, onQueryChange, companies, developerSites, o
                             })}
                         </div>
                     )}
-                    {!loading && suggestions.length === 0 && <p className="catalog-search-hint">Sonuç bulunamadı</p>}
+                    {!loading && suggestions.length === 0 && <p className="catalog-search-hint">{language === "tr" ? "Sonuç bulunamadı" : "No results found"}</p>}
                 </div>
             )}
         </div>
@@ -331,6 +342,7 @@ function MultiDeveloperPicker({ values, companies, onToggle, onClear, developerS
     onClear: () => void;
     developerSites: Record<string, string | null | undefined>;
 }) {
+    const { language } = useLanguage();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const rootRef = useRef<HTMLDivElement>(null);
@@ -340,10 +352,10 @@ function MultiDeveloperPicker({ values, companies, onToggle, onClear, developerS
         return companies.filter(c => matchesSearchQuery(c.name, c.slug, search));
     }, [companies, search]);
     const label = values.length === 0
-        ? "Tüm geliştiriciler"
+        ? (language === "tr" ? "Tüm geliştiriciler" : "All developers")
         : values.length === 1
             ? (companies.find(c => c.slug === values[0])?.name ?? values[0])
-            : `${values.length} geliştirici`;
+            : (language === "tr" ? `${values.length} geliştirici` : `${values.length} developers`);
 
     useEffect(() => {
         if (!open) return;
@@ -363,10 +375,10 @@ function MultiDeveloperPicker({ values, companies, onToggle, onClear, developerS
             </button>
             {open && (
                 <div className="catalog-dev-picker-menu catalog-col-menu-wide">
-                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Geliştirici ara…" autoFocus />
+                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder={language === "tr" ? "Geliştirici ara…" : "Search developers…"} autoFocus />
                     <div className="catalog-dev-picker-list">
                         {values.length > 0 && (
-                            <button type="button" className="catalog-filter-clear-row" onClick={() => { onClear(); setSearch(""); }}>Seçimi temizle</button>
+                            <button type="button" className="catalog-filter-clear-row" onClick={() => { onClear(); setSearch(""); }}>{language === "tr" ? "Seçimi temizle" : "Clear selection"}</button>
                         )}
                         {filtered.map(c => (
                             <label key={c.slug} className={`catalog-filter-option${values.includes(c.slug) ? " active" : ""}`}>
@@ -386,14 +398,15 @@ function MultiSelectFilter({ title, values, options, onToggle, onClear, renderLa
     title: string; values: string[]; options: { value: string; count?: number }[];
     onToggle: (value: string) => void; onClear?: () => void; renderLabel?: (value: string) => string; className?: string;
 }) {
-    const summary = values.length === 0 ? "Farketmez" : values.length <= 2 ? values.map(renderLabel).join(", ") : `${values.length} seçili`;
+    const { language } = useLanguage();
+    const summary = values.length === 0 ? (language === "tr" ? "Farketmez" : "Any") : values.length <= 2 ? values.map(renderLabel).join(", ") : (language === "tr" ? `${values.length} seçili` : `${values.length} selected`);
     return (
         <fieldset className={`multi-filter${className ? ` ${className}` : ""}`}>
             <legend>{title}</legend>
             <details>
                 <summary>{summary}</summary>
                 <div className="multi-filter-panel">
-                    {values.length > 0 && <button type="button" className="multi-filter-clear" onClick={() => (onClear ? onClear() : values.forEach(onToggle))}>Temizle</button>}
+                    {values.length > 0 && <button type="button" className="multi-filter-clear" onClick={() => (onClear ? onClear() : values.forEach(onToggle))}>{language === "tr" ? "Temizle" : "Clear"}</button>}
                     <div className="multi-filter-options">
                         {options.map(item => (
                             <label key={item.value}>
@@ -416,12 +429,16 @@ function columnSortMark(stack: CatalogSortSpec[], field: CatalogSortBy) {
     return stack.length > 1 ? `${index + 1}${order}` : order;
 }
 
-function sortDirectionLabels(field: CatalogSortBy) {
+function sortDirectionLabels(field: CatalogSortBy, language: Language) {
     if (field === "name" || field === "provider")
         return { asc: "A → Z", desc: "Z → A" };
     if (field === "benchmark_score")
-        return { asc: "Az gelişmişten başla", desc: "En gelişmişten başla" };
-    return { asc: "Azdan çoğa", desc: "Çoktan aza" };
+        return language === "tr"
+            ? { asc: "Az gelişmişten başla", desc: "En gelişmişten başla" }
+            : { asc: "Start from least advanced", desc: "Start from most advanced" };
+    return language === "tr"
+        ? { asc: "Azdan çoğa", desc: "Çoktan aza" }
+        : { asc: "Low to high", desc: "High to low" };
 }
 
 function ColumnFilterHead({ label, field, sortStack, onSort, filterActive, filterCount, children }: {
@@ -433,11 +450,12 @@ function ColumnFilterHead({ label, field, sortStack, onSort, filterActive, filte
     filterCount?: number;
     children?: ReactNode;
 }) {
+    const { language } = useLanguage();
     const [open, setOpen] = useState(false);
     const rootRef = useRef<HTMLTableCellElement>(null);
     const mark = columnSortMark(sortStack, field);
     const activeOrder = sortStack.find(item => item.field === field)?.order;
-    const directionLabels = sortDirectionLabels(field);
+    const directionLabels = sortDirectionLabels(field, language);
 
     useEffect(() => {
         if (!open) return;
@@ -466,7 +484,7 @@ function ColumnFilterHead({ label, field, sortStack, onSort, filterActive, filte
                     type="button"
                     className={`catalog-col-filter-btn${filterActive ? " on" : ""}${activeOrder ? " sorted" : ""}`}
                     aria-expanded={open}
-                    aria-label={`${label} sırala${children ? " ve filtrele" : ""}`}
+                    aria-label={language === "tr" ? `${label} sırala${children ? " ve filtrele" : ""}` : `Sort${children ? " and filter" : ""} by ${label}`}
                     onClick={() => setOpen(v => !v)}
                 >
                     {filterCount ? filterCount : "⇅"}
@@ -474,7 +492,7 @@ function ColumnFilterHead({ label, field, sortStack, onSort, filterActive, filte
             </div>
             {open && (
                 <div className="catalog-col-filter-menu" onClick={e => e.stopPropagation()}>
-                    <div className="catalog-sort-options" role="group" aria-label={`${label} sıralama yönü`}>
+                    <div className="catalog-sort-options" role="group" aria-label={language === "tr" ? `${label} sıralama yönü` : `${label} sort direction`}>
                         <button
                             type="button"
                             className={activeOrder === "asc" ? "active" : ""}
@@ -504,6 +522,7 @@ function ColumnCheckboxList({ values, options, onToggle, onClear, renderLabel = 
     onClear: () => void;
     renderLabel?: (value: string) => string;
 }) {
+    const { language } = useLanguage();
     const [search, setSearch] = useState("");
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -513,8 +532,8 @@ function ColumnCheckboxList({ values, options, onToggle, onClear, renderLabel = 
 
     return (
         <div className="catalog-col-filter-body">
-            <input className="catalog-col-filter-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Ara…" />
-            {values.length > 0 && <button type="button" className="catalog-filter-clear-row" onClick={onClear}>Temizle</button>}
+            <input className="catalog-col-filter-search" value={search} onChange={e => setSearch(e.target.value)} placeholder={language === "tr" ? "Ara…" : "Search…"} />
+            {values.length > 0 && <button type="button" className="catalog-filter-clear-row" onClick={onClear}>{language === "tr" ? "Temizle" : "Clear"}</button>}
             <div className="catalog-col-filter-options">
                 {filtered.map(item => (
                     <label key={item.value} className={`catalog-filter-option${values.includes(item.value) ? " active" : ""}`}>
@@ -529,6 +548,7 @@ function ColumnCheckboxList({ values, options, onToggle, onClear, renderLabel = 
 
 export default function ModelCatalogPage(props: Props) {
     const p = props;
+    const { language, locale } = useLanguage();
     const sentinelRef = useInfiniteScroll(p.onLoadMore, p.hasMore && !p.loadingMore);
     const capOptions = useMemo(() => Array.from(new Map([
         ...p.runtimeCapabilityOptions.map(v => [v, 0] as [string, number]),
@@ -563,11 +583,11 @@ export default function ModelCatalogPage(props: Props) {
         <section className="catalog-page" id="models">
             <header className="catalog-top">
                 <div>
-                    <p className="kicker">MODEL KATALOĞU</p>
-                    <h2>{p.loading || p.profileLoading ? "Yükleniyor…" : `${p.resultTotal.toLocaleString("tr-TR")} model`}</h2>
+                    <p className="kicker">{language === "tr" ? "MODEL KATALOĞU" : "MODEL CATALOG"}</p>
+                    <h2>{p.loading || p.profileLoading ? (language === "tr" ? "Yükleniyor…" : "Loading…") : (language === "tr" ? `${p.resultTotal.toLocaleString(locale)} model` : `${p.resultTotal.toLocaleString(locale)} models`)}</h2>
                 </div>
                 <p className="catalog-meta">
-                    {!p.profileLoading && p.resultTotal !== p.modelCount && `${p.modelCount.toLocaleString("tr-TR")} model içinden · `}
+                    {!p.profileLoading && p.resultTotal !== p.modelCount && (language === "tr" ? `${p.modelCount.toLocaleString(locale)} model içinden · ` : `out of ${p.modelCount.toLocaleString(locale)} models · `)}
                     {sortSummary}
                 </p>
             </header>
@@ -594,18 +614,18 @@ export default function ModelCatalogPage(props: Props) {
                     aria-controls="advanced-model-filters"
                     onClick={p.onAdvancedToggle}
                 >
-                    <span>Filtreler</span>
+                    <span>{language === "tr" ? "Filtreler" : "Filters"}</span>
                     {p.activeFilters.length > 0 && <b>{p.activeFilters.length}</b>}
                     <i aria-hidden="true">{p.advancedOpen ? "→" : "⇥"}</i>
                 </button>
                 {p.advancedActive && (
-                    <button type="button" className="reset-filters" onClick={p.onResetFilters}>Temizle</button>
+                    <button type="button" className="reset-filters" onClick={p.onResetFilters}>{language === "tr" ? "Temizle" : "Clear"}</button>
                 )}
             </div>
 
             <div className="lb-filter-bar catalog-openness-bar">
-                <div className="lb-filter-group" role="group" aria-label="Model açıklığı">
-                    <span>Açıklık</span>
+                <div className="lb-filter-group" role="group" aria-label={language === "tr" ? "Model açıklığı" : "Model openness"}>
+                    <span>{language === "tr" ? "Açıklık" : "Openness"}</span>
                     <div className="lb-filter-pills">
                         {([
                             ["open_source", "Open Source"],
@@ -641,50 +661,54 @@ export default function ModelCatalogPage(props: Props) {
                     >
                         <header className="catalog-filter-drawer-head">
                             <div>
-                                <p className="kicker">MODEL KATALOĞU</p>
-                                <h3 id="catalog-filter-title">Filtreler</h3>
-                                <span>Sonuçları ihtiyacına göre daralt.</span>
+                                <p className="kicker">{language === "tr" ? "MODEL KATALOĞU" : "MODEL CATALOG"}</p>
+                                <h3 id="catalog-filter-title">{language === "tr" ? "Filtreler" : "Filters"}</h3>
+                                <span>{language === "tr" ? "Sonuçları ihtiyacına göre daralt." : "Narrow down results to fit your needs."}</span>
                             </div>
-                            <button type="button" onClick={p.onAdvancedToggle} aria-label="Filtreleri kapat">×</button>
+                            <button type="button" onClick={p.onAdvancedToggle} aria-label={language === "tr" ? "Filtreleri kapat" : "Close filters"}>×</button>
                         </header>
 
                         <div className="catalog-filter-drawer-body">
-                            <p className="catalog-filter-note">Aynı alandaki seçimler <strong>VEYA</strong>, farklı alanlar <strong>VE</strong> mantığıyla çalışır.</p>
+                            <p className="catalog-filter-note">
+                                {language === "tr"
+                                    ? <>Aynı alandaki seçimler <strong>VEYA</strong>, farklı alanlar <strong>VE</strong> mantığıyla çalışır.</>
+                                    : <>Selections within the same field use <strong>OR</strong> logic; different fields use <strong>AND</strong> logic.</>}
+                            </p>
 
                             <section className="catalog-filter-section">
-                                <h4>Model özellikleri</h4>
+                                <h4>{language === "tr" ? "Model özellikleri" : "Model attributes"}</h4>
                                 <div className="catalog-filter-grid">
-                                    <MultiSelectFilter className="catalog-filter-wide" title="Model ailesi" values={p.families} options={p.facets.families.map(i => ({ value: i.name, count: i.count }))} onToggle={p.onToggleFamily} />
-                                    <label><span>Min. context</span><select value={p.minContext} onChange={e => p.onMinContextChange(e.target.value)}><option value="">Farketmez</option><option value="32768">32K+</option><option value="131072">128K+</option><option value="1000000">1M+</option></select></label>
-                                    <label><span>Maks. girdi</span><input type="number" min="0" step="0.01" value={p.maxInputPrice} onChange={e => p.onMaxInputPriceChange(e.target.value)} placeholder="USD / 1M" /></label>
-                                    <label><span>Maks. çıktı</span><input type="number" min="0" step="0.01" value={p.maxOutputPrice} onChange={e => p.onMaxOutputPriceChange(e.target.value)} placeholder="USD / 1M" /></label>
+                                    <MultiSelectFilter className="catalog-filter-wide" title={language === "tr" ? "Model ailesi" : "Model family"} values={p.families} options={p.facets.families.map(i => ({ value: i.name, count: i.count }))} onToggle={p.onToggleFamily} />
+                                    <label><span>{language === "tr" ? "Min. context" : "Min. context"}</span><select value={p.minContext} onChange={e => p.onMinContextChange(e.target.value)}><option value="">{language === "tr" ? "Farketmez" : "Any"}</option><option value="32768">32K+</option><option value="131072">128K+</option><option value="1000000">1M+</option></select></label>
+                                    <label><span>{language === "tr" ? "Maks. girdi" : "Max input"}</span><input type="number" min="0" step="0.01" value={p.maxInputPrice} onChange={e => p.onMaxInputPriceChange(e.target.value)} placeholder="USD / 1M" /></label>
+                                    <label><span>{language === "tr" ? "Maks. çıktı" : "Max output"}</span><input type="number" min="0" step="0.01" value={p.maxOutputPrice} onChange={e => p.onMaxOutputPriceChange(e.target.value)} placeholder="USD / 1M" /></label>
                                 </div>
                             </section>
 
                             <section className="catalog-filter-section">
-                                <h4>Erişim ve lisans</h4>
+                                <h4>{language === "tr" ? "Erişim ve lisans" : "Access & license"}</h4>
                                 <div className="catalog-filter-grid">
-                                    <MultiSelectFilter className="catalog-filter-wide" title="API sağlayıcısı" values={p.providers} options={p.facets.providers.map(i => ({ value: i.slug, count: i.count }))} onToggle={p.onToggleProvider} onClear={p.onClearProviders} renderLabel={v => p.facets.providers.find(i => i.slug === v)?.name ?? v} />
-                                    <MultiSelectFilter title="Lisans" values={p.licenses} options={licenseOptions} renderLabel={v => ({ mit: "MIT", apache_2_0: "Apache 2.0", llama_community: "Llama Community", model_specific: "Modele özel", other: "Diğer", unknown: "Bilinmiyor" }[v] ?? v)} onToggle={p.onToggleLicense} />
-                                    <MultiSelectFilter title="Ticari kullanım" values={p.commercialStatuses} options={[{ value: "allowed" }, { value: "restricted" }, { value: "unknown" }]} renderLabel={v => ({ allowed: "İzinli", restricted: "Kısıtlı", unknown: "Bilinmiyor" }[v] ?? v)} onToggle={p.onToggleCommercial} />
+                                    <MultiSelectFilter className="catalog-filter-wide" title={language === "tr" ? "API sağlayıcısı" : "API provider"} values={p.providers} options={p.facets.providers.map(i => ({ value: i.slug, count: i.count }))} onToggle={p.onToggleProvider} onClear={p.onClearProviders} renderLabel={v => p.facets.providers.find(i => i.slug === v)?.name ?? v} />
+                                    <MultiSelectFilter title={language === "tr" ? "Lisans" : "License"} values={p.licenses} options={licenseOptions} renderLabel={v => (language === "tr" ? { mit: "MIT", apache_2_0: "Apache 2.0", llama_community: "Llama Community", model_specific: "Modele özel", other: "Diğer", unknown: "Bilinmiyor" } : { mit: "MIT", apache_2_0: "Apache 2.0", llama_community: "Llama Community", model_specific: "Model-specific", other: "Other", unknown: "Unknown" })[v] ?? v} onToggle={p.onToggleLicense} />
+                                    <MultiSelectFilter title={language === "tr" ? "Ticari kullanım" : "Commercial use"} values={p.commercialStatuses} options={[{ value: "allowed" }, { value: "restricted" }, { value: "unknown" }]} renderLabel={v => (language === "tr" ? { allowed: "İzinli", restricted: "Kısıtlı", unknown: "Bilinmiyor" } : { allowed: "Allowed", restricted: "Restricted", unknown: "Unknown" })[v] ?? v} onToggle={p.onToggleCommercial} />
                                 </div>
                             </section>
 
                             <section className="catalog-filter-section">
-                                <h4>Yetenek ve performans</h4>
+                                <h4>{language === "tr" ? "Yetenek ve performans" : "Capability & performance"}</h4>
                                 <div className="catalog-filter-grid">
-                                    <MultiSelectFilter title="Modalite" values={p.modalities} options={modalityOptions} renderLabel={p.trModality} onToggle={p.onToggleModality} />
-                                    <MultiSelectFilter title="Yetenek" values={p.capabilities} options={capOptions} renderLabel={p.trCapability} onToggle={p.onToggleCapability} />
-                                    <MultiSelectFilter title="Gelişmişlik" values={p.advancedness} options={[...ADVANCEDNESS_OPTIONS]} renderLabel={v => ADVANCEDNESS_LABELS[v] ?? v} onToggle={p.onToggleAdvancedness} />
-                                    <label><span>Benchmark odağı</span><select value={p.benchmarkFocus} onChange={e => p.onBenchmarkFocusChange(e.target.value)}><option value="any">Farketmez (tüm modeller)</option><option value="general">Genel (yalnızca benchmarklı modeller)</option><option value="coding">Coding (yalnızca benchmarklı modeller)</option><option value="reasoning">Reasoning (yalnızca benchmarklı modeller)</option><option value="agent">Agent (yalnızca benchmarklı modeller)</option><option value="multimodal">Multimodal (yalnızca benchmarklı modeller)</option></select></label>
+                                    <MultiSelectFilter title={language === "tr" ? "Modalite" : "Modality"} values={p.modalities} options={modalityOptions} renderLabel={p.trModality} onToggle={p.onToggleModality} />
+                                    <MultiSelectFilter title={language === "tr" ? "Yetenek" : "Capability"} values={p.capabilities} options={capOptions} renderLabel={p.trCapability} onToggle={p.onToggleCapability} />
+                                    <MultiSelectFilter title={language === "tr" ? "Gelişmişlik" : "Advancedness"} values={p.advancedness} options={[...ADVANCEDNESS_OPTIONS]} renderLabel={v => ADVANCEDNESS_LABELS[language][v] ?? v} onToggle={p.onToggleAdvancedness} />
+                                    <label><span>{language === "tr" ? "Benchmark odağı" : "Benchmark focus"}</span><select value={p.benchmarkFocus} onChange={e => p.onBenchmarkFocusChange(e.target.value)}><option value="any">{language === "tr" ? "Farketmez (tüm modeller)" : "Any (all models)"}</option><option value="general">{language === "tr" ? "Genel (yalnızca benchmarklı modeller)" : "General (benchmarked models only)"}</option><option value="coding">{language === "tr" ? "Coding (yalnızca benchmarklı modeller)" : "Coding (benchmarked models only)"}</option><option value="reasoning">{language === "tr" ? "Reasoning (yalnızca benchmarklı modeller)" : "Reasoning (benchmarked models only)"}</option><option value="agent">{language === "tr" ? "Agent (yalnızca benchmarklı modeller)" : "Agent (benchmarked models only)"}</option><option value="multimodal">{language === "tr" ? "Multimodal (yalnızca benchmarklı modeller)" : "Multimodal (benchmarked models only)"}</option></select></label>
                                 </div>
                             </section>
                         </div>
 
                         <footer className="catalog-filter-drawer-actions">
-                            <button type="button" className="catalog-filter-drawer-reset" onClick={p.onResetFilters}>Tümünü temizle</button>
+                            <button type="button" className="catalog-filter-drawer-reset" onClick={p.onResetFilters}>{language === "tr" ? "Tümünü temizle" : "Clear all"}</button>
                             <button type="button" className="catalog-filter-drawer-apply" onClick={p.onAdvancedToggle}>
-                                {p.profileLoading ? "Sonuçlar hazırlanıyor…" : `${p.resultTotal.toLocaleString("tr-TR")} modeli göster`}
+                                {p.profileLoading ? (language === "tr" ? "Sonuçlar hazırlanıyor…" : "Preparing results…") : (language === "tr" ? `${p.resultTotal.toLocaleString(locale)} modeli göster` : `Show ${p.resultTotal.toLocaleString(locale)} models`)}
                             </button>
                         </footer>
                     </aside>
@@ -707,7 +731,7 @@ export default function ModelCatalogPage(props: Props) {
                                 <th />
                                 <ColumnFilterHead label="Model" field="name" sortStack={p.sortStack} onSort={p.onSort} />
                                 <ColumnFilterHead
-                                    label="Geliştirici"
+                                    label={language === "tr" ? "Geliştirici" : "Developer"}
                                     field="provider"
                                     sortStack={p.sortStack}
                                     onSort={p.onSort}
@@ -723,7 +747,7 @@ export default function ModelCatalogPage(props: Props) {
                                     />
                                 </ColumnFilterHead>
                                 <ColumnFilterHead
-                                    label="Gelişmişlik"
+                                    label={language === "tr" ? "Gelişmişlik" : "Advancedness"}
                                     field="benchmark_score"
                                     sortStack={p.sortStack}
                                     onSort={p.onSort}
@@ -735,7 +759,7 @@ export default function ModelCatalogPage(props: Props) {
                                         options={ADVANCEDNESS_OPTIONS.map(item => ({ value: item.value }))}
                                         onToggle={p.onToggleAdvancedness}
                                         onClear={() => { p.onClearAdvancedness(); }}
-                                        renderLabel={v => ADVANCEDNESS_LABELS[v] ?? v}
+                                        renderLabel={v => ADVANCEDNESS_LABELS[language][v] ?? v}
                                     />
                                 </ColumnFilterHead>
                                 <ColumnFilterHead
@@ -747,10 +771,10 @@ export default function ModelCatalogPage(props: Props) {
                                     filterCount={p.minContext ? 1 : undefined}
                                 >
                                     <div className="catalog-col-filter-body">
-                                        <p className="catalog-col-filter-hint">Minimum context penceresi</p>
+                                        <p className="catalog-col-filter-hint">{language === "tr" ? "Minimum context penceresi" : "Minimum context window"}</p>
                                         <div className="catalog-col-filter-options">
                                             {[
-                                                { value: "", label: "Farketmez" },
+                                                { value: "", label: language === "tr" ? "Farketmez" : "Any" },
                                                 { value: "32768", label: "32K+" },
                                                 { value: "131072", label: "128K+" },
                                                 { value: "1000000", label: "1M+" },
@@ -764,7 +788,7 @@ export default function ModelCatalogPage(props: Props) {
                                     </div>
                                 </ColumnFilterHead>
                                 <ColumnFilterHead
-                                    label="Girdi"
+                                    label={language === "tr" ? "Girdi" : "Input"}
                                     field="input_price"
                                     sortStack={p.sortStack}
                                     onSort={p.onSort}
@@ -773,14 +797,14 @@ export default function ModelCatalogPage(props: Props) {
                                 >
                                     <div className="catalog-col-filter-body">
                                         <label className="catalog-col-number">
-                                            <span>Maks. girdi fiyatı (USD / 1M)</span>
-                                            <input type="number" min="0" step="0.01" value={p.maxInputPrice} onChange={e => p.onMaxInputPriceChange(e.target.value)} placeholder="ör. 3.00" />
+                                            <span>{language === "tr" ? "Maks. girdi fiyatı (USD / 1M)" : "Max input price (USD / 1M)"}</span>
+                                            <input type="number" min="0" step="0.01" value={p.maxInputPrice} onChange={e => p.onMaxInputPriceChange(e.target.value)} placeholder={language === "tr" ? "ör. 3.00" : "e.g. 3.00"} />
                                         </label>
-                                        {p.maxInputPrice && <button type="button" className="catalog-filter-clear-row" onClick={() => p.onMaxInputPriceChange("")}>Temizle</button>}
+                                        {p.maxInputPrice && <button type="button" className="catalog-filter-clear-row" onClick={() => p.onMaxInputPriceChange("")}>{language === "tr" ? "Temizle" : "Clear"}</button>}
                                     </div>
                                 </ColumnFilterHead>
                                 <ColumnFilterHead
-                                    label="Çıktı"
+                                    label={language === "tr" ? "Çıktı" : "Output"}
                                     field="output_price"
                                     sortStack={p.sortStack}
                                     onSort={p.onSort}
@@ -789,10 +813,10 @@ export default function ModelCatalogPage(props: Props) {
                                 >
                                     <div className="catalog-col-filter-body">
                                         <label className="catalog-col-number">
-                                            <span>Maks. çıktı fiyatı (USD / 1M)</span>
-                                            <input type="number" min="0" step="0.01" value={p.maxOutputPrice} onChange={e => p.onMaxOutputPriceChange(e.target.value)} placeholder="ör. 15.00" />
+                                            <span>{language === "tr" ? "Maks. çıktı fiyatı (USD / 1M)" : "Max output price (USD / 1M)"}</span>
+                                            <input type="number" min="0" step="0.01" value={p.maxOutputPrice} onChange={e => p.onMaxOutputPriceChange(e.target.value)} placeholder={language === "tr" ? "ör. 15.00" : "e.g. 15.00"} />
                                         </label>
-                                        {p.maxOutputPrice && <button type="button" className="catalog-filter-clear-row" onClick={() => p.onMaxOutputPriceChange("")}>Temizle</button>}
+                                        {p.maxOutputPrice && <button type="button" className="catalog-filter-clear-row" onClick={() => p.onMaxOutputPriceChange("")}>{language === "tr" ? "Temizle" : "Clear"}</button>}
                                     </div>
                                 </ColumnFilterHead>
                                 <th />
@@ -801,7 +825,7 @@ export default function ModelCatalogPage(props: Props) {
                         <tbody>
                             {p.models.length === 0 && !p.profileLoading && (
                                 <tr>
-                                    <td colSpan={8} className="catalog-empty">Filtrelere uygun model bulunamadı. Filtreleri gevşetmeyi deneyin.</td>
+                                    <td colSpan={8} className="catalog-empty">{language === "tr" ? "Filtrelere uygun model bulunamadı. Filtreleri gevşetmeyi deneyin." : "No models match the filters. Try loosening the filters."}</td>
                                 </tr>
                             )}
                             {p.models.map(model => {
@@ -810,7 +834,7 @@ export default function ModelCatalogPage(props: Props) {
                                 return (
                                     <tr key={model.id}>
                                         <td>
-                                            <button type="button" className={`catalog-pick${selected ? " on" : ""}`} onClick={() => p.onToggleSelect(model)} aria-label="Karşılaştır">{selected ? "✓" : "+"}</button>
+                                            <button type="button" className={`catalog-pick${selected ? " on" : ""}`} onClick={() => p.onToggleSelect(model)} aria-label={language === "tr" ? "Karşılaştır" : "Compare"}>{selected ? "✓" : "+"}</button>
                                         </td>
                                         <td>
                                             <button type="button" className="catalog-model" onClick={() => p.onInspect(model)}>
@@ -819,11 +843,11 @@ export default function ModelCatalogPage(props: Props) {
                                             </button>
                                         </td>
                                         <td><span className="company-chip">{model.company.name}</span></td>
-                                        <td>{advancednessBadge(model)}</td>
-                                        <td className="mono">{model.context_window?.toLocaleString("tr-TR") ?? "—"}</td>
+                                        <td>{advancednessBadge(model, language)}</td>
+                                        <td className="mono">{model.context_window?.toLocaleString(locale) ?? "—"}</td>
                                         <td className="price">{p.money(model.pricing?.input)}</td>
                                         <td className="price">{p.money(model.pricing?.output)}</td>
-                                        <td><button type="button" className="catalog-link" onClick={() => p.onInspect(model)}>İncele</button></td>
+                                        <td><button type="button" className="catalog-link" onClick={() => p.onInspect(model)}>{language === "tr" ? "İncele" : "View"}</button></td>
                                     </tr>
                                 );
                             })}
@@ -834,7 +858,7 @@ export default function ModelCatalogPage(props: Props) {
                 {!p.hasMore && (
                 <div className="catalog-foot" aria-live="polite">
                     <span className="catalog-page-meta">
-                        {p.models.length.toLocaleString("tr-TR")} / {p.resultTotal.toLocaleString("tr-TR")} model
+                        {p.models.length.toLocaleString(locale)} / {p.resultTotal.toLocaleString(locale)} {language === "tr" ? "model" : "models"}
                     </span>
                 </div>
                 )}

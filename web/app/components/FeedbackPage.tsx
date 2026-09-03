@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import { getSessionId, trackEvent } from "../lib/analytics";
+import { useLanguage, type Language } from "../lib/i18n";
 
 type FormState = "idle" | "sending" | "success" | "error";
 type SearchState = "idle" | "loading" | "success" | "error";
@@ -34,125 +35,149 @@ type ModelPickerProps = {
 };
 
 const feedbackOptions = [
-  ["missing_model", "Eksik model"],
-  ["data_error", "Hatalı model verisi"],
-  ["pricing_error", "Fiyat hatası"],
-  ["benchmark_error", "Benchmark hatası"],
-  ["source_suggestion", "Yeni kaynak önerisi"],
-  ["filter_suggestion", "Filtre önerisi"],
-  ["feature_request", "Özellik isteği"],
-  ["ux_feedback", "UI / UX geri bildirimi"],
-  ["bug_report", "Hata bildirimi"],
-  ["general", "Genel yorum"],
+  ["missing_model", "Eksik model", "Missing model"],
+  ["data_error", "Hatalı model verisi", "Incorrect model data"],
+  ["pricing_error", "Fiyat hatası", "Pricing error"],
+  ["benchmark_error", "Benchmark hatası", "Benchmark error"],
+  ["source_suggestion", "Yeni kaynak önerisi", "New source suggestion"],
+  ["filter_suggestion", "Filtre önerisi", "Filter suggestion"],
+  ["feature_request", "Özellik isteği", "Feature request"],
+  ["ux_feedback", "UI / UX geri bildirimi", "UI / UX feedback"],
+  ["bug_report", "Hata bildirimi", "Bug report"],
+  ["general", "Genel yorum", "General comment"],
 ] as const;
 
 const subjectOptions = [
-  ["price", "Fiyat"],
-  ["benchmark", "Benchmark"],
-  ["context", "Context"],
-  ["license", "Lisans"],
-  ["capability", "Yetenek / capability"],
-  ["provider", "Provider"],
-  ["source", "Kaynak"],
-  ["other", "Diğer"],
+  ["price", "Fiyat", "Price"],
+  ["benchmark", "Benchmark", "Benchmark"],
+  ["context", "Context", "Context"],
+  ["license", "Lisans", "License"],
+  ["capability", "Yetenek / capability", "Capability"],
+  ["provider", "Provider", "Provider"],
+  ["source", "Kaynak", "Source"],
+  ["other", "Diğer", "Other"],
 ] as const;
 
 const productAreas = [
-  ["model_catalog", "Model kataloğu"],
-  ["compare", "Karşılaştır"],
-  ["benchmarks", "Benchmarklar"],
-  ["popular", "Popüler modeller"],
-  ["market", "Pazar grafikleri"],
-  ["turkish_llm", "Türkiye LLM"],
-  ["developments", "Gelişmeler"],
-  ["research", "Araştırma"],
-  ["technology_radar", "Teknoloji radarı"],
-  ["sources", "Kaynaklar"],
-  ["feedback", "Geri bildirim"],
-  ["other", "Diğer"],
+  ["model_catalog", "Model kataloğu", "Model catalog"],
+  ["compare", "Karşılaştır", "Compare"],
+  ["benchmarks", "Benchmarklar", "Benchmarks"],
+  ["popular", "Popüler modeller", "Popular models"],
+  ["market", "Pazar grafikleri", "Market charts"],
+  ["turkish_llm", "Türkiye LLM", "Turkey LLM"],
+  ["developments", "Gelişmeler", "Developments"],
+  ["research", "Araştırma", "Research"],
+  ["technology_radar", "Teknoloji radarı", "Technology radar"],
+  ["sources", "Kaynaklar", "Sources"],
+  ["feedback", "Geri bildirim", "Feedback"],
+  ["other", "Diğer", "Other"],
 ] as const;
 
 const useCaseOptions = [
-  ["chat", "Sohbet"],
-  ["rag", "RAG / Doküman"],
-  ["coding", "Kodlama"],
-  ["agent", "Agent / Tool calling"],
-  ["multimodal", "Multimodal"],
-  ["enterprise", "Kurumsal"],
-  ["other", "Diğer"],
+  ["chat", "Sohbet", "Chat"],
+  ["rag", "RAG / Doküman", "RAG / Documents"],
+  ["coding", "Kodlama", "Coding"],
+  ["agent", "Agent / Tool calling", "Agent / Tool calling"],
+  ["multimodal", "Multimodal", "Multimodal"],
+  ["enterprise", "Kurumsal", "Enterprise"],
+  ["other", "Diğer", "Other"],
 ] as const;
 
 const criterionOptions = [
-  ["performance", "Performans"],
-  ["price", "Fiyat"],
-  ["speed", "Hız"],
-  ["turkish", "Türkçe kalitesi"],
-  ["privacy", "Gizlilik"],
-  ["open_weight", "Open-weight"],
-  ["data_residency", "Türkiye’de veri barındırma"],
-  ["openai_compatible", "OpenAI API uyumu"],
-  ["fine_tuning", "Fine-tuning"],
+  ["performance", "Performans", "Performance"],
+  ["price", "Fiyat", "Price"],
+  ["speed", "Hız", "Speed"],
+  ["turkish", "Türkçe kalitesi", "Turkish-language quality"],
+  ["privacy", "Gizlilik", "Privacy"],
+  ["open_weight", "Open-weight", "Open-weight"],
+  ["data_residency", "Türkiye’de veri barındırma", "Data residency in Turkey"],
+  ["openai_compatible", "OpenAI API uyumu", "OpenAI API compatibility"],
+  ["fine_tuning", "Fine-tuning", "Fine-tuning"],
 ] as const;
 
 const userTypeOptions = [
-  ["developer", "Developer"],
-  ["startup", "Startup"],
-  ["enterprise", "Kurumsal şirket"],
-  ["organization", "Organizasyon"],
-  ["individual", "Bireysel"],
+  ["developer", "Developer", "Developer"],
+  ["startup", "Startup", "Startup"],
+  ["enterprise", "Kurumsal şirket", "Enterprise company"],
+  ["organization", "Organizasyon", "Organization"],
+  ["individual", "Bireysel", "Individual"],
 ] as const;
 
 const demandLevels = [
-  ["interested", "İlgileniyorum"],
-  ["need", "İhtiyacım var"],
-  ["active_use", "Aktif kullanırım"],
+  ["interested", "İlgileniyorum", "Interested"],
+  ["need", "İhtiyacım var", "I need this"],
+  ["active_use", "Aktif kullanırım", "Actively using"],
 ] as const;
 
 const usageVolumeOptions = [
-  ["", "Belirtmek istemiyorum"],
-  ["pilot", "Pilot · 1M token altı"],
-  ["under_10m", "1–10M token / ay"],
-  ["under_100m", "10–100M token / ay"],
-  ["over_100m", "100M+ token / ay"],
+  ["", "Belirtmek istemiyorum", "Prefer not to say"],
+  ["pilot", "Pilot · 1M token altı", "Pilot · under 1M tokens"],
+  ["under_10m", "1–10M token / ay", "1–10M tokens / month"],
+  ["under_100m", "10–100M token / ay", "10–100M tokens / month"],
+  ["over_100m", "100M+ token / ay", "100M+ tokens / month"],
 ] as const;
 
 const budgetRangeOptions = [
-  ["", "Belirtmek istemiyorum"],
-  ["unknown", "Henüz belli değil"],
-  ["under_100", "$100 altı / ay"],
-  ["100_500", "$100–500 / ay"],
-  ["500_2000", "$500–2.000 / ay"],
-  ["over_2000", "$2.000+ / ay"],
+  ["", "Belirtmek istemiyorum", "Prefer not to say"],
+  ["unknown", "Henüz belli değil", "Not yet known"],
+  ["under_100", "$100 altı / ay", "Under $100 / month"],
+  ["100_500", "$100–500 / ay", "$100–500 / month"],
+  ["500_2000", "$500–2.000 / ay", "$500–2,000 / month"],
+  ["over_2000", "$2.000+ / ay", "$2,000+ / month"],
 ] as const;
 
 const timelineOptions = [
-  ["", "Belirtmek istemiyorum"],
-  ["exploring", "Şimdilik araştırıyorum"],
-  ["this_quarter", "Bu çeyrek içinde"],
-  ["immediate", "Hemen kullanmak istiyorum"],
+  ["", "Belirtmek istemiyorum", "Prefer not to say"],
+  ["exploring", "Şimdilik araştırıyorum", "Just exploring for now"],
+  ["this_quarter", "Bu çeyrek içinde", "Within this quarter"],
+  ["immediate", "Hemen kullanmak istiyorum", "Want to start immediately"],
 ] as const;
 
-const feedbackPlaceholders: Record<string, string> = {
-  missing_model:
-    "Eklenmesini istediğin modelin adını, geliştiricisini ve biliyorsan resmî kaynağını yaz.",
-  data_error:
-    "Hangi bilginin yanlış veya eksik göründüğünü ve doğru olması gereken değeri anlat.",
-  pricing_error:
-    "Hangi fiyat bilgisinin yanlış olduğunu ve doğru fiyatı biliyorsan belirt.",
-  benchmark_error:
-    "Hangi benchmark sonucunda sorun olduğunu ve doğru olması gereken değeri belirt.",
-  source_suggestion:
-    "Radar'a eklenmesini istediğin kaynak veya platformu ve neden faydalı olduğunu anlat.",
-  filter_suggestion:
-    "Eklenmesini istediğin filtreyi ve hangi kullanım senaryosunda işe yarayacağını anlat.",
-  feature_request:
-    "İstediğin özelliği ve sana neyi kolaylaştıracağını kısaca anlat.",
-  ux_feedback:
-    "Hangi ekran veya akışta zorlandığını ve nasıl daha iyi olabileceğini anlat.",
-  bug_report:
-    "Ne yaptığını, ne olmasını beklediğini ve gerçekte ne olduğunu anlat.",
-  general:
-    "Görüşünü, önerini veya Radar hakkında paylaşmak istediğin şeyi yaz.",
+const feedbackPlaceholders: Record<Language, Record<string, string>> = {
+  tr: {
+    missing_model:
+      "Eklenmesini istediğin modelin adını, geliştiricisini ve biliyorsan resmî kaynağını yaz.",
+    data_error:
+      "Hangi bilginin yanlış veya eksik göründüğünü ve doğru olması gereken değeri anlat.",
+    pricing_error:
+      "Hangi fiyat bilgisinin yanlış olduğunu ve doğru fiyatı biliyorsan belirt.",
+    benchmark_error:
+      "Hangi benchmark sonucunda sorun olduğunu ve doğru olması gereken değeri belirt.",
+    source_suggestion:
+      "Radar'a eklenmesini istediğin kaynak veya platformu ve neden faydalı olduğunu anlat.",
+    filter_suggestion:
+      "Eklenmesini istediğin filtreyi ve hangi kullanım senaryosunda işe yarayacağını anlat.",
+    feature_request:
+      "İstediğin özelliği ve sana neyi kolaylaştıracağını kısaca anlat.",
+    ux_feedback:
+      "Hangi ekran veya akışta zorlandığını ve nasıl daha iyi olabileceğini anlat.",
+    bug_report:
+      "Ne yaptığını, ne olmasını beklediğini ve gerçekte ne olduğunu anlat.",
+    general:
+      "Görüşünü, önerini veya Radar hakkında paylaşmak istediğin şeyi yaz.",
+  },
+  en: {
+    missing_model:
+      "Tell us the model's name, its developer, and the official source if you know it.",
+    data_error:
+      "Describe which piece of information looks wrong or missing, and what the correct value should be.",
+    pricing_error:
+      "Tell us which price is wrong, and the correct price if you know it.",
+    benchmark_error:
+      "Tell us which benchmark result is off, and what the correct value should be.",
+    source_suggestion:
+      "Tell us which source or platform you'd like added to Radar, and why it would be useful.",
+    filter_suggestion:
+      "Tell us which filter you'd like added and what use case it would help with.",
+    feature_request:
+      "Briefly describe the feature you want and what it would make easier for you.",
+    ux_feedback:
+      "Tell us which screen or flow gave you trouble, and how it could be better.",
+    bug_report:
+      "Tell us what you did, what you expected to happen, and what actually happened.",
+    general:
+      "Share your thoughts, suggestions, or anything else about Radar.",
+  },
 };
 
 const modelRelatedFeedback = new Set([
@@ -204,14 +229,22 @@ function submissionContext() {
   };
 }
 
+function optionLabel(
+  entry: readonly [string, string, string],
+  language: Language,
+) {
+  return language === "tr" ? entry[1] : entry[2];
+}
+
 function ModelPicker({
   api,
   selected,
   onChange,
   multiple = true,
-  placeholder = "Model veya geliştirici ara...",
+  placeholder,
   maxSelected = 20,
 }: ModelPickerProps) {
+  const { language } = useLanguage();
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId().replace(/:/g, "");
   const [query, setQuery] = useState("");
@@ -219,6 +252,12 @@ function ModelPicker({
   const [searchState, setSearchState] = useState<SearchState>("idle");
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
+
+  const resolvedPlaceholder =
+    placeholder ??
+    (language === "tr"
+      ? "Model veya geliştirici ara..."
+      : "Search model or developer...");
 
   useEffect(() => {
     const q = query.trim();
@@ -366,7 +405,11 @@ function ModelPicker({
               className="smart-model-chip"
               key={model.id}
               onClick={() => remove(model.id)}
-              title={`${model.name} seçimini kaldır`}
+              title={
+                language === "tr"
+                  ? `${model.name} seçimini kaldır`
+                  : `Remove ${model.name}`
+              }
             >
               <span>{model.name}</span>
               <b aria-hidden="true">×</b>
@@ -396,14 +439,16 @@ function ModelPicker({
               if (query.trim()) setOpen(true);
             }}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
             role="combobox"
             aria-autocomplete="list"
             aria-expanded={open}
             aria-controls={`${listId}-results`}
           />
 
-          {searchState === "loading" && <small>Aranıyor…</small>}
+          {searchState === "loading" && (
+            <small>{language === "tr" ? "Aranıyor…" : "Searching…"}</small>
+          )}
         </div>
 
         {open && (
@@ -414,7 +459,9 @@ function ModelPicker({
           >
             {searchState === "error" && (
               <p className="smart-model-message">
-                Modeller yüklenemedi. Tekrar deneyebilirsin.
+                {language === "tr"
+                  ? "Modeller yüklenemedi. Tekrar deneyebilirsin."
+                  : "Couldn't load models. Please try again."}
               </p>
             )}
 
@@ -422,7 +469,9 @@ function ModelPicker({
               searchState !== "error" &&
               availableResults.length === 0 && (
                 <p className="smart-model-message">
-                  Sonuç bulunamadı.
+                  {language === "tr"
+                    ? "Sonuç bulunamadı."
+                    : "No results found."}
                 </p>
               )}
 
@@ -456,7 +505,9 @@ function ModelPicker({
 
       {multiple && selected.length > 0 && (
         <p className="smart-model-note">
-          {selected.length} model seçildi · En fazla {maxSelected}
+          {language === "tr"
+            ? `${selected.length} model seçildi · En fazla ${maxSelected}`
+            : `${selected.length} model${selected.length === 1 ? "" : "s"} selected · Max ${maxSelected}`}
         </p>
       )}
     </div>
@@ -464,6 +515,7 @@ function ModelPicker({
 }
 
 export default function FeedbackPage({ api }: { api: string }) {
+  const { language } = useLanguage();
   const [feedbackType, setFeedbackType] = useState("general");
   const [message, setMessage] = useState("");
   const [feedbackState, setFeedbackState] =
@@ -494,6 +546,13 @@ export default function FeedbackPage({ api }: { api: string }) {
 
   const showDemandDetails =
     demandModels.length > 0 || otherModel.trim().length > 0;
+
+  const severityOptions = [
+    ["low", "Küçük", "Minor"],
+    ["medium", "Önemli", "Major"],
+    ["high", "Yüksek", "High"],
+    ["critical", "Kritik", "Critical"],
+  ] as const;
 
   function changeFeedbackType(value: string) {
     setFeedbackType(value);
@@ -648,12 +707,18 @@ export default function FeedbackPage({ api }: { api: string }) {
   return (
     <section className="feedback-page" id="feedback">
       <div className="feedback-hero">
-        <p className="kicker">İLETİŞİM VE KATKI</p>
-        <h2>Radar’ı birlikte geliştirelim.</h2>
+        <p className="kicker">
+          {language === "tr" ? "İLETİŞİM VE KATKI" : "CONTACT & CONTRIBUTE"}
+        </p>
+        <h2>
+          {language === "tr"
+            ? "Radar’ı birlikte geliştirelim."
+            : "Let's build Radar together."}
+        </h2>
         <p>
-          Eksik model, hatalı veri veya yeni özellik önerilerini
-          doğrudan bize iletebilirsin. Gönderimler anonim oturum
-          kimliği ve yalnızca gerekli sayfa bağlamıyla ilişkilendirilir.
+          {language === "tr"
+            ? "Eksik model, hatalı veri veya yeni özellik önerilerini doğrudan bize iletebilirsin. Gönderimler anonim oturum kimliği ve yalnızca gerekli sayfa bağlamıyla ilişkilendirilir."
+            : "You can send us missing models, incorrect data, or new feature suggestions directly. Submissions are linked only to an anonymous session ID and the minimal page context needed."}
         </p>
       </div>
 
@@ -666,16 +731,19 @@ export default function FeedbackPage({ api }: { api: string }) {
               </span>
 
               <div>
-                <h3>Geri bildirim gönder</h3>
+                <h3>
+                  {language === "tr" ? "Geri bildirim gönder" : "Send feedback"}
+                </h3>
                 <p>
-                  Türü seç; ilgili model, veri alanı veya kaynak
-                  bilgileri gerektiğinde otomatik olarak açılsın.
+                  {language === "tr"
+                    ? "Türü seç; ilgili model, veri alanı veya kaynak bilgileri gerektiğinde otomatik olarak açılsın."
+                    : "Pick a type; the related model, data field, or source fields will appear automatically when needed."}
                 </p>
               </div>
             </header>
 
             <label>
-              <span>Tür</span>
+              <span>{language === "tr" ? "Tür" : "Type"}</span>
 
               <select
                 value={feedbackType}
@@ -683,9 +751,9 @@ export default function FeedbackPage({ api }: { api: string }) {
                   changeFeedbackType(event.target.value)
                 }
               >
-                {feedbackOptions.map(([value, label]) => (
-                  <option value={value} key={value}>
-                    {label}
+                {feedbackOptions.map((entry) => (
+                  <option value={entry[0]} key={entry[0]}>
+                    {optionLabel(entry, language)}
                   </option>
                 ))}
               </select>
@@ -694,7 +762,7 @@ export default function FeedbackPage({ api }: { api: string }) {
             {modelRelatedFeedback.has(feedbackType) && (
               <div className="feedback-smart-field">
                 <span className="feedback-smart-label">
-                  İlgili model
+                  {language === "tr" ? "İlgili model" : "Related model"}
                 </span>
 
                 <ModelPicker
@@ -705,14 +773,20 @@ export default function FeedbackPage({ api }: { api: string }) {
                     setFeedbackState("idle");
                   }}
                   multiple={false}
-                  placeholder="İlgili modeli ara..."
+                  placeholder={
+                    language === "tr"
+                      ? "İlgili modeli ara..."
+                      : "Search related model..."
+                  }
                 />
               </div>
             )}
 
             {subjectFeedback.has(feedbackType) && (
               <label>
-                <span>Hangi bilgi?</span>
+                <span>
+                  {language === "tr" ? "Hangi bilgi?" : "Which info?"}
+                </span>
 
                 <select
                   value={subject}
@@ -721,11 +795,13 @@ export default function FeedbackPage({ api }: { api: string }) {
                     setFeedbackState("idle");
                   }}
                 >
-                  <option value="">Seç</option>
+                  <option value="">
+                    {language === "tr" ? "Seç" : "Select"}
+                  </option>
 
-                  {subjectOptions.map(([value, label]) => (
-                    <option value={value} key={value}>
-                      {label}
+                  {subjectOptions.map((entry) => (
+                    <option value={entry[0]} key={entry[0]}>
+                      {optionLabel(entry, language)}
                     </option>
                   ))}
                 </select>
@@ -734,7 +810,9 @@ export default function FeedbackPage({ api }: { api: string }) {
 
             {productAreaFeedback.has(feedbackType) && (
               <label>
-                <span>İlgili alan</span>
+                <span>
+                  {language === "tr" ? "İlgili alan" : "Related area"}
+                </span>
 
                 <select
                   value={productArea}
@@ -743,11 +821,13 @@ export default function FeedbackPage({ api }: { api: string }) {
                     setFeedbackState("idle");
                   }}
                 >
-                  <option value="">Seç</option>
+                  <option value="">
+                    {language === "tr" ? "Seç" : "Select"}
+                  </option>
 
-                  {productAreas.map(([value, label]) => (
-                    <option value={value} key={value}>
-                      {label}
+                  {productAreas.map((entry) => (
+                    <option value={entry[0]} key={entry[0]}>
+                      {optionLabel(entry, language)}
                     </option>
                   ))}
                 </select>
@@ -756,31 +836,28 @@ export default function FeedbackPage({ api }: { api: string }) {
 
             {severityFeedback.has(feedbackType) && (
               <fieldset className="feedback-smart-group">
-                <legend>Önem seviyesi</legend>
+                <legend>
+                  {language === "tr" ? "Önem seviyesi" : "Severity"}
+                </legend>
 
                 <div className="feedback-choice-row">
-                  {[
-                    ["low", "Küçük"],
-                    ["medium", "Önemli"],
-                    ["high", "Yüksek"],
-                    ["critical", "Kritik"],
-                  ].map(([value, label]) => (
+                  {severityOptions.map((entry) => (
                     <button
                       type="button"
-                      key={value}
+                      key={entry[0]}
                       className={
-                        severity === value
+                        severity === entry[0]
                           ? "feedback-choice active"
                           : "feedback-choice"
                       }
                       onClick={() => {
                         setSeverity(
-                          severity === value ? "" : value,
+                          severity === entry[0] ? "" : entry[0],
                         );
                         setFeedbackState("idle");
                       }}
                     >
-                      {label}
+                      {optionLabel(entry, language)}
                     </button>
                   ))}
                 </div>
@@ -789,7 +866,11 @@ export default function FeedbackPage({ api }: { api: string }) {
 
             {sourceFeedback.has(feedbackType) && (
               <label>
-                <span>Kaynak URL · opsiyonel</span>
+                <span>
+                  {language === "tr"
+                    ? "Kaynak URL · opsiyonel"
+                    : "Source URL · optional"}
+                </span>
 
                 <input
                   type="url"
@@ -805,7 +886,7 @@ export default function FeedbackPage({ api }: { api: string }) {
             )}
 
             <label>
-              <span>Mesaj</span>
+              <span>{language === "tr" ? "Mesaj" : "Message"}</span>
 
               <textarea
                 value={message}
@@ -817,8 +898,8 @@ export default function FeedbackPage({ api }: { api: string }) {
                   setFeedbackState("idle");
                 }}
                 placeholder={
-                  feedbackPlaceholders[feedbackType] ??
-                  feedbackPlaceholders.general
+                  feedbackPlaceholders[language][feedbackType] ??
+                  feedbackPlaceholders[language].general
                 }
               />
             </label>
@@ -832,15 +913,23 @@ export default function FeedbackPage({ api }: { api: string }) {
               }
             >
               {feedbackState === "sending"
-                ? "Gönderiliyor…"
+                ? language === "tr"
+                  ? "Gönderiliyor…"
+                  : "Sending…"
                 : feedbackState === "success"
-                  ? "✓ Gönderildi"
-                  : "Geri bildirimi gönder"}
+                  ? language === "tr"
+                    ? "✓ Gönderildi"
+                    : "✓ Sent"
+                  : language === "tr"
+                    ? "Geri bildirimi gönder"
+                    : "Send feedback"}
             </button>
 
             {feedbackState === "error" && (
               <p className="form-error" role="alert">
-                Gönderilemedi; lütfen tekrar dene.
+                {language === "tr"
+                  ? "Gönderilemedi; lütfen tekrar dene."
+                  : "Couldn't send; please try again."}
               </p>
             )}
 
@@ -856,17 +945,22 @@ export default function FeedbackPage({ api }: { api: string }) {
               </span>
 
               <div>
-                <h3>LLMaaS model talebi</h3>
+                <h3>
+                  {language === "tr"
+                    ? "LLMaaS model talebi"
+                    : "LLMaaS model request"}
+                </h3>
                 <p>
-                  Türkiye’de hangi modellerin servis olarak
-                  sunulmasını istersin?
+                  {language === "tr"
+                    ? "Türkiye’de hangi modellerin servis olarak sunulmasını istersin?"
+                    : "Which models would you like offered as a service in Turkey?"}
                 </p>
               </div>
             </header>
 
             <div className="feedback-smart-field">
               <span className="feedback-smart-label">
-                Model seçimi
+                {language === "tr" ? "Model seçimi" : "Model selection"}
               </span>
 
               <ModelPicker
@@ -882,7 +976,11 @@ export default function FeedbackPage({ api }: { api: string }) {
             </div>
 
             <label>
-              <span>Listede olmayan model</span>
+              <span>
+                {language === "tr"
+                  ? "Listede olmayan model"
+                  : "Model not in the list"}
+              </span>
 
               <input
                 value={otherModel}
@@ -891,40 +989,52 @@ export default function FeedbackPage({ api }: { api: string }) {
                   setOtherModel(event.target.value);
                   setDemandState("idle");
                 }}
-                placeholder="Model adını yaz"
+                placeholder={
+                  language === "tr"
+                    ? "Model adını yaz"
+                    : "Type the model name"
+                }
               />
             </label>
 
             {showDemandDetails && (
               <div className="feedback-progressive">
                 <fieldset className="feedback-smart-group">
-                  <legend>Sen kimsin? · opsiyonel</legend>
+                  <legend>
+                    {language === "tr"
+                      ? "Sen kimsin? · opsiyonel"
+                      : "Who are you? · optional"}
+                  </legend>
 
                   <div className="feedback-choice-row">
-                    {userTypeOptions.map(([value, label]) => (
+                    {userTypeOptions.map((entry) => (
                       <button
                         type="button"
-                        key={value}
+                        key={entry[0]}
                         className={
-                          userType.includes(value)
+                          userType.includes(entry[0])
                             ? "feedback-choice active"
                             : "feedback-choice"
                         }
                         onClick={() => {
                           setUserType((current) =>
-                            toggleValue(current, value),
+                            toggleValue(current, entry[0]),
                           );
                           setDemandState("idle");
                         }}
                       >
-                        {label}
+                        {optionLabel(entry, language)}
                       </button>
                     ))}
                   </div>
 
                   <div className="demand-grid">
                     <label>
-                      <span>Ad soyad · opsiyonel</span>
+                      <span>
+                        {language === "tr"
+                          ? "Ad soyad · opsiyonel"
+                          : "Full name · optional"}
+                      </span>
 
                       <input
                         value={fullName}
@@ -933,12 +1043,20 @@ export default function FeedbackPage({ api }: { api: string }) {
                           setFullName(event.target.value);
                           setDemandState("idle");
                         }}
-                        placeholder="Adın soyadın"
+                        placeholder={
+                          language === "tr"
+                            ? "Adın soyadın"
+                            : "Your full name"
+                        }
                       />
                     </label>
 
                     <label>
-                      <span>Şirket / organizasyon · opsiyonel</span>
+                      <span>
+                        {language === "tr"
+                          ? "Şirket / organizasyon · opsiyonel"
+                          : "Company / organization · optional"}
+                      </span>
 
                       <input
                         value={organizationName}
@@ -947,89 +1065,103 @@ export default function FeedbackPage({ api }: { api: string }) {
                           setOrganizationName(event.target.value);
                           setDemandState("idle");
                         }}
-                        placeholder="Şirket veya organizasyon adı"
+                        placeholder={
+                          language === "tr"
+                            ? "Şirket veya organizasyon adı"
+                            : "Company or organization name"
+                        }
                       />
                     </label>
                   </div>
                 </fieldset>
 
                 <fieldset className="feedback-smart-group">
-                  <legend>Ne için kullanırsın?</legend>
+                  <legend>
+                    {language === "tr"
+                      ? "Ne için kullanırsın?"
+                      : "What will you use it for?"}
+                  </legend>
 
                   <div className="feedback-choice-row">
-                    {useCaseOptions.map(([value, label]) => (
+                    {useCaseOptions.map((entry) => (
                       <button
                         type="button"
-                        key={value}
+                        key={entry[0]}
                         className={
-                          useCases.includes(value)
+                          useCases.includes(entry[0])
                             ? "feedback-choice active"
                             : "feedback-choice"
                         }
                         onClick={() => {
                           setUseCases((current) =>
-                            toggleValue(current, value),
+                            toggleValue(current, entry[0]),
                           );
                           setDemandState("idle");
                         }}
                       >
-                        {label}
+                        {optionLabel(entry, language)}
                       </button>
                     ))}
                   </div>
                 </fieldset>
 
                 <fieldset className="feedback-smart-group">
-                  <legend>Senin için en önemli kriterler?</legend>
+                  <legend>
+                    {language === "tr"
+                      ? "Senin için en önemli kriterler?"
+                      : "What matters most to you?"}
+                  </legend>
 
                   <div className="feedback-choice-row">
-                    {criterionOptions.map(([value, label]) => (
+                    {criterionOptions.map((entry) => (
                       <button
                         type="button"
-                        key={value}
+                        key={entry[0]}
                         className={
-                          criteria.includes(value)
+                          criteria.includes(entry[0])
                             ? "feedback-choice active"
                             : "feedback-choice"
                         }
                         onClick={() => {
                           setCriteria((current) =>
-                            toggleValue(current, value),
+                            toggleValue(current, entry[0]),
                           );
                           setDemandState("idle");
                         }}
                       >
-                        {label}
+                        {optionLabel(entry, language)}
                       </button>
                     ))}
                   </div>
                 </fieldset>
 
                 <fieldset className="feedback-smart-group">
-                  <legend>Talep seviyesi</legend>
+                  <legend>
+                    {language === "tr" ? "Talep seviyesi" : "Demand level"}
+                  </legend>
 
                   <div className="feedback-demand-levels">
-                    {demandLevels.map(([value, label]) => (
+                    {demandLevels.map((entry) => (
                       <label
                         className={
-                          demandLevel === value
+                          demandLevel === entry[0]
                             ? "feedback-demand-level active"
                             : "feedback-demand-level"
                         }
-                        key={value}
+                        key={entry[0]}
                       >
                         <input
                           type="radio"
                           name="demand-level"
-                          value={value}
-                          checked={demandLevel === value}
+                          value={entry[0]}
+                          checked={demandLevel === entry[0]}
                           onChange={() => {
-                            setDemandLevel(value);
+                            setDemandLevel(entry[0]);
                             setDemandState("idle");
                           }}
                         />
 
-                        <span>{label}</span>
+                        <span>{optionLabel(entry, language)}</span>
                       </label>
                     ))}
                   </div>
@@ -1037,7 +1169,11 @@ export default function FeedbackPage({ api }: { api: string }) {
 
                 <div className="demand-grid">
                   <label>
-                    <span>Aylık kullanım tahmini</span>
+                    <span>
+                      {language === "tr"
+                        ? "Aylık kullanım tahmini"
+                        : "Estimated monthly usage"}
+                    </span>
 
                     <select
                       value={usageVolume}
@@ -1046,16 +1182,20 @@ export default function FeedbackPage({ api }: { api: string }) {
                         setDemandState("idle");
                       }}
                     >
-                      {usageVolumeOptions.map(([value, label]) => (
-                        <option value={value} key={value || "empty"}>
-                          {label}
+                      {usageVolumeOptions.map((entry) => (
+                        <option value={entry[0]} key={entry[0] || "empty"}>
+                          {optionLabel(entry, language)}
                         </option>
                       ))}
                     </select>
                   </label>
 
                   <label>
-                    <span>Aylık bütçe tahmini · USD</span>
+                    <span>
+                      {language === "tr"
+                        ? "Aylık bütçe tahmini · USD"
+                        : "Estimated monthly budget · USD"}
+                    </span>
 
                     <select
                       value={budgetRange}
@@ -1064,16 +1204,20 @@ export default function FeedbackPage({ api }: { api: string }) {
                         setDemandState("idle");
                       }}
                     >
-                      {budgetRangeOptions.map(([value, label]) => (
-                        <option value={value} key={value || "empty"}>
-                          {label}
+                      {budgetRangeOptions.map((entry) => (
+                        <option value={entry[0]} key={entry[0] || "empty"}>
+                          {optionLabel(entry, language)}
                         </option>
                       ))}
                     </select>
                   </label>
 
                   <label>
-                    <span>Planlanan başlangıç</span>
+                    <span>
+                      {language === "tr"
+                        ? "Planlanan başlangıç"
+                        : "Planned start"}
+                    </span>
 
                     <select
                       value={timeline}
@@ -1082,9 +1226,9 @@ export default function FeedbackPage({ api }: { api: string }) {
                         setDemandState("idle");
                       }}
                     >
-                      {timelineOptions.map(([value, label]) => (
-                        <option value={value} key={value || "empty"}>
-                          {label}
+                      {timelineOptions.map((entry) => (
+                        <option value={entry[0]} key={entry[0] || "empty"}>
+                          {optionLabel(entry, language)}
                         </option>
                       ))}
                     </select>
@@ -1092,7 +1236,11 @@ export default function FeedbackPage({ api }: { api: string }) {
                 </div>
 
                 <label>
-                  <span>Eklemek istediğin bir not var mı? · opsiyonel</span>
+                  <span>
+                    {language === "tr"
+                      ? "Eklemek istediğin bir not var mı? · opsiyonel"
+                      : "Anything else you'd like to add? · optional"}
+                  </span>
 
                   <textarea
                     value={userNote}
@@ -1101,7 +1249,11 @@ export default function FeedbackPage({ api }: { api: string }) {
                       setUserNote(event.target.value);
                       setDemandState("idle");
                     }}
-                    placeholder="Talebinle ilgili eklemek istediğin bağlam"
+                    placeholder={
+                      language === "tr"
+                        ? "Talebinle ilgili eklemek istediğin bağlam"
+                        : "Any context you'd like to add about your request"
+                    }
                   />
                 </label>
               </div>
@@ -1116,15 +1268,23 @@ export default function FeedbackPage({ api }: { api: string }) {
               }
             >
               {demandState === "sending"
-                ? "Kaydediliyor…"
+                ? language === "tr"
+                  ? "Kaydediliyor…"
+                  : "Saving…"
                 : demandState === "success"
-                  ? "✓ Talep kaydedildi"
-                  : "Talebi kaydet"}
+                  ? language === "tr"
+                    ? "✓ Talep kaydedildi"
+                    : "✓ Request saved"
+                  : language === "tr"
+                    ? "Talebi kaydet"
+                    : "Save request"}
             </button>
 
             {demandState === "error" && (
               <p className="form-error" role="alert">
-                Talep kaydedilemedi; tekrar dene.
+                {language === "tr"
+                  ? "Talep kaydedilemedi; tekrar dene."
+                  : "Couldn't save the request; please try again."}
               </p>
             )}
 
@@ -1133,29 +1293,44 @@ export default function FeedbackPage({ api }: { api: string }) {
 
         <aside className="feedback-aside">
           <article>
-            <p className="kicker">GİZLİLİK</p>
-            <h4>Minimum veri</h4>
+            <p className="kicker">
+              {language === "tr" ? "GİZLİLİK" : "PRIVACY"}
+            </p>
+            <h4>{language === "tr" ? "Minimum veri" : "Minimal data"}</h4>
             <p>
-              E-posta veya hesap bilgisi istemiyoruz. Anonim oturum,
-              gönderim içeriği ve bildirimin geldiği sayfa saklanır.
+              {language === "tr"
+                ? "E-posta veya hesap bilgisi istemiyoruz. Anonim oturum, gönderim içeriği ve bildirimin geldiği sayfa saklanır."
+                : "We don't ask for an email or account. We store an anonymous session, the submission content, and the page it came from."}
             </p>
           </article>
 
           <article>
             <p className="kicker">LLMaaS</p>
-            <h4>Daha anlamlı talep sinyali</h4>
+            <h4>
+              {language === "tr"
+                ? "Daha anlamlı talep sinyali"
+                : "A more meaningful demand signal"}
+            </h4>
             <p>
-              Kullanım amacı, hacim ve bütçe kapasite ve ürün
-              planlamasında birlikte değerlendirilir.
+              {language === "tr"
+                ? "Kullanım amacı, hacim ve bütçe kapasite ve ürün planlamasında birlikte değerlendirilir."
+                : "Use case, volume, and budget are considered together for capacity and product planning."}
             </p>
           </article>
 
           <article>
-            <p className="kicker">GERİ BİLDİRİM</p>
-            <h4>Bağlamla birlikte değerlendirilir</h4>
+            <p className="kicker">
+              {language === "tr" ? "GERİ BİLDİRİM" : "FEEDBACK"}
+            </p>
+            <h4>
+              {language === "tr"
+                ? "Bağlamla birlikte değerlendirilir"
+                : "Reviewed together with context"}
+            </h4>
             <p>
-              Model, veri alanı, kaynak ve önem seviyesi gibi bilgiler
-              geri bildirimin daha hızlı incelenmesini sağlar.
+              {language === "tr"
+                ? "Model, veri alanı, kaynak ve önem seviyesi gibi bilgiler geri bildirimin daha hızlı incelenmesini sağlar."
+                : "Details like model, data field, source, and severity help your feedback get reviewed faster."}
             </p>
           </article>
         </aside>

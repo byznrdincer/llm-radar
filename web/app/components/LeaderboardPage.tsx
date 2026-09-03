@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import ModelAvatar from "./ModelAvatar";
 import { useInfiniteScroll } from "../lib/useInfiniteScroll";
+import { useLanguage, type Language } from "../lib/i18n";
 
 export type LeaderboardItem = {
     model_name: string;
@@ -69,60 +70,104 @@ type BenchmarkInfo = {
 type TabDef = {
     id: LeaderboardView;
     group: string;
-    label: string;
-    hint: string;
+    label: Record<Language, string>;
+    hint: Record<Language, string>;
     board: keyof Boards;
 };
 
 const benchmarkTabs: TabDef[] = [
-    { id: "general", group: "Genel", label: "Arena", hint: "İnsan tercihi", board: "general" },
-    { id: "intelligence", group: "Genel", label: "AA Zekâ", hint: "Bileşik endeks", board: "intelligence" },
-    { id: "coding", group: "Kodlama", label: "SWE-bench", hint: "Verified agent", board: "coding" },
-    { id: "swe-live", group: "Kodlama", label: "SWE Live", hint: "Güncel görevler", board: "swe-live" },
-    { id: "livecodebench", group: "Kodlama", label: "LiveCodeBench", hint: "Pass@1 kod", board: "livecodebench" },
-    { id: "aa-coding", group: "Kodlama", label: "AA Kodlama", hint: "Bileşik endeks", board: "aa-coding" },
-    { id: "livebench", group: "Bilgi", label: "LiveBench", hint: "Genel skor", board: "livebench" },
-    { id: "livebench-math", group: "Bilgi", label: "LB Math", hint: "Matematik", board: "livebench" },
-    { id: "livebench-reasoning", group: "Bilgi", label: "LB Reasoning", hint: "Akıl yürütme", board: "livebench" },
-    { id: "livebench-coding", group: "Bilgi", label: "LB Coding", hint: "Kod üretimi", board: "livebench" },
-    { id: "mmlu-pro", group: "Bilgi", label: "MMLU-Pro", hint: "Akademik bilgi", board: "mmlu-pro" },
-    { id: "agentic", group: "Agent", label: "AA Agentic", hint: "Araç kullanımı", board: "agentic" },
-    { id: "tau-bench", group: "Agent", label: "τ-bench", hint: "Pass@1 görev", board: "tau-bench" },
+    { id: "general", group: "Genel", label: { tr: "Arena", en: "Arena" }, hint: { tr: "İnsan tercihi", en: "Human preference" }, board: "general" },
+    { id: "intelligence", group: "Genel", label: { tr: "AA Zekâ", en: "AA Intelligence" }, hint: { tr: "Bileşik endeks", en: "Composite index" }, board: "intelligence" },
+    { id: "coding", group: "Kodlama", label: { tr: "SWE-bench", en: "SWE-bench" }, hint: { tr: "Verified agent", en: "Verified agent" }, board: "coding" },
+    { id: "swe-live", group: "Kodlama", label: { tr: "SWE Live", en: "SWE Live" }, hint: { tr: "Güncel görevler", en: "Live tasks" }, board: "swe-live" },
+    { id: "livecodebench", group: "Kodlama", label: { tr: "LiveCodeBench", en: "LiveCodeBench" }, hint: { tr: "Pass@1 kod", en: "Pass@1 code" }, board: "livecodebench" },
+    { id: "aa-coding", group: "Kodlama", label: { tr: "AA Kodlama", en: "AA Coding" }, hint: { tr: "Bileşik endeks", en: "Composite index" }, board: "aa-coding" },
+    { id: "livebench", group: "Bilgi", label: { tr: "LiveBench", en: "LiveBench" }, hint: { tr: "Genel skor", en: "Overall score" }, board: "livebench" },
+    { id: "livebench-math", group: "Bilgi", label: { tr: "LB Math", en: "LB Math" }, hint: { tr: "Matematik", en: "Math" }, board: "livebench" },
+    { id: "livebench-reasoning", group: "Bilgi", label: { tr: "LB Reasoning", en: "LB Reasoning" }, hint: { tr: "Akıl yürütme", en: "Reasoning" }, board: "livebench" },
+    { id: "livebench-coding", group: "Bilgi", label: { tr: "LB Coding", en: "LB Coding" }, hint: { tr: "Kod üretimi", en: "Code generation" }, board: "livebench" },
+    { id: "mmlu-pro", group: "Bilgi", label: { tr: "MMLU-Pro", en: "MMLU-Pro" }, hint: { tr: "Akademik bilgi", en: "Academic knowledge" }, board: "mmlu-pro" },
+    { id: "agentic", group: "Agent", label: { tr: "AA Agentic", en: "AA Agentic" }, hint: { tr: "Araç kullanımı", en: "Tool use" }, board: "agentic" },
+    { id: "tau-bench", group: "Agent", label: { tr: "τ-bench", en: "τ-bench" }, hint: { tr: "Pass@1 görev", en: "Pass@1 task" }, board: "tau-bench" },
 ];
 
-const viewTitles: Record<LeaderboardView, string> = {
-    general: "İnsan tercihi sıralaması",
-    coding: "SWE-bench Verified",
-    "swe-live": "SWE-bench Live",
-    "tau-bench": "τ-bench araç kullanımı",
-    intelligence: "Zekâ endeksi",
-    "aa-coding": "Kodlama endeksi",
-    agentic: "Agentic endeksi",
-    livebench: "LiveBench genel",
-    "livebench-math": "LiveBench — Matematik",
-    "livebench-reasoning": "LiveBench — Reasoning",
-    "livebench-coding": "LiveBench — Kodlama",
-    "mmlu-pro": "MMLU-Pro bilgi",
-    livecodebench: "LiveCodeBench kod üretimi",
+const viewTitles: Record<LeaderboardView, Record<Language, string>> = {
+    general: { tr: "İnsan tercihi sıralaması", en: "Human preference ranking" },
+    coding: { tr: "SWE-bench Verified", en: "SWE-bench Verified" },
+    "swe-live": { tr: "SWE-bench Live", en: "SWE-bench Live" },
+    "tau-bench": { tr: "τ-bench araç kullanımı", en: "τ-bench tool use" },
+    intelligence: { tr: "Zekâ endeksi", en: "Intelligence index" },
+    "aa-coding": { tr: "Kodlama endeksi", en: "Coding index" },
+    agentic: { tr: "Agentic endeksi", en: "Agentic index" },
+    livebench: { tr: "LiveBench genel", en: "LiveBench overall" },
+    "livebench-math": { tr: "LiveBench — Matematik", en: "LiveBench — Math" },
+    "livebench-reasoning": { tr: "LiveBench — Reasoning", en: "LiveBench — Reasoning" },
+    "livebench-coding": { tr: "LiveBench — Kodlama", en: "LiveBench — Coding" },
+    "mmlu-pro": { tr: "MMLU-Pro bilgi", en: "MMLU-Pro knowledge" },
+    livecodebench: { tr: "LiveCodeBench kod üretimi", en: "LiveCodeBench code generation" },
 };
 
-const viewHints: Record<LeaderboardView, string> = {
-    general: "Arena Rating puanına göre sıralı · oy sayısı ve güven aralığı bağlam bilgisidir",
-    coding: "Gerçek GitHub sorunlarında çözülen görev oranı",
-    "swe-live": "Güncel yazılım görevlerinde çözüm oranı",
-    "tau-bench": "Gerçekçi araç kullanımı görevlerinde Pass@1",
-    intelligence: "Artificial Analysis bağımsız zekâ endeksi",
-    "aa-coding": "Artificial Analysis kodlama endeksi",
-    agentic: "Artificial Analysis agentic görev endeksi",
-    livebench: "Kontaminasyonu azaltılmış güncel değerlendirme",
-    "livebench-math": "LiveBench matematik alt kategorisi",
-    "livebench-reasoning": "LiveBench akıl yürütme alt kategorisi",
-    "livebench-coding": "LiveBench kodlama alt kategorisi",
-    "mmlu-pro": "14 alanda akademik bilgi testi",
-    livecodebench: "Güncel kod problemlerinde Pass@1",
+const viewHints: Record<LeaderboardView, Record<Language, string>> = {
+    general: {
+        tr: "Arena Rating puanına göre sıralı · oy sayısı ve güven aralığı bağlam bilgisidir",
+        en: "Ranked by Arena Rating score · vote count and confidence interval are contextual",
+    },
+    coding: {
+        tr: "Gerçek GitHub sorunlarında çözülen görev oranı",
+        en: "Task resolution rate on real GitHub issues",
+    },
+    "swe-live": {
+        tr: "Güncel yazılım görevlerinde çözüm oranı",
+        en: "Resolution rate on live software tasks",
+    },
+    "tau-bench": {
+        tr: "Gerçekçi araç kullanımı görevlerinde Pass@1",
+        en: "Pass@1 on realistic tool-use tasks",
+    },
+    intelligence: {
+        tr: "Artificial Analysis bağımsız zekâ endeksi",
+        en: "Artificial Analysis independent intelligence index",
+    },
+    "aa-coding": {
+        tr: "Artificial Analysis kodlama endeksi",
+        en: "Artificial Analysis coding index",
+    },
+    agentic: {
+        tr: "Artificial Analysis agentic görev endeksi",
+        en: "Artificial Analysis agentic task index",
+    },
+    livebench: {
+        tr: "Kontaminasyonu azaltılmış güncel değerlendirme",
+        en: "Contamination-reduced live evaluation",
+    },
+    "livebench-math": {
+        tr: "LiveBench matematik alt kategorisi",
+        en: "LiveBench math subcategory",
+    },
+    "livebench-reasoning": {
+        tr: "LiveBench akıl yürütme alt kategorisi",
+        en: "LiveBench reasoning subcategory",
+    },
+    "livebench-coding": {
+        tr: "LiveBench kodlama alt kategorisi",
+        en: "LiveBench coding subcategory",
+    },
+    "mmlu-pro": {
+        tr: "14 alanda akademik bilgi testi",
+        en: "Academic knowledge test across 14 domains",
+    },
+    livecodebench: {
+        tr: "Güncel kod problemlerinde Pass@1",
+        en: "Pass@1 on live coding problems",
+    },
 };
 
 const tabGroups = ["Genel", "Kodlama", "Bilgi", "Agent"] as const;
+
+const groupLabels: Record<Language, Record<(typeof tabGroups)[number], string>> = {
+    tr: { Genel: "Genel", Kodlama: "Kodlama", Bilgi: "Bilgi", Agent: "Agent" },
+    en: { Genel: "General", Kodlama: "Coding", Bilgi: "Knowledge", Agent: "Agent" },
+};
 
 // Profildeki openness alanı boş olsa bile, lisans "Proprietary" olarak
 // doğrulanmışsa (bkz. backend _known_family_license) bu tek yönlü ve
@@ -145,23 +190,24 @@ function effectiveOpenness(
 function sourceBadge(
     openness: string | null | undefined,
     license: string | null | undefined,
+    language: Language,
 ) {
     const resolved = effectiveOpenness(openness, license);
 
     if (resolved === "open_source")
-        return { label: "Open Source", description: "Açık kaynak model", kind: "open" };
+        return { label: "Open Source", description: language === "tr" ? "Açık kaynak model" : "Open source model", kind: "open" };
 
     if (resolved === "open_weight")
-        return { label: "Open Weight", description: "Model ağırlıkları indirilebilir", kind: "open" };
+        return { label: "Open Weight", description: language === "tr" ? "Model ağırlıkları indirilebilir" : "Model weights downloadable", kind: "open" };
 
     if (resolved === "proprietary")
-        return { label: "Closed Source", description: "Kapalı model / servis erişimi", kind: "closed" };
+        return { label: "Closed Source", description: language === "tr" ? "Kapalı model / servis erişimi" : "Closed model / API access", kind: "closed" };
 
     const normalizedLicense = (license ?? "").trim().toLowerCase();
     if (normalizedLicense === "not applicable" || normalizedLicense === "n/a")
-        return { label: "N/A", description: "Tek bir modele ait olmayan benchmark girdisi", kind: "na" };
+        return { label: "N/A", description: language === "tr" ? "Tek bir modele ait olmayan benchmark girdisi" : "Benchmark entry not tied to a single model", kind: "na" };
 
-    return { label: "?", description: "Açıklık sınıfı henüz doğrulanmadı", kind: "unknown" };
+    return { label: "?", description: language === "tr" ? "Açıklık sınıfı henüz doğrulanmadı" : "Openness class not yet verified", kind: "unknown" };
 }
 
 function resolveBoard(view: LeaderboardView, boards: Boards): Leaderboard | null {
@@ -184,14 +230,14 @@ function organizationSlug(organization: string) {
         .replace(/^-|-$/g, "");
 }
 
-function formatScore(item: LeaderboardItem, isArena: boolean, isSwe: boolean, isSweLive: boolean, isTau: boolean) {
-    if (isArena) return Math.round(item.rating).toLocaleString("tr-TR");
+function formatScore(item: LeaderboardItem, isArena: boolean, isSwe: boolean, isSweLive: boolean, isTau: boolean, locale: string) {
+    if (isArena) return Math.round(item.rating).toLocaleString(locale);
     if (isSwe || isSweLive || isTau) return `${item.rating.toFixed(1)}%`;
     return item.rating.toFixed(1);
 }
 
-function formatSecondary(item: LeaderboardItem, isArena: boolean, isSwe: boolean, isSweLive: boolean, isTau: boolean, isLive: boolean, isMmlu: boolean) {
-    if (isArena) return item.vote_count != null ? `${item.vote_count.toLocaleString("tr-TR")} oy` : "—";
+function formatSecondary(item: LeaderboardItem, isArena: boolean, isSwe: boolean, isSweLive: boolean, isTau: boolean, isLive: boolean, isMmlu: boolean, language: Language, locale: string) {
+    if (isArena) return item.vote_count != null ? `${item.vote_count.toLocaleString(locale)} ${language === "tr" ? "oy" : "votes"}` : "—";
     if (isSwe) return String(item.details.evaluation_date ?? "—");
     if (isSweLive) return String(item.details.submission_date ?? "—");
     if (isTau) return String(item.details.benchmark_version ?? "—");
@@ -200,9 +246,9 @@ function formatSecondary(item: LeaderboardItem, isArena: boolean, isSwe: boolean
     return String(item.details.benchmark_version ?? "—");
 }
 
-function formatTertiary(item: LeaderboardItem, isArena: boolean, isSwe: boolean, isSweLive: boolean) {
+function formatTertiary(item: LeaderboardItem, isArena: boolean, isSwe: boolean, isSweLive: boolean, language: Language) {
     if (isArena && item.rating_lower != null && item.rating_upper != null)
-        return `Güven: ${Math.round(item.rating_lower)}–${Math.round(item.rating_upper)}`;
+        return `${language === "tr" ? "Güven" : "Confidence"}: ${Math.round(item.rating_lower)}–${Math.round(item.rating_upper)}`;
     if (isSwe) return String(item.details.agent ?? "—");
     if (isSweLive) return String(item.details.agent_harness ?? "—");
     return item.leaderboard_publish_date;
@@ -241,6 +287,7 @@ export default function LeaderboardPage({
     onTauCategoryChange,
     onInspectModel,
 }: Props) {
+    const { language, locale } = useLanguage();
     const board = resolveBoard(view, boards);
     const [visibleCount, setVisibleCount] = useState(20);
     const [opennessFilter, setOpennessFilter] = useState<
@@ -252,7 +299,13 @@ export default function LeaderboardPage({
     const isTau = view === "tau-bench";
     const isLive = view === "livebench" || view.startsWith("livebench-");
     const isMmlu = view === "mmlu-pro";
-    const scoreLabel = isArena ? "Arena Rating" : isSwe || isSweLive ? "Çözüm oranı" : isTau ? "Pass@1" : "Puan";
+    const scoreLabel = isArena
+        ? "Arena Rating"
+        : isSwe || isSweLive
+            ? (language === "tr" ? "Çözüm oranı" : "Resolution rate")
+            : isTau
+                ? "Pass@1"
+                : (language === "tr" ? "Puan" : "Score");
     const allItems = board?.items ?? [];
     const filteredItems = opennessFilter === "all"
         ? allItems
@@ -277,14 +330,70 @@ export default function LeaderboardPage({
         return 35 + ((rating - minimumRating) / (maximumRating - minimumRating)) * 65;
     }
 
+    const opennessOptions: [string, string][] = [
+        ["all", language === "tr" ? "Tümü" : "All"],
+        ["open_source", "Open Source"],
+        ["open_weight", "Open Weight"],
+        ["proprietary", "Closed Source"],
+    ];
+
+    const livebenchOptions: [string, string][] = [
+        ["overall", language === "tr" ? "Genel" : "Overall"],
+        ["reasoning", "Reasoning"],
+        ["math", language === "tr" ? "Matematik" : "Math"],
+        ["coding", language === "tr" ? "Kodlama" : "Coding"],
+        ["data_analysis", language === "tr" ? "Veri" : "Data"],
+        ["writing", language === "tr" ? "Yazma" : "Writing"],
+        ["instruction_following", language === "tr" ? "Talimat" : "Instruction"],
+        ["agentic_coding", "Agentic"],
+    ];
+
+    const mmluOptions: [string, string][] = [
+        ["overall", language === "tr" ? "Genel" : "Overall"],
+        ["biology", language === "tr" ? "Biyoloji" : "Biology"],
+        ["business", language === "tr" ? "İşletme" : "Business"],
+        ["chemistry", language === "tr" ? "Kimya" : "Chemistry"],
+        ["computer_science", "CS"],
+        ["economics", language === "tr" ? "Ekonomi" : "Economics"],
+        ["engineering", language === "tr" ? "Müh." : "Eng."],
+        ["health", language === "tr" ? "Sağlık" : "Health"],
+        ["history", language === "tr" ? "Tarih" : "History"],
+        ["law", language === "tr" ? "Hukuk" : "Law"],
+        ["math", language === "tr" ? "Matematik" : "Math"],
+        ["philosophy", language === "tr" ? "Felsefe" : "Philosophy"],
+        ["physics", language === "tr" ? "Fizik" : "Physics"],
+        ["psychology", language === "tr" ? "Psikoloji" : "Psychology"],
+        ["other", language === "tr" ? "Diğer" : "Other"],
+    ];
+
+    const sweLiveOptions: [string, string][] = [
+        ["lite", "Lite"],
+        ["full", "Full"],
+        ["verified", "Verified"],
+        ["ccpp", "C/C++"],
+        ["csharp", "C#"],
+        ["go", "Go"],
+        ["java", "Java"],
+        ["rust", "Rust"],
+        ["tsjs", "TS/JS"],
+        ["windows", "Windows"],
+    ];
+
+    const tauOptions: [string, string][] = [
+        ["airline", language === "tr" ? "Havayolu" : "Airline"],
+        ["retail", language === "tr" ? "Perakende" : "Retail"],
+        ["telecom", language === "tr" ? "Telekom" : "Telecom"],
+        ["banking_knowledge", language === "tr" ? "Bankacılık" : "Banking"],
+    ];
+
     return (
         <section className="leaderboard-page app-page" id="leaderboard">
             <div className="lb-toolbar-card">
-                <div className="lb-benchmark-strip" role="tablist" aria-label="Benchmark seç">
+                <div className="lb-benchmark-strip" role="tablist" aria-label={language === "tr" ? "Benchmark seç" : "Select benchmark"}>
                     {tabGroups.map((group, groupIndex) => (
                         <div className="lb-benchmark-cluster" key={group}>
                             {groupIndex > 0 && <span className="lb-benchmark-sep" aria-hidden="true" />}
-                            <span className="lb-benchmark-cluster-label">{group}</span>
+                            <span className="lb-benchmark-cluster-label">{groupLabels[language][group]}</span>
                             {benchmarkTabs.filter(tab => tab.group === group).map(tab => (
                                 <button
                                     key={tab.id}
@@ -293,10 +402,10 @@ export default function LeaderboardPage({
                                     aria-selected={view === tab.id}
                                     className={`lb-benchmark-pill${view === tab.id ? " active" : ""}`}
                                     disabled={false}
-                                    title={tab.hint}
+                                    title={tab.hint[language]}
                                     onClick={() => onViewChange(tab.id)}
                                 >
-                                    {tab.label}
+                                    {tab.label[language]}
                                 </button>
                             ))}
                         </div>
@@ -306,21 +415,16 @@ export default function LeaderboardPage({
 
             {board ? (
                 <div className="lb-filter-bar">
-                    <div className="lb-filter-group" role="group" aria-label="Model açıklığı">
-                        <span>Açıklık</span>
+                    <div className="lb-filter-group" role="group" aria-label={language === "tr" ? "Model açıklığı" : "Model openness"}>
+                        <span>{language === "tr" ? "Açıklık" : "Openness"}</span>
                         <div className="lb-filter-pills">
-                            {([
-                                ["all", "Tümü"],
-                                ["open_source", "Open Source"],
-                                ["open_weight", "Open Weight"],
-                                ["proprietary", "Closed Source"],
-                            ] as const).map(([value, label]) => (
+                            {opennessOptions.map(([value, label]) => (
                                 <button
                                     key={value}
                                     type="button"
                                     className={opennessFilter === value ? "active" : ""}
                                     onClick={() => {
-                                        setOpennessFilter(value);
+                                        setOpennessFilter(value as "all" | "open_source" | "open_weight" | "proprietary");
                                         setVisibleCount(20);
                                     }}
                                 >
@@ -330,40 +434,40 @@ export default function LeaderboardPage({
                         </div>
                     </div>
                     {isLive && view === "livebench" && (
-                        <div className="lb-filter-group" role="group" aria-label="LiveBench kategorisi">
-                            <span>Alt kategori</span>
+                        <div className="lb-filter-group" role="group" aria-label={language === "tr" ? "LiveBench kategorisi" : "LiveBench category"}>
+                            <span>{language === "tr" ? "Alt kategori" : "Subcategory"}</span>
                             <div className="lb-filter-pills">
-                                {[["overall", "Genel"], ["reasoning", "Reasoning"], ["math", "Matematik"], ["coding", "Kodlama"], ["data_analysis", "Veri"], ["writing", "Yazma"], ["instruction_following", "Talimat"], ["agentic_coding", "Agentic"]].map(([value, label]) => (
+                                {livebenchOptions.map(([value, label]) => (
                                     <button key={value} type="button" className={livebenchCategory === value ? "active" : ""} onClick={() => onLivebenchCategoryChange(value)}>{label}</button>
                                 ))}
                             </div>
                         </div>
                     )}
                     {isMmlu && (
-                        <div className="lb-filter-group" role="group" aria-label="MMLU-Pro alanı">
-                            <span>Alan</span>
+                        <div className="lb-filter-group" role="group" aria-label={language === "tr" ? "MMLU-Pro alanı" : "MMLU-Pro domain"}>
+                            <span>{language === "tr" ? "Alan" : "Domain"}</span>
                             <div className="lb-filter-pills">
-                                {[["overall", "Genel"], ["biology", "Biyoloji"], ["business", "İşletme"], ["chemistry", "Kimya"], ["computer_science", "CS"], ["economics", "Ekonomi"], ["engineering", "Müh."], ["health", "Sağlık"], ["history", "Tarih"], ["law", "Hukuk"], ["math", "Matematik"], ["philosophy", "Felsefe"], ["physics", "Fizik"], ["psychology", "Psikoloji"], ["other", "Diğer"]].map(([value, label]) => (
+                                {mmluOptions.map(([value, label]) => (
                                     <button key={value} type="button" className={mmluCategory === value ? "active" : ""} onClick={() => onMmluCategoryChange(value)}>{label}</button>
                                 ))}
                             </div>
                         </div>
                     )}
                     {isSweLive && (
-                        <div className="lb-filter-group" role="group" aria-label="SWE-bench Live bölümü">
-                            <span>Bölüm</span>
+                        <div className="lb-filter-group" role="group" aria-label={language === "tr" ? "SWE-bench Live bölümü" : "SWE-bench Live segment"}>
+                            <span>{language === "tr" ? "Bölüm" : "Segment"}</span>
                             <div className="lb-filter-pills">
-                                {[["lite", "Lite"], ["full", "Full"], ["verified", "Verified"], ["ccpp", "C/C++"], ["csharp", "C#"], ["go", "Go"], ["java", "Java"], ["rust", "Rust"], ["tsjs", "TS/JS"], ["windows", "Windows"]].map(([value, label]) => (
+                                {sweLiveOptions.map(([value, label]) => (
                                     <button key={value} type="button" className={sweLiveCategory === value ? "active" : ""} onClick={() => onSweLiveCategoryChange(value)}>{label}</button>
                                 ))}
                             </div>
                         </div>
                     )}
                     {isTau && (
-                        <div className="lb-filter-group" role="group" aria-label="τ-bench alanı">
-                            <span>Alan</span>
+                        <div className="lb-filter-group" role="group" aria-label={language === "tr" ? "τ-bench alanı" : "τ-bench domain"}>
+                            <span>{language === "tr" ? "Alan" : "Domain"}</span>
                             <div className="lb-filter-pills">
-                                {[["airline", "Havayolu"], ["retail", "Perakende"], ["telecom", "Telekom"], ["banking_knowledge", "Bankacılık"]].map(([value, label]) => (
+                                {tauOptions.map(([value, label]) => (
                                     <button key={value} type="button" className={tauCategory === value ? "active" : ""} onClick={() => onTauCategoryChange(value)}>{label}</button>
                                 ))}
                             </div>
@@ -372,52 +476,54 @@ export default function LeaderboardPage({
                 </div>
             ) : null}
 
-            <div className="lb-summary-grid" aria-label="Benchmark özeti">
+            <div className="lb-summary-grid" aria-label={language === "tr" ? "Benchmark özeti" : "Benchmark summary"}>
                 <div className="lb-summary-card">
-                    <span>Listelenen model</span>
-                    <strong>{filteredItems.length || "—"} model</strong>
+                    <span>{language === "tr" ? "Listelenen model" : "Models listed"}</span>
+                    <strong>{filteredItems.length || "—"} {language === "tr" ? "model" : "models"}</strong>
                 </div>
                 <div className="lb-summary-card">
-                    <span>En yüksek {scoreLabel}</span>
-                    <strong>{filteredItems[0] ? formatScore(filteredItems[0], isArena, isSwe, isSweLive, isTau) : "—"}</strong>
+                    <span>{language === "tr" ? "En yüksek" : "Top"} {scoreLabel}</span>
+                    <strong>{filteredItems[0] ? formatScore(filteredItems[0], isArena, isSwe, isSweLive, isTau, locale) : "—"}</strong>
                 </div>
                 <div className="lb-summary-card">
-                    <span>Son güncelleme</span>
-                    <strong>{board?.published_at ? new Date(board.published_at).toLocaleDateString("tr-TR") : "—"}</strong>
+                    <span>{language === "tr" ? "Son güncelleme" : "Last updated"}</span>
+                    <strong>{board?.published_at ? new Date(board.published_at).toLocaleDateString(locale) : "—"}</strong>
                 </div>
             </div>
 
             <div className="leaderboard-table-shell">
                 <div className="lb-table-banner">
                     <div>
-                        <h2>{viewTitles[view]}</h2>
-                        <p>{viewHints[view]}</p>
+                        <h2>{viewTitles[view][language]}</h2>
+                        <p>{viewHints[view][language]}</p>
                     </div>
                     <div className="lb-table-actions">
                         <button
                             type="button"
                             className="lb-about-btn"
-                            aria-label={`${benchmarkInfo[view].name} hakkında bilgi`}
+                            aria-label={language === "tr" ? `${benchmarkInfo[view].name} hakkında bilgi` : `About ${benchmarkInfo[view].name}`}
                             onClick={onOpenInfo}
                         >
                             <span className="lb-info-icon" aria-hidden="true">i</span>
-                            Benchmark bilgisi
+                            {language === "tr" ? "Benchmark bilgisi" : "Benchmark info"}
                         </button>
                         {board?.source.url && (
                             <a className="lb-source-link" href={board.source.url} target="_blank" rel="noreferrer">
-                                Kaynağı aç ↗
+                                {language === "tr" ? "Kaynağı aç ↗" : "View source ↗"}
                             </a>
                         )}
                     </div>
                 </div>
-                <div className="leaderboard-scroll" aria-label="Benchmark sıralama tablosu">
+                <div className="leaderboard-scroll" aria-label={language === "tr" ? "Benchmark sıralama tablosu" : "Benchmark ranking table"}>
                     {!board ? (
-                        <div className="leaderboard-empty">Benchmark yükleniyor…</div>
+                        <div className="leaderboard-empty">{language === "tr" ? "Benchmark yükleniyor…" : "Loading benchmark…"}</div>
                     ) : !allItems.length ? (
-                        <div className="leaderboard-empty">Bu benchmark için henüz veri yok.</div>
+                        <div className="leaderboard-empty">{language === "tr" ? "Bu benchmark için henüz veri yok." : "No data yet for this benchmark."}</div>
                     ) : !filteredItems.length ? (
                         <div className="leaderboard-empty">
-                            Bu açıklık filtresinde ({opennessFilter === "open_source" ? "Open Source" : opennessFilter === "open_weight" ? "Open Weight" : "Closed Source"}) eşleşen model yok.
+                            {language === "tr"
+                                ? `Bu açıklık filtresinde (${opennessFilter === "open_source" ? "Open Source" : opennessFilter === "open_weight" ? "Open Weight" : "Closed Source"}) eşleşen model yok.`
+                                : `No models match this openness filter (${opennessFilter === "open_source" ? "Open Source" : opennessFilter === "open_weight" ? "Open Weight" : "Closed Source"}).`}
                         </div>
                     ) : (
                         <>
@@ -427,13 +533,13 @@ export default function LeaderboardPage({
                                     <th className="lb-col-rank">#</th>
                                     <th className="lb-col-model">Model</th>
                                     <th className="lb-col-score">{scoreLabel}</th>
-                                    <th className="lb-col-detail">Detay</th>
-                                    <th className="lb-col-action" aria-label="İşlem" />
+                                    <th className="lb-col-detail">{language === "tr" ? "Detay" : "Detail"}</th>
+                                    <th className="lb-col-action" aria-label={language === "tr" ? "İşlem" : "Action"} />
                                 </tr>
                             </thead>
                             <tbody>
                                 {visibleItems.map(item => {
-                                    const badge = sourceBadge(item.openness, item.license);
+                                    const badge = sourceBadge(item.openness, item.license, language);
                                     return (
                                         <tr key={`${item.rank}-${item.model_name}`}>
                                             <td className="lb-col-rank">
@@ -455,22 +561,22 @@ export default function LeaderboardPage({
                                             </td>
                                             <td className="lb-col-score">
                                                 <div className="lb-score-wrap">
-                                                    <strong className="lb-score">{formatScore(item, isArena, isSwe, isSweLive, isTau)}</strong>
+                                                    <strong className="lb-score">{formatScore(item, isArena, isSwe, isSweLive, isTau, locale)}</strong>
                                                     <span className="lb-score-track" aria-hidden="true"><i style={{ width: `${scoreWidth(item.rating)}%` }} /></span>
                                                 </div>
                                             </td>
                                             <td className="lb-col-detail lb-muted">
-                                                <span>{formatSecondary(item, isArena, isSwe, isSweLive, isTau, isLive, isMmlu)}</span>
-                                                <small>{formatTertiary(item, isArena, isSwe, isSweLive)}</small>
+                                                <span>{formatSecondary(item, isArena, isSwe, isSweLive, isTau, isLive, isMmlu, language, locale)}</span>
+                                                <small>{formatTertiary(item, isArena, isSwe, isSweLive, language)}</small>
                                             </td>
                                             <td className="lb-col-action">
                                                 <button
                                                     type="button"
                                                     className="catalog-link"
                                                     onClick={() => onInspectModel(item)}
-                                                    aria-label={`${item.model_name} modelini incele`}
+                                                    aria-label={language === "tr" ? `${item.model_name} modelini incele` : `Inspect ${item.model_name}`}
                                                 >
-                                                    İncele
+                                                    {language === "tr" ? "İncele" : "Inspect"}
                                                 </button>
                                             </td>
                                         </tr>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLanguage, type Language } from "../lib/i18n";
 
 export type ResearchItem = {
   id: string;
@@ -34,41 +35,65 @@ type Props = {
 
 const PAGE_SIZE = 16;
 
-const SOURCE_OPTIONS: [string, string][] = [
-  ["any", "Tüm kaynaklar"],
-  ["arxiv", "arXiv"],
-];
+const SOURCE_OPTIONS: Record<Language, [string, string][]> = {
+  tr: [
+    ["any", "Tüm kaynaklar"],
+    ["arxiv", "arXiv"],
+  ],
+  en: [
+    ["any", "All sources"],
+    ["arxiv", "arXiv"],
+  ],
+};
 
-const TYPE_OPTIONS: [string, string][] = [
-  ["any", "Tüm türler"],
-  ["cs.AI", "Yapay zeka (cs.AI)"],
-  ["cs.CL", "Doğal dil (cs.CL)"],
-  ["cs.LG", "Makine öğrenmesi (cs.LG)"],
-  ["cs.CV", "Bilgisayarlı görü (cs.CV)"],
-  ["cs.RO", "Robotik (cs.RO)"],
-];
+const TYPE_OPTIONS: Record<Language, [string, string][]> = {
+  tr: [
+    ["any", "Tüm türler"],
+    ["cs.AI", "Yapay zeka (cs.AI)"],
+    ["cs.CL", "Doğal dil (cs.CL)"],
+    ["cs.LG", "Makine öğrenmesi (cs.LG)"],
+    ["cs.CV", "Bilgisayarlı görü (cs.CV)"],
+    ["cs.RO", "Robotik (cs.RO)"],
+  ],
+  en: [
+    ["any", "All types"],
+    ["cs.AI", "Artificial Intelligence (cs.AI)"],
+    ["cs.CL", "Natural Language (cs.CL)"],
+    ["cs.LG", "Machine Learning (cs.LG)"],
+    ["cs.CV", "Computer Vision (cs.CV)"],
+    ["cs.RO", "Robotics (cs.RO)"],
+  ],
+};
 
-const IMPORTANCE_OPTIONS: [string, string][] = [
-  ["any", "Tüm önem"],
-  ["high", "Yüksek"],
-  ["medium", "Orta"],
-  ["low", "Düşük"],
-];
+const IMPORTANCE_OPTIONS: Record<Language, [string, string][]> = {
+  tr: [
+    ["any", "Tüm önem"],
+    ["high", "Yüksek"],
+    ["medium", "Orta"],
+    ["low", "Düşük"],
+  ],
+  en: [
+    ["any", "All importance"],
+    ["high", "High"],
+    ["medium", "Medium"],
+    ["low", "Low"],
+  ],
+};
 
-function formatDate(value: string | null | undefined): string {
+function formatDate(value: string | null | undefined, locale: string): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" });
+  return date.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
 }
 
-function paperSource(item: ResearchItem): string {
+function paperSource(item: ResearchItem, language: Language): string {
   try {
     const host = new URL(item.url).hostname.replace(/^www\./, "");
     if (host.includes("arxiv.org")) return "arXiv";
-    return host.split(".")[0]?.replace(/^./, c => c.toUpperCase()) ?? "Kaynak";
+    return host.split(".")[0]?.replace(/^./, c => c.toUpperCase()) ?? (language === "tr" ? "Kaynak" : "Source");
   } catch {
-    return "Kaynak";
+    return language === "tr" ? "Kaynak" : "Source";
   }
 }
 
@@ -83,10 +108,10 @@ function importanceLevel(item: ResearchItem): "high" | "medium" | "low" {
   return "low";
 }
 
-function importanceLabel(level: "high" | "medium" | "low"): string {
-  if (level === "high") return "Yüksek";
-  if (level === "medium") return "Orta";
-  return "Düşük";
+function importanceLabel(level: "high" | "medium" | "low", language: Language): string {
+  if (level === "high") return language === "tr" ? "Yüksek" : "High";
+  if (level === "medium") return language === "tr" ? "Orta" : "Medium";
+  return language === "tr" ? "Düşük" : "Low";
 }
 
 function canOpenUrl(url: string | null | undefined): boolean {
@@ -99,9 +124,9 @@ function canOpenUrl(url: string | null | undefined): boolean {
   }
 }
 
-function authorLine(authors: string[]): string {
+function authorLine(authors: string[], language: Language): string {
   const list = (authors || []).filter(Boolean);
-  if (!list.length) return "Yazar belirtilmedi";
+  if (!list.length) return language === "tr" ? "Yazar belirtilmedi" : "No authors listed";
   if (list.length <= 3) return list.join(", ");
   return `${list.slice(0, 3).join(", ")} +${list.length - 3}`;
 }
@@ -114,7 +139,8 @@ function truncate(text: string | null | undefined, max = 220): string {
 }
 
 function ImportancePill({ level }: { level: "high" | "medium" | "low" }) {
-  return <span className={`rs-pill ${level}`}>{importanceLabel(level)}</span>;
+  const { language } = useLanguage();
+  return <span className={`rs-pill ${level}`}>{importanceLabel(level, language)}</span>;
 }
 
 function StatIcon({ kind }: { kind: "today" | "source" | "verified" }) {
@@ -143,16 +169,17 @@ function StatIcon({ kind }: { kind: "today" | "source" | "verified" }) {
 }
 
 function PaperCard({ item }: { item: ResearchItem }) {
+  const { language, locale } = useLanguage();
   const level = importanceLevel(item);
 
   return (
     <article className="rs-card">
-      <p className="rs-card-kicker">Araştırma</p>
+      <p className="rs-card-kicker">{language === "tr" ? "Araştırma" : "Research"}</p>
       <h3>{item.title}</h3>
-      <p className="rs-authors">{authorLine(item.authors)}</p>
+      <p className="rs-authors">{authorLine(item.authors, language)}</p>
       <footer>
-        <span className="rs-card-source">{paperSource(item)}</span>
-        <time dateTime={item.published_at ?? undefined}>{formatDate(item.published_at)}</time>
+        <span className="rs-card-source">{paperSource(item, language)}</span>
+        <time dateTime={item.published_at ?? undefined}>{formatDate(item.published_at, locale)}</time>
         <ImportancePill level={level} />
       </footer>
     </article>
@@ -160,32 +187,33 @@ function PaperCard({ item }: { item: ResearchItem }) {
 }
 
 function FeaturedPaper({ item }: { item: ResearchItem }) {
+  const { language, locale } = useLanguage();
   const level = importanceLevel(item);
   const href = canOpenUrl(item.url) ? item.url : null;
 
   return (
     <article className="rs-featured">
       <div className="rs-featured-body">
-        <p className="rs-featured-kicker">Öne çıkan araştırma</p>
+        <p className="rs-featured-kicker">{language === "tr" ? "Öne çıkan araştırma" : "Featured research"}</p>
         <h3>{item.title}</h3>
         {item.abstract && <p className="rs-featured-abstract">{truncate(item.abstract, 260)}</p>}
         <p className="rs-authors">
           <span className="rs-author-icon" aria-hidden="true">
             <svg viewBox="0 0 16 16"><circle cx="8" cy="5" r="3" fill="none" stroke="currentColor" strokeWidth="1.2" /><path d="M3 14c0-3 2.2-5 5-5s5 2 5 5" fill="none" stroke="currentColor" strokeWidth="1.2" /></svg>
           </span>
-          {authorLine(item.authors)}
+          {authorLine(item.authors, language)}
         </p>
         <div className="rs-featured-footer">
           <div className="rs-featured-tags">
-            <span className="rs-tag">Kaynak: {paperSource(item)}</span>
-            <span className="rs-tag">Tarih: {formatDate(item.published_at)}</span>
+            <span className="rs-tag">{language === "tr" ? "Kaynak" : "Source"}: {paperSource(item, language)}</span>
+            <span className="rs-tag">{language === "tr" ? "Tarih" : "Date"}: {formatDate(item.published_at, locale)}</span>
             <span className="rs-tag">
-              Önem: <ImportancePill level={level} />
+              {language === "tr" ? "Önem" : "Importance"}: <ImportancePill level={level} />
             </span>
           </div>
           {href && (
             <a className="rs-source-link" href={href} target="_blank" rel="noreferrer">
-              Kaynağı aç ↗
+              {language === "tr" ? "Kaynağı aç ↗" : "View source ↗"}
             </a>
           )}
         </div>
@@ -206,6 +234,7 @@ function FeaturedPaper({ item }: { item: ResearchItem }) {
 }
 
 export default function ResearchPage({ api, bootstrap = null }: Props) {
+  const { language, locale } = useLanguage();
   const bootReady = bootstrap !== null && bootstrap.items.length > 0;
   const [items, setItems] = useState<ResearchItem[]>(() => bootstrap?.items ?? []);
   const [total, setTotal] = useState(() => bootstrap?.total ?? 0);
@@ -321,31 +350,33 @@ export default function ResearchPage({ api, bootstrap = null }: Props) {
 
   const todayDelta = summary ? summary.added_today - summary.added_yesterday : 0;
   const todayDeltaLabel = todayDelta > 0
-    ? `+${todayDelta} dünden`
+    ? (language === "tr" ? `+${todayDelta} dünden` : `+${todayDelta} from yesterday`)
     : todayDelta < 0
-      ? `${todayDelta} dünden`
-      : "Dünle aynı";
+      ? (language === "tr" ? `${todayDelta} dünden` : `${todayDelta} from yesterday`)
+      : (language === "tr" ? "Dünle aynı" : "Same as yesterday");
 
   return (
     <section className="rs-page" id="research">
       <span className="rs-live">
         <span className="rs-live-dot" aria-hidden="true" />
-        Canlı
+        {language === "tr" ? "Canlı" : "Live"}
       </span>
 
       <header className="rs-hero">
         <div className="rs-hero-copy">
-          <p className="rs-kicker">İstihbarat</p>
-          <h2>Araştırma akışı</h2>
+          <p className="rs-kicker">{language === "tr" ? "İstihbarat" : "Intelligence"}</p>
+          <h2>{language === "tr" ? "Araştırma akışı" : "Research feed"}</h2>
           <p className="rs-subtitle">
-            Akademik makaleler, uyarılar, teknik raporlar ve doğrulanmış kaynakları takip edin.
+            {language === "tr"
+              ? "Akademik makaleler, uyarılar, teknik raporlar ve doğrulanmış kaynakları takip edin."
+              : "Track academic papers, alerts, technical reports, and verified sources."}
           </p>
         </div>
         <div className="rs-stats">
           <article className="rs-stat">
             <span className="rs-stat-icon"><StatIcon kind="today" /></span>
             <div>
-              <span>Bugün eklenen</span>
+              <span>{language === "tr" ? "Bugün eklenen" : "Added today"}</span>
               <strong>{summary?.added_today ?? "—"}</strong>
               <small>{summary ? todayDeltaLabel : "—"}</small>
             </div>
@@ -354,16 +385,16 @@ export default function ResearchPage({ api, bootstrap = null }: Props) {
             <span className="rs-stat-icon"><StatIcon kind="source" /></span>
             <div>
               <span>Primary source</span>
-              <strong>{summary ? `%${summary.primary_source_pct}` : "—"}</strong>
-              <small>Yüksek güven</small>
+              <strong>{summary ? (language === "tr" ? `%${summary.primary_source_pct}` : `${summary.primary_source_pct}%`) : "—"}</strong>
+              <small>{language === "tr" ? "Yüksek güven" : "High confidence"}</small>
             </div>
           </article>
           <article className="rs-stat">
             <span className="rs-stat-icon"><StatIcon kind="verified" /></span>
             <div>
-              <span>Doğrulandı</span>
+              <span>{language === "tr" ? "Doğrulandı" : "Verified"}</span>
               <strong>{summary?.verified_week ?? "—"}</strong>
-              <small>Bu hafta</small>
+              <small>{language === "tr" ? "Bu hafta" : "This week"}</small>
             </div>
           </article>
         </div>
@@ -372,33 +403,33 @@ export default function ResearchPage({ api, bootstrap = null }: Props) {
       <div className="rs-toolbar">
         <div className="rs-filters">
           <label className="rs-filter">
-            <span>Kaynak</span>
+            <span>{language === "tr" ? "Kaynak" : "Source"}</span>
             <div className="rs-select-wrap">
               <span className="rs-select-icon" aria-hidden="true">▦</span>
               <select value={source} onChange={e => setSource(e.target.value)}>
-                {SOURCE_OPTIONS.map(([value, label]) => (
+                {SOURCE_OPTIONS[language].map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
             </div>
           </label>
           <label className="rs-filter">
-            <span>Tür</span>
+            <span>{language === "tr" ? "Tür" : "Type"}</span>
             <div className="rs-select-wrap">
               <span className="rs-select-icon" aria-hidden="true">◫</span>
               <select value={type} onChange={e => setType(e.target.value)}>
-                {TYPE_OPTIONS.map(([value, label]) => (
+                {TYPE_OPTIONS[language].map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
             </div>
           </label>
           <label className="rs-filter">
-            <span>Önem</span>
+            <span>{language === "tr" ? "Önem" : "Importance"}</span>
             <div className="rs-select-wrap">
               <span className="rs-select-icon" aria-hidden="true">◎</span>
               <select value={importance} onChange={e => setImportance(e.target.value)}>
-                {IMPORTANCE_OPTIONS.map(([value, label]) => (
+                {IMPORTANCE_OPTIONS[language].map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
@@ -411,16 +442,20 @@ export default function ResearchPage({ api, bootstrap = null }: Props) {
             type="search"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Araştırmalarda ara..."
-            aria-label="Araştırmalarda ara"
+            placeholder={language === "tr" ? "Araştırmalarda ara..." : "Search research..."}
+            aria-label={language === "tr" ? "Araştırmalarda ara" : "Search research"}
           />
         </label>
       </div>
 
       {loading ? (
-        <p className="rs-empty">Araştırmalar yükleniyor…</p>
+        <p className="rs-empty">{language === "tr" ? "Araştırmalar yükleniyor…" : "Loading research…"}</p>
       ) : filtered.length === 0 ? (
-        <p className="rs-empty">Henüz eşleşen araştırma yok. arXiv collector çalışınca burada görünür.</p>
+        <p className="rs-empty">
+          {language === "tr"
+            ? "Henüz eşleşen araştırma yok. arXiv collector çalışınca burada görünür."
+            : "No matching research yet. It will appear here once the arXiv collector runs."}
+        </p>
       ) : (
         <>
           {featured && (
@@ -438,7 +473,7 @@ export default function ResearchPage({ api, bootstrap = null }: Props) {
 
       {!loading && hasMore && importance === "any" && (
         <button type="button" className="rs-load-more" onClick={loadMore} disabled={loadingMore}>
-          {loadingMore ? "Yükleniyor…" : "Daha fazla araştırma yükle"}
+          {loadingMore ? (language === "tr" ? "Yükleniyor…" : "Loading…") : (language === "tr" ? "Daha fazla araştırma yükle" : "Load more research")}
           <span aria-hidden="true">⌄</span>
         </button>
       )}

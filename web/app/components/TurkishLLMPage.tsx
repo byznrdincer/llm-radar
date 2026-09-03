@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLanguage, type Language } from "../lib/i18n";
 
 export type TurkishModel = {
   id: string;
@@ -19,13 +20,13 @@ type SortField = "name" | "downloads" | "last_updated";
 
 const PAGE_SIZE = 20;
 
-function compact(value: number | null): string {
+function compact(value: number | null, locale: string): string {
   if (value == null) return "—";
-  return new Intl.NumberFormat("tr-TR", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("tr-TR");
+function formatDate(value: string, locale: string): string {
+  return new Date(value).toLocaleDateString(locale);
 }
 
 function formatBase(value: string | null): string {
@@ -76,6 +77,92 @@ type Props = {
   bootstrap?: TurkishModel[] | null;
 };
 
+const STRINGS: Record<Language, {
+  title: string;
+  lead: string;
+  models: string;
+  openWeight: string;
+  radarTitle: string;
+  radarHow: string;
+  radarExplain: string;
+  category: string;
+  coverage: string;
+  searchPlaceholder: string;
+  sortLabel: string;
+  sortDownloads: string;
+  sortRecent: string;
+  sortName: string;
+  clear: string;
+  loading: string;
+  noneMatch: string;
+  noneYet: string;
+  openSourceLink: (name: string) => string;
+  colModel: string;
+  colOrg: string;
+  colLicense: string;
+  colDownloads: string;
+  colUpdated: string;
+  prev: string;
+  next: string;
+}> = {
+  tr: {
+    title: "Türkçe odaklı modeller",
+    lead: "Yerel geliştiriciler ve açık ağırlıklı modeller.",
+    models: "model",
+    openWeight: "open-weight",
+    radarTitle: "Türkiye LLM Skoru",
+    radarHow: "Nasıl hesaplanıyor?",
+    radarExplain: "LLM Radar Skoru ile aynı motor, aynı kurallarla — yalnızca Türkiye sinyali taşıyan modellere uygulanır. Ayrı bir Türkçe değerlendirme paketi değildir.",
+    category: "kategori",
+    coverage: "kapsam",
+    searchPlaceholder: "Model veya kuruluş ara",
+    sortLabel: "Sırala",
+    sortDownloads: "En çok indirilen",
+    sortRecent: "En güncel",
+    sortName: "Ada göre",
+    clear: "Temizle",
+    loading: "Modeller yükleniyor…",
+    noneMatch: "Filtrelere uyan model yok.",
+    noneYet: "Henüz model bulunamadı.",
+    openSourceLink: (name) => `${name} için kaynağı aç`,
+    colModel: "Model",
+    colOrg: "Kuruluş",
+    colLicense: "Lisans",
+    colDownloads: "İndirme",
+    colUpdated: "Güncelleme",
+    prev: "Önceki",
+    next: "Sonraki",
+  },
+  en: {
+    title: "Turkish-focused models",
+    lead: "Local developers and open-weight models.",
+    models: "models",
+    openWeight: "open-weight",
+    radarTitle: "Turkey LLM Score",
+    radarHow: "How is it calculated?",
+    radarExplain: "The same engine and rules as the LLM Radar Score — applied only to models carrying a Turkey signal. It is not a separate Turkish evaluation suite.",
+    category: "categories",
+    coverage: "coverage",
+    searchPlaceholder: "Search model or organization",
+    sortLabel: "Sort",
+    sortDownloads: "Most downloaded",
+    sortRecent: "Most recent",
+    sortName: "By name",
+    clear: "Clear",
+    loading: "Loading models…",
+    noneMatch: "No models match the filters.",
+    noneYet: "No models found yet.",
+    openSourceLink: (name) => `Open source for ${name}`,
+    colModel: "Model",
+    colOrg: "Organization",
+    colLicense: "License",
+    colDownloads: "Downloads",
+    colUpdated: "Updated",
+    prev: "Previous",
+    next: "Next",
+  },
+};
+
 function normalizeTurkishItems(items: TurkishModel[]): TurkishModel[] {
   return items.map(item => ({
     ...item,
@@ -84,6 +171,8 @@ function normalizeTurkishItems(items: TurkishModel[]): TurkishModel[] {
 }
 
 export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
+  const { language, locale } = useLanguage();
+  const t = STRINGS[language];
   const bootReady = bootstrap !== null && bootstrap.length > 0;
   const [items, setItems] = useState<TurkishModel[]>(() => (bootstrap ? normalizeTurkishItems(bootstrap) : []));
   const [loading, setLoading] = useState(!bootReady);
@@ -101,7 +190,7 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
       .then(data => {
         if (!data) return;
         // The endpoint also lists catalog models with no score yet (used by
-        // the Genel Bakış full-catalog view) - this leaderboard only wants
+        // the Overview full-catalog view) - this leaderboard only wants
         // the ranked, actually-scored ones.
         const scored = ((data.items ?? []) as TurkishRadarRawItem[])
           .filter((item): item is TurkishRadarItem => item.score != null && item.rank != null);
@@ -165,28 +254,28 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
     <section className="turkish-page" id="turkish">
       <header className="turkish-hero">
         <div>
-          <h2>Türkçe odaklı modeller</h2>
-          <p className="turkish-lead">Yerel geliştiriciler ve açık ağırlıklı modeller.</p>
+          <h2>{t.title}</h2>
+          <p className="turkish-lead">{t.lead}</p>
         </div>
         <div className="turkish-stats">
           <div>
             <strong>{loading ? "—" : stats.total}</strong>
-            <span>model</span>
+            <span>{t.models}</span>
           </div>
           <div>
             <strong>{loading ? "—" : stats.openWeight}</strong>
-            <span>open-weight</span>
+            <span>{t.openWeight}</span>
           </div>
         </div>
       </header>
 
       {radar?.items.length ? (
-        <section className="turkish-radar" aria-label="Türkiye LLM Skoru">
+        <section className="turkish-radar" aria-label={t.radarTitle}>
           <header className="turkish-radar-head">
-            <h3>Türkiye LLM Skoru</h3>
+            <h3>{t.radarTitle}</h3>
             <details className="turkish-radar-info">
-              <summary>Nasıl hesaplanıyor?</summary>
-              <p>LLM Radar Skoru ile aynı motor, aynı kurallarla — yalnızca Türkiye sinyali taşıyan modellere uygulanır. Ayrı bir Türkçe değerlendirme paketi değildir.</p>
+              <summary>{t.radarHow}</summary>
+              <p>{t.radarExplain}</p>
             </details>
           </header>
           <ol className="turkish-radar-list">
@@ -195,9 +284,9 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
                 <b>#{item.rank}</b>
                 <span>
                   <strong>{item.model_name}</strong>
-                  <small>{item.organization} · {item.benchmark_count} benchmark / {item.category_count} kategori</small>
+                  <small>{item.organization} · {item.benchmark_count} benchmark / {item.category_count} {t.category}</small>
                 </span>
-                <em>{item.score.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}<small>%{item.coverage} kapsam</small></em>
+                <em>{item.score.toLocaleString(locale, { maximumFractionDigits: 1 })}<small>%{item.coverage} {t.coverage}</small></em>
               </li>
             ))}
           </ol>
@@ -210,18 +299,18 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
           <input
             value={query}
             onChange={event => { setQuery(event.target.value); setPage(1); }}
-            placeholder="Model veya kuruluş ara"
+            placeholder={t.searchPlaceholder}
           />
         </label>
         <select
           className="turkish-select"
           value={sortField}
           onChange={event => { setSortField(event.target.value as SortField); setPage(1); }}
-          aria-label="Sırala"
+          aria-label={t.sortLabel}
         >
-          <option value="downloads">En çok indirilen</option>
-          <option value="last_updated">En güncel</option>
-          <option value="name">Ada göre</option>
+          <option value="downloads">{t.sortDownloads}</option>
+          <option value="last_updated">{t.sortRecent}</option>
+          <option value="name">{t.sortName}</option>
         </select>
         <button
           type="button"
@@ -236,24 +325,24 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
             className="turkish-reset"
             onClick={() => { setQuery(""); setOpenWeightOnly(false); setPage(1); }}
           >
-            Temizle
+            {t.clear}
           </button>
         )}
       </div>
 
       <div className="turkish-table-wrap">
         {loading ? (
-          <p className="turkish-msg">Modeller yükleniyor…</p>
+          <p className="turkish-msg">{t.loading}</p>
         ) : visible.length ? (
           <div className="turkish-scroll">
             <table className="turkish-table">
               <thead>
                 <tr>
-                  <th>Model</th>
-                  <th>Kuruluş</th>
-                  <th>Lisans</th>
-                  <th>İndirme</th>
-                  <th>Güncelleme</th>
+                  <th>{t.colModel}</th>
+                  <th>{t.colOrg}</th>
+                  <th>{t.colLicense}</th>
+                  <th>{t.colDownloads}</th>
+                  <th>{t.colUpdated}</th>
                 </tr>
               </thead>
               <tbody>
@@ -271,9 +360,9 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
                               href={model.source_url}
                               target="_blank"
                               rel="noreferrer"
-                              aria-label={`${model.name} için kaynağı aç`}
+                              aria-label={t.openSourceLink(model.name)}
                             >
-                              {"\u2197"}
+                              {"↗"}
                             </a>
                           )}
                         </span>
@@ -288,8 +377,8 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
                       </td>
                       <td>{model.organization}</td>
                       <td className="turkish-muted">{model.license ?? "—"}</td>
-                      <td className="mono turkish-num">{compact(model.downloads)}</td>
-                      <td className="turkish-muted">{formatDate(model.last_updated)}</td>
+                      <td className="mono turkish-num">{compact(model.downloads, locale)}</td>
+                      <td className="turkish-muted">{formatDate(model.last_updated, locale)}</td>
                     </tr>
                   );
                 })}
@@ -298,7 +387,7 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
           </div>
         ) : (
           <p className="turkish-msg">
-            {items.length ? "Filtrelere uyan model yok." : "Henüz model bulunamadı."}
+            {items.length ? t.noneMatch : t.noneYet}
           </p>
         )}
       </div>
@@ -306,11 +395,11 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
       {pages > 1 && (
         <footer className="turkish-pager">
           <button type="button" disabled={safePage === 1} onClick={() => setPage(p => p - 1)}>
-            Önceki
+            {t.prev}
           </button>
           <span>{safePage} / {pages}</span>
           <button type="button" disabled={safePage === pages} onClick={() => setPage(p => p + 1)}>
-            Sonraki
+            {t.next}
           </button>
         </footer>
       )}

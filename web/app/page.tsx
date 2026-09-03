@@ -12,6 +12,8 @@ import TechnologyRadarPage from "./components/TechnologyRadarPage";
 import SourcesPage from "./components/SourcesPage";
 import ModelDetailDrawer, { type ModelDetailData } from "./components/ModelDetailDrawer";
 import OverviewIntelligence from "./components/OverviewIntelligence";
+import LanguageToggle from "./components/LanguageToggle";
+import { useLanguage, type Language } from "./lib/i18n";
 import type { TurkishModel } from "./components/TurkishLLMPage";
 import { trackEvent } from "./lib/analytics";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
@@ -332,22 +334,37 @@ type Facets = {
 type SortBy = "name" | "provider" | "context" | "input_price" | "output_price" | "release_date" | "benchmark_score" | "parameter_count" | "active_parameter_count" | "backend" | "updated_at" | "best_match";
 type SortOrder = "asc" | "desc";
 const emptyStats: Stats = { companies: 0, models: 0, snapshots: 0, price_observations: 0, change_events: 0 };
-const capabilityLabels: Record<string, string> = { reasoning: "Reasoning", coding: "Coding", vision: "Vision", multimodal: "Multimodal", tool_calling: "Tool calling", function_calling: "Function calling", computer_use: "Computer use", agents: "Agents", long_context: "Long context", web_search: "Web arama", prompt_caching: "Prompt önbellek", audio_input: "Ses girdisi", local_runnable: "Yerel çalıştırılabilir", ollama_compatible: "Ollama uyumlu", lm_studio_compatible: "LM Studio uyumlu" };
-const opennessLabels: Record<string, string> = { open_source: "Açık kaynak", open_weight: "Açık ağırlık", proprietary: "Kapalı kaynak", unknown: "Bilinmiyor" };
-const benchmarkFocusLabels: Record<string, string> = { general: "Genel (yalnızca benchmarklı)", coding: "Coding (yalnızca benchmarklı)", reasoning: "Reasoning (yalnızca benchmarklı)", agent: "Agent (yalnızca benchmarklı)", multimodal: "Multimodal (yalnızca benchmarklı)" };
+const CAPABILITY_LABELS: Record<Language, Record<string, string>> = {
+    tr: { reasoning: "Reasoning", coding: "Coding", vision: "Vision", multimodal: "Multimodal", tool_calling: "Tool calling", function_calling: "Function calling", computer_use: "Computer use", agents: "Agents", long_context: "Long context", web_search: "Web arama", prompt_caching: "Prompt önbellek", audio_input: "Ses girdisi", local_runnable: "Yerel çalıştırılabilir", ollama_compatible: "Ollama uyumlu", lm_studio_compatible: "LM Studio uyumlu" },
+    en: { reasoning: "Reasoning", coding: "Coding", vision: "Vision", multimodal: "Multimodal", tool_calling: "Tool calling", function_calling: "Function calling", computer_use: "Computer use", agents: "Agents", long_context: "Long context", web_search: "Web search", prompt_caching: "Prompt caching", audio_input: "Audio input", local_runnable: "Locally runnable", ollama_compatible: "Ollama compatible", lm_studio_compatible: "LM Studio compatible" },
+};
+const OPENNESS_LABELS: Record<Language, Record<string, string>> = {
+    tr: { open_source: "Açık kaynak", open_weight: "Açık ağırlık", proprietary: "Kapalı kaynak", unknown: "Bilinmiyor" },
+    en: { open_source: "Open source", open_weight: "Open weight", proprietary: "Closed source", unknown: "Unknown" },
+};
+const BENCHMARK_FOCUS_LABELS: Record<Language, Record<string, string>> = {
+    tr: { general: "Genel (yalnızca benchmarklı)", coding: "Coding (yalnızca benchmarklı)", reasoning: "Reasoning (yalnızca benchmarklı)", agent: "Agent (yalnızca benchmarklı)", multimodal: "Multimodal (yalnızca benchmarklı)" },
+    en: { general: "General (benchmarked only)", coding: "Coding (benchmarked only)", reasoning: "Reasoning (benchmarked only)", agent: "Agent (benchmarked only)", multimodal: "Multimodal (benchmarked only)" },
+};
 const runtimeCapabilityOptions = ["local_runnable", "ollama_compatible", "lm_studio_compatible"];
-const sortLabels: Record<SortBy, string> = { name: "Model adı", provider: "Geliştirici", context: "Context", input_price: "Girdi fiyatı", output_price: "Çıktı fiyatı", release_date: "Yayın tarihi", benchmark_score: "Benchmark puanı", parameter_count: "Parametre sayısı", active_parameter_count: "Aktif parametre", backend: "Backend", updated_at: "En güncel", best_match: "Benchmark uyumu" };
-function money(value: string | null | undefined) { if (value == null)
-    return "—"; return `$${Number(value).toLocaleString("tr-TR", { maximumFractionDigits: 4 })}`; }
-function compact(value: number) { if (value >= 1000000)
-    return `${(value / 1000000).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}M`; if (value >= 1000)
-    return `${(value / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}K`; return value.toLocaleString("tr-TR"); }
-function trModality(tag: string) {
-    const map: Record<string, string> = { text: "metin", image: "görsel", audio: "ses", video: "video", file: "dosya", pdf: "PDF" };
-    return map[tag.toLowerCase()] ?? tag;
+const SORT_LABELS: Record<Language, Record<SortBy, string>> = {
+    tr: { name: "Model adı", provider: "Geliştirici", context: "Context", input_price: "Girdi fiyatı", output_price: "Çıktı fiyatı", release_date: "Yayın tarihi", benchmark_score: "Benchmark puanı", parameter_count: "Parametre sayısı", active_parameter_count: "Aktif parametre", backend: "Backend", updated_at: "En güncel", best_match: "Benchmark uyumu" },
+    en: { name: "Model name", provider: "Developer", context: "Context", input_price: "Input price", output_price: "Output price", release_date: "Release date", benchmark_score: "Benchmark score", parameter_count: "Parameter count", active_parameter_count: "Active parameters", backend: "Backend", updated_at: "Last updated", best_match: "Benchmark match" },
+};
+function money(value: string | null | undefined, locale: string) { if (value == null)
+    return "—"; return `$${Number(value).toLocaleString(locale, { maximumFractionDigits: 4 })}`; }
+function compact(value: number, locale: string) { if (value >= 1000000)
+    return `${(value / 1000000).toLocaleString(locale, { maximumFractionDigits: 1 })}M`; if (value >= 1000)
+    return `${(value / 1000).toLocaleString(locale, { maximumFractionDigits: 1 })}K`; return value.toLocaleString(locale); }
+const MODALITY_LABELS: Record<Language, Record<string, string>> = {
+    tr: { text: "metin", image: "görsel", audio: "ses", video: "video", file: "dosya", pdf: "PDF" },
+    en: { text: "text", image: "image", audio: "audio", video: "video", file: "file", pdf: "PDF" },
+};
+function trModality(tag: string, language: Language) {
+    return MODALITY_LABELS[language][tag.toLowerCase()] ?? tag;
 }
-function trCapability(value: string) {
-    return capabilityLabels[value] ?? value.replaceAll("_", " ");
+function trCapability(value: string, language: Language) {
+    return CAPABILITY_LABELS[language][value] ?? value.replaceAll("_", " ");
 }
 function normalizeModelKey(value: string) {
     return value.toLowerCase().trim().replace(/_/g, "-");
@@ -384,67 +401,87 @@ function findLocalModel(modelName: string, organization: string, catalog: ModelI
     return candidates.length === 1 ? candidates[0] : null;
 }
 function daysAgoIso(days: number) { const d = new Date(); d.setDate(d.getDate() - days); return d.toISOString(); }
-const eventMeta: Record<string, {
-    label: string;
-    icon: string;
-    className: string;
-}> = {
-    "model.released": { label: "Yeni model", icon: "✦", className: "release" },
-    "leaderboard.changed": { label: "Benchmark hareketi", icon: "↗", className: "benchmark" },
-    "benchmark.updated": { label: "Benchmark güncellendi", icon: "◎", className: "benchmark" },
-    "context.changed": { label: "Teknoloji güncellemesi", icon: "↔", className: "technology" },
-    "capability.changed": { label: "Yeni yetenek", icon: "+", className: "technology" },
-    "github.release_published": { label: "GitHub sürümü", icon: "⌥", className: "technology" },
-    "huggingface.updated": { label: "Hugging Face", icon: "◇", className: "technology" },
-    "weights.released": { label: "Açık ağırlık", icon: "◇", className: "technology" },
-    "license.changed": { label: "Lisans", icon: "§", className: "technology" },
-    "company.announcement": { label: "Şirket duyurusu", icon: "!", className: "research" },
-    "technology.detected": { label: "Teknoloji sinyali", icon: "⚡", className: "technology" },
-    "research.published": { label: "Yeni araştırma", icon: "◌", className: "research" },
-    "price.changed": { label: "Fiyat hareketi", icon: "$", className: "price" },
+const SIDEBAR_GROUPS: Record<Language, { label: string; items: { id: string; label: string; icon: string }[] }[]> = {
+    tr: [
+        { label: "Keşfet", items: [{ id: "overview", label: "Genel bakış", icon: "⌂" }, { id: "leaderboard", label: "Benchmarklar", icon: "▥" }, { id: "models", label: "Model kataloğu", icon: "◫" }, { id: "compare", label: "Karşılaştır", icon: "⇄" }] },
+        { label: "Analiz", items: [{ id: "popularity", label: "Popüler modeller", icon: "↗" }, { id: "insights", label: "Pazar grafikleri", icon: "▤" }, { id: "turkish", label: "Türkiye LLM", icon: "TR" }] },
+        { label: "İstihbarat", items: [{ id: "events", label: "Gelişmeler", icon: "◉" }, { id: "research", label: "Araştırma", icon: "⌁" }, { id: "radar", label: "Teknoloji radarı", icon: "◎" }, { id: "sources", label: "Kaynaklar", icon: "↗" }] },
+        { label: "İletişim", items: [{ id: "feedback", label: "Geri bildirim", icon: "✉" }] },
+    ],
+    en: [
+        { label: "Explore", items: [{ id: "overview", label: "Overview", icon: "⌂" }, { id: "leaderboard", label: "Benchmarks", icon: "▥" }, { id: "models", label: "Model catalog", icon: "◫" }, { id: "compare", label: "Compare", icon: "⇄" }] },
+        { label: "Analysis", items: [{ id: "popularity", label: "Popular models", icon: "↗" }, { id: "insights", label: "Market charts", icon: "▤" }, { id: "turkish", label: "Turkey LLM", icon: "TR" }] },
+        { label: "Intelligence", items: [{ id: "events", label: "Developments", icon: "◉" }, { id: "research", label: "Research", icon: "⌁" }, { id: "radar", label: "Technology radar", icon: "◎" }, { id: "sources", label: "Sources", icon: "↗" }] },
+        { label: "Contact", items: [{ id: "feedback", label: "Feedback", icon: "✉" }] },
+    ],
 };
-function eventInfo(type: string) { return eventMeta[type] ?? { label: type.replaceAll(".", " "), icon: "•", className: "other" }; }
-const eventCategories = [["model_release", "Model Release"], ["model_update", "Model Update"], ["ai_agent", "AI Agent"], ["benchmark", "Benchmark"], ["research", "Research"], ["product_launch", "Product Launch"], ["funding", "Funding"], ["acquisition", "Acquisition"], ["partnership", "Partnership"], ["infrastructure", "Infrastructure"], ["regulation", "Regulation"], ["security", "Security"], ["pricing_change", "Pricing Change"], ["api_update", "API Update"]];
-const sidebarGroups = [
-    { label: "Keşfet", items: [{ id: "overview", label: "Genel bakış", icon: "⌂" }, { id: "leaderboard", label: "Benchmarklar", icon: "▥" }, { id: "models", label: "Model kataloğu", icon: "◫" }, { id: "compare", label: "Karşılaştır", icon: "⇄" }] },
-    { label: "Analiz", items: [{ id: "popularity", label: "Popüler modeller", icon: "↗" }, { id: "insights", label: "Pazar grafikleri", icon: "▤" }, { id: "turkish", label: "Türkiye LLM", icon: "TR" }] },
-    { label: "İstihbarat", items: [{ id: "events", label: "Gelişmeler", icon: "◉" }, { id: "research", label: "Araştırma", icon: "⌁" }, { id: "radar", label: "Teknoloji radarı", icon: "◎" }, { id: "sources", label: "Kaynaklar", icon: "↗" }] },
-    { label: "İletişim", items: [{ id: "feedback", label: "Geri bildirim", icon: "✉" }] },
-];
-const sectionMeta: Record<string, { group: string; title: string }> = {
-    overview: { group: "Keşfet", title: "Genel bakış" },
-    leaderboard: { group: "Keşfet", title: "Benchmark sıralamaları" },
-    models: { group: "Keşfet", title: "Model kataloğu" },
-    compare: { group: "Keşfet", title: "Model karşılaştırma" },
-    popularity: { group: "Analiz", title: "Popüler modeller" },
-    insights: { group: "Analiz", title: "Pazar grafikleri" },
-    turkish: { group: "Analiz", title: "Türkçe odaklı modeller" },
-    events: { group: "İstihbarat", title: "Gelişmeler" },
-    research: { group: "İstihbarat", title: "Araştırma akışı" },
-    radar: { group: "İstihbarat", title: "Teknoloji radarı" },
-    sources: { group: "İstihbarat", title: "Kaynak kataloğu" },
-    feedback: { group: "İletişim", title: "Geri bildirim" },
+const SECTION_META: Record<Language, Record<string, { group: string; title: string }>> = {
+    tr: {
+        overview: { group: "Keşfet", title: "Genel bakış" },
+        leaderboard: { group: "Keşfet", title: "Benchmark sıralamaları" },
+        models: { group: "Keşfet", title: "Model kataloğu" },
+        compare: { group: "Keşfet", title: "Model karşılaştırma" },
+        popularity: { group: "Analiz", title: "Popüler modeller" },
+        insights: { group: "Analiz", title: "Pazar grafikleri" },
+        turkish: { group: "Analiz", title: "Türkçe odaklı modeller" },
+        events: { group: "İstihbarat", title: "Gelişmeler" },
+        research: { group: "İstihbarat", title: "Araştırma akışı" },
+        radar: { group: "İstihbarat", title: "Teknoloji radarı" },
+        sources: { group: "İstihbarat", title: "Kaynak kataloğu" },
+        feedback: { group: "İletişim", title: "Geri bildirim" },
+    },
+    en: {
+        overview: { group: "Explore", title: "Overview" },
+        leaderboard: { group: "Explore", title: "Benchmark rankings" },
+        models: { group: "Explore", title: "Model catalog" },
+        compare: { group: "Explore", title: "Model comparison" },
+        popularity: { group: "Analysis", title: "Popular models" },
+        insights: { group: "Analysis", title: "Market charts" },
+        turkish: { group: "Analysis", title: "Turkish-focused models" },
+        events: { group: "Intelligence", title: "Developments" },
+        research: { group: "Intelligence", title: "Research feed" },
+        radar: { group: "Intelligence", title: "Technology radar" },
+        sources: { group: "Intelligence", title: "Source catalog" },
+        feedback: { group: "Contact", title: "Feedback" },
+    },
 };
 const insightViews = new Set<InsightsView>(["popularity", "insights", "turkish"]);
-const benchmarkInfo: Record<LeaderboardView, {
+const BENCHMARK_INFO: Record<Language, Record<LeaderboardView, {
     name: string;
     summary: string;
     measure: string;
     reading: string;
-}> = {
-    general: { name: "Chatbot Arena", summary: "İnsanların iki model yanıtını kör biçimde karşılaştırdığı tercih tabanlı değerlendirmedir.", measure: "Arena Rating, oy sayısı ve güven aralığı", reading: "Rating yükseldikçe ve sıra 1'e yaklaştıkça insan tercih performansı daha güçlüdür." },
-    coding: { name: "SWE-bench Verified", summary: "Modellerin gerçek GitHub sorunlarını mevcut kod depolarında çözme becerisini ölçer.", measure: "Başarıyla çözülen görev yüzdesi", reading: "Yüksek çözüm oranı daha iyidir; kullanılan agent ve harness sonucu etkileyebilir." },
-    "swe-live": { name: "SWE-bench Live", summary: "Yeni ve çok dilli yazılım görevleriyle veri sızıntısı riskini azaltan canlı kodlama değerlendirmesidir.", measure: "Doğrulanan gerçek görevlerde çözüm oranı", reading: "Yüksek oran daha iyidir; tarih ve kullanılan agent birlikte değerlendirilmelidir." },
-    "tau-bench": { name: "τ-bench", summary: "Bir modelin gerçekçi iş akışlarında araçları ve API'leri doğru kullanarak görevi tamamlamasını ölçer.", measure: "Pass@1 görev başarı oranı", reading: "İlk denemede daha yüksek başarı, daha güvenilir araç kullanımı anlamına gelir." },
-    livecodebench: { name: "LiveCodeBench", summary: "Güncel kod problemleri ve kontaminasyon filtresiyle kod üretme başarısını ölçer.", measure: "Pass@1 kod çözüm oranı", reading: "Daha yüksek puan daha iyidir; güncel tarih penceresi eski ezberlerin etkisini azaltır." },
-    intelligence: { name: "Artificial Analysis Intelligence Index", summary: "Farklı bilgi ve akıl yürütme testlerini tek bağımsız endekste birleştirir.", measure: "Bileşik zekâ endeksi", reading: "Yüksek endeks genel problem çözme performansının daha güçlü olduğuna işaret eder." },
-    "aa-coding": { name: "Artificial Analysis Coding Index", summary: "Birden fazla kodlama değerlendirmesini ortak bir bağımsız skor altında toplar.", measure: "Bileşik kodlama endeksi", reading: "Yüksek skor kod üretme ve yazılım görevlerinde daha güçlü performansı gösterir." },
-    agentic: { name: "Artificial Analysis Agentic Index", summary: "Modelin çok adımlı, araç kullanan ve hedef odaklı görevlerdeki başarısını ölçer.", measure: "Bileşik agentic görev skoru", reading: "Yüksek skor daha tutarlı planlama ve görev tamamlama performansı anlamına gelir." },
-    livebench: { name: "LiveBench", summary: "Soruları düzenli yenilenen, kontaminasyonu azaltılmış akademik ve pratik değerlendirme setidir.", measure: "Kategori ve genel başarı skoru", reading: "Yüksek skor daha iyidir; genel skorun yanında alan bazlı sonuçlara da bakılmalıdır." },
-    "livebench-math": { name: "LiveBench — Matematik", summary: "LiveBench içindeki matematik alt kategorisinde model başarısını ölçer.", measure: "Doğru cevap yüzdesi", reading: "Yüksek skor matematik akıl yürütmede daha güçlü performans gösterir." },
-    "livebench-reasoning": { name: "LiveBench — Reasoning", summary: "LiveBench reasoning alt kategorisinde çok adımlı akıl yürütme becerisini ölçer.", measure: "Doğru cevap yüzdesi", reading: "Yüksek skor karmaşık mantık görevlerinde daha iyi sonuç verir." },
-    "livebench-coding": { name: "LiveBench — Kodlama", summary: "LiveBench kodlama alt kategorisinde program üretme ve çözme başarısını ölçer.", measure: "Doğru cevap yüzdesi", reading: "Yüksek skor kod üretiminde daha güçlü performans anlamına gelir." },
-    "mmlu-pro": { name: "MMLU-Pro", summary: "14 alanda daha zor seçenekler ve daha fazla akıl yürütme gerektiren akademik bilgi testidir.", measure: "Doğru cevap yüzdesi", reading: "Yüksek doğruluk daha iyidir; alan seçimi modelin uzmanlığını anlamayı kolaylaştırır." },
+}>> = {
+    tr: {
+        general: { name: "Chatbot Arena", summary: "İnsanların iki model yanıtını kör biçimde karşılaştırdığı tercih tabanlı değerlendirmedir.", measure: "Arena Rating, oy sayısı ve güven aralığı", reading: "Rating yükseldikçe ve sıra 1'e yaklaştıkça insan tercih performansı daha güçlüdür." },
+        coding: { name: "SWE-bench Verified", summary: "Modellerin gerçek GitHub sorunlarını mevcut kod depolarında çözme becerisini ölçer.", measure: "Başarıyla çözülen görev yüzdesi", reading: "Yüksek çözüm oranı daha iyidir; kullanılan agent ve harness sonucu etkileyebilir." },
+        "swe-live": { name: "SWE-bench Live", summary: "Yeni ve çok dilli yazılım görevleriyle veri sızıntısı riskini azaltan canlı kodlama değerlendirmesidir.", measure: "Doğrulanan gerçek görevlerde çözüm oranı", reading: "Yüksek oran daha iyidir; tarih ve kullanılan agent birlikte değerlendirilmelidir." },
+        "tau-bench": { name: "τ-bench", summary: "Bir modelin gerçekçi iş akışlarında araçları ve API'leri doğru kullanarak görevi tamamlamasını ölçer.", measure: "Pass@1 görev başarı oranı", reading: "İlk denemede daha yüksek başarı, daha güvenilir araç kullanımı anlamına gelir." },
+        livecodebench: { name: "LiveCodeBench", summary: "Güncel kod problemleri ve kontaminasyon filtresiyle kod üretme başarısını ölçer.", measure: "Pass@1 kod çözüm oranı", reading: "Daha yüksek puan daha iyidir; güncel tarih penceresi eski ezberlerin etkisini azaltır." },
+        intelligence: { name: "Artificial Analysis Intelligence Index", summary: "Farklı bilgi ve akıl yürütme testlerini tek bağımsız endekste birleştirir.", measure: "Bileşik zekâ endeksi", reading: "Yüksek endeks genel problem çözme performansının daha güçlü olduğuna işaret eder." },
+        "aa-coding": { name: "Artificial Analysis Coding Index", summary: "Birden fazla kodlama değerlendirmesini ortak bir bağımsız skor altında toplar.", measure: "Bileşik kodlama endeksi", reading: "Yüksek skor kod üretme ve yazılım görevlerinde daha güçlü performansı gösterir." },
+        agentic: { name: "Artificial Analysis Agentic Index", summary: "Modelin çok adımlı, araç kullanan ve hedef odaklı görevlerdeki başarısını ölçer.", measure: "Bileşik agentic görev skoru", reading: "Yüksek skor daha tutarlı planlama ve görev tamamlama performansı anlamına gelir." },
+        livebench: { name: "LiveBench", summary: "Soruları düzenli yenilenen, kontaminasyonu azaltılmış akademik ve pratik değerlendirme setidir.", measure: "Kategori ve genel başarı skoru", reading: "Yüksek skor daha iyidir; genel skorun yanında alan bazlı sonuçlara da bakılmalıdır." },
+        "livebench-math": { name: "LiveBench — Matematik", summary: "LiveBench içindeki matematik alt kategorisinde model başarısını ölçer.", measure: "Doğru cevap yüzdesi", reading: "Yüksek skor matematik akıl yürütmede daha güçlü performans gösterir." },
+        "livebench-reasoning": { name: "LiveBench — Reasoning", summary: "LiveBench reasoning alt kategorisinde çok adımlı akıl yürütme becerisini ölçer.", measure: "Doğru cevap yüzdesi", reading: "Yüksek skor karmaşık mantık görevlerinde daha iyi sonuç verir." },
+        "livebench-coding": { name: "LiveBench — Kodlama", summary: "LiveBench kodlama alt kategorisinde program üretme ve çözme başarısını ölçer.", measure: "Doğru cevap yüzdesi", reading: "Yüksek skor kod üretiminde daha güçlü performans anlamına gelir." },
+        "mmlu-pro": { name: "MMLU-Pro", summary: "14 alanda daha zor seçenekler ve daha fazla akıl yürütme gerektiren akademik bilgi testidir.", measure: "Doğru cevap yüzdesi", reading: "Yüksek doğruluk daha iyidir; alan seçimi modelin uzmanlığını anlamayı kolaylaştırır." },
+    },
+    en: {
+        general: { name: "Chatbot Arena", summary: "A preference-based evaluation where humans blindly compare two models' responses.", measure: "Arena Rating, vote count, and confidence interval", reading: "The higher the rating and the closer to rank 1, the stronger the human-preference performance." },
+        coding: { name: "SWE-bench Verified", summary: "Measures a model's ability to resolve real GitHub issues in existing code repositories.", measure: "Percentage of tasks resolved successfully", reading: "A higher resolve rate is better; the agent and harness used can affect the result." },
+        "swe-live": { name: "SWE-bench Live", summary: "A live coding evaluation with fresh, multilingual software tasks that reduces data-leakage risk.", measure: "Resolve rate on verified real tasks", reading: "A higher rate is better; the date window and agent used should be weighed together." },
+        "tau-bench": { name: "τ-bench", summary: "Measures whether a model can complete a task by correctly using tools and APIs in realistic workflows.", measure: "Pass@1 task success rate", reading: "Higher first-attempt success means more reliable tool use." },
+        livecodebench: { name: "LiveCodeBench", summary: "Measures code-generation success with current problems and contamination filtering.", measure: "Pass@1 code resolve rate", reading: "A higher score is better; the recent date window reduces the effect of memorized answers." },
+        intelligence: { name: "Artificial Analysis Intelligence Index", summary: "Combines several knowledge and reasoning tests into a single independent index.", measure: "Composite intelligence index", reading: "A higher index points to stronger general problem-solving performance." },
+        "aa-coding": { name: "Artificial Analysis Coding Index", summary: "Aggregates multiple coding evaluations under one independent score.", measure: "Composite coding index", reading: "A higher score shows stronger performance on code-generation and software tasks." },
+        agentic: { name: "Artificial Analysis Agentic Index", summary: "Measures a model's success on multi-step, tool-using, goal-directed tasks.", measure: "Composite agentic task score", reading: "A higher score means more consistent planning and task completion." },
+        livebench: { name: "LiveBench", summary: "A regularly refreshed academic and practical evaluation set designed to reduce contamination.", measure: "Category and overall success score", reading: "A higher score is better; check per-category results alongside the overall score." },
+        "livebench-math": { name: "LiveBench — Math", summary: "Measures model performance on LiveBench's math subcategory.", measure: "Percentage of correct answers", reading: "A higher score means stronger mathematical reasoning." },
+        "livebench-reasoning": { name: "LiveBench — Reasoning", summary: "Measures multi-step reasoning ability on LiveBench's reasoning subcategory.", measure: "Percentage of correct answers", reading: "A higher score performs better on complex logic tasks." },
+        "livebench-coding": { name: "LiveBench — Coding", summary: "Measures program generation and solving success on LiveBench's coding subcategory.", measure: "Percentage of correct answers", reading: "A higher score means stronger code-generation performance." },
+        "mmlu-pro": { name: "MMLU-Pro", summary: "An academic knowledge test across 14 domains with harder options and more reasoning required.", measure: "Percentage of correct answers", reading: "Higher accuracy is better; domain selection makes it easier to see a model's specialty." },
+    },
 };
 function MultiSelectFilter({ title, values, options, onToggle, renderLabel = value => value }: {
     title: string;
@@ -453,12 +490,13 @@ function MultiSelectFilter({ title, values, options, onToggle, renderLabel = val
     onToggle: (value: string) => void;
     renderLabel?: (value: string) => string;
 }) {
+    const { language } = useLanguage();
     const summary =
         values.length === 0
-            ? "Farketmez"
+            ? (language === "tr" ? "Farketmez" : "Any")
             : values.length <= 2
               ? values.map(renderLabel).join(" + ")
-              : `${values.length} seçili`;
+              : (language === "tr" ? `${values.length} seçili` : `${values.length} selected`);
     return (
         <fieldset className="multi-filter">
             <legend>{title}</legend>
@@ -471,7 +509,7 @@ function MultiSelectFilter({ title, values, options, onToggle, renderLabel = val
                             className="multi-filter-clear"
                             onClick={() => values.forEach((value) => onToggle(value))}
                         >
-                            Seçimi temizle
+                            {language === "tr" ? "Seçimi temizle" : "Clear selection"}
                         </button>
                     )}
                     <div className="multi-filter-options">
@@ -504,29 +542,19 @@ function SortableHeader({ field, label, active, order, onSort }: {
     const indicator = active === field ? (order === "asc" ? "↑" : "↓") : "↕";
     return <th aria-sort={active === field ? (order === "asc" ? "ascending" : "descending") : "none"}><button type="button" className="sort-header" onClick={() => onSort(field)}>{label} <span>{indicator}</span></button></th>;
 }
-function cleanEventTitle(event: EventItem) { return event.title.replace(" discovered", " yayınlandı").replace(": context_window changed", " — context penceresi değişti").replace(/: (input|output|cache_read)_per_1m_tokens changed/, " — token fiyatı değişti").replace(": Arena rank changed", " — sıralaması değişti"); }
-function eventDetail(event: EventItem) {
-    if (event.event_type === "model.released") {
-        const value = event.new_value ?? {};
-        const context = Number(value.context_window);
-        const modalities = [...((value.input_modalities as string[]) ?? []), ...((value.output_modalities as string[]) ?? [])];
-        return [context ? `${context.toLocaleString("tr-TR")} token context` : null, modalities.length ? Array.from(new Set(modalities)).join(" + ") : null].filter(Boolean).join(" • ") || "Yeni model kataloğa eklendi";
-    }
-    if (event.event_type === "price.changed")
-        return event.change_percentage ? `Fiyat ${Number(event.change_percentage) > 0 ? "yükseldi" : "düştü"}: %${Math.abs(Number(event.change_percentage)).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}` : "Yeni fiyat bilgisi kaydedildi";
-    if (event.event_type === "context.changed") {
-        const before = Object.values(event.old_value ?? {})[0];
-        const after = Object.values(event.new_value ?? {})[0];
-        return `${Number(before).toLocaleString("tr-TR")} → ${Number(after).toLocaleString("tr-TR")} token`;
-    }
-    if (event.event_type === "leaderboard.changed") {
-        const before = Object.values(event.old_value ?? {})[0];
-        const after = Object.values(event.new_value ?? {})[0];
-        return `Sıra #${before} → #${after}`;
-    }
-    return "Kaynak tarafından doğrulanan yeni gelişme";
-}
 export default function Home() {
+    const { language, locale } = useLanguage();
+    const capabilityLabels = CAPABILITY_LABELS[language];
+    const opennessLabels = OPENNESS_LABELS[language];
+    const benchmarkFocusLabels = BENCHMARK_FOCUS_LABELS[language];
+    const sortLabels = SORT_LABELS[language];
+    const sidebarGroups = SIDEBAR_GROUPS[language];
+    const sectionMeta = SECTION_META[language];
+    const benchmarkInfo = BENCHMARK_INFO[language];
+    const trModalityLabel = (tag: string) => trModality(tag, language);
+    const trCapabilityLabel = (value: string) => trCapability(value, language);
+    const moneyLabel = (value: string | null | undefined) => money(value, locale);
+    const compactNumber = (value: number) => compact(value, locale);
     const [stats, setStats] = useState(emptyStats);
     const [models, setModels] = useState<ModelItem[]>([]);
     const [arena, setArena] = useState<Leaderboard | null>(null);
@@ -766,7 +794,7 @@ export default function Home() {
             fetch(`${API}/api/v1/models/search?${params}`, { signal: controller.signal })
                 .then(response => {
                     if (!response.ok)
-                        throw new Error("Filtre sonuçları alınamadı");
+                        throw new Error(language === "tr" ? "Filtre sonuçları alınamadı" : "Failed to load filter results");
                     return response.json();
                 })
                 .then(data => {
@@ -862,10 +890,10 @@ export default function Home() {
     }[] = []; if (query.trim())
         chips.push({ key: "q", label: `"${query.trim()}"`, clear: () => { setQuery(""); setPage(1); } }); developers.forEach(slug => chips.push({ key: `dev-${slug}`, label: companies.find(c => c.slug === slug)?.name ?? slug, clear: () => toggleDeveloper(slug) })); if (!isDefaultSort(sortStack))
         sortStack.forEach((spec, index) => chips.push({ key: `sort-${spec.field}-${index}`, label: `${sortStack.length > 1 ? `${index + 1}. ` : ""}${sortLabels[spec.field]} ${spec.order === "asc" ? "↑" : "↓"}`, clear: () => { setSortStack(current => { const next = current.filter((_, i) => i !== index); return next.length ? next : DEFAULT_SORT_STACK; }); setPage(1); } })); providers.forEach(slug => chips.push({ key: `provider-${slug}`, label: facets.providers.find(p => p.slug === slug)?.name ?? slug, clear: () => toggleProvider(slug) })); if (minContext)
-        chips.push({ key: "ctx", label: `${Number(minContext).toLocaleString("tr-TR")}+ ctx`, clear: () => { setMinContext(""); setPage(1); } }); if (maxInputPrice)
-        chips.push({ key: "in", label: `Girdi ≤ $${maxInputPrice}`, clear: () => { setMaxInputPrice(""); setPage(1); } }); if (maxOutputPrice)
-        chips.push({ key: "out", label: `Çıktı ≤ $${maxOutputPrice}`, clear: () => { setMaxOutputPrice(""); setPage(1); } }); if (benchmarkFocus !== "any")
-        chips.push({ key: "bench", label: `Odağı: ${benchmarkFocusLabels[benchmarkFocus] ?? benchmarkFocus}`, clear: () => { setBenchmarkFocus("any"); setPage(1); } }); advancedness.forEach(item => chips.push({ key: `adv-${item}`, label: ADVANCEDNESS_LABELS[item] ?? item, clear: () => toggleAdvancedness(item) })); families.forEach(item => chips.push({ key: `family-${item}`, label: item, clear: () => toggleList(item, setFamilies) })); openness.forEach(item => chips.push({ key: `open-${item}`, label: opennessLabels[item] ?? item, clear: () => toggleList(item, setOpenness) })); licenses.forEach(item => chips.push({ key: `license-${item}`, label: item.replaceAll("_", " "), clear: () => toggleList(item, setLicenses) })); commercialStatuses.forEach(item => chips.push({ key: `commercial-${item}`, label: `Ticari: ${item.replaceAll("_", " ")}`, clear: () => toggleList(item, setCommercialStatuses) })); modalities.forEach(item => chips.push({ key: `mod-${item}`, label: trModality(item), clear: () => toggleModality(item) })); capabilities.forEach(item => chips.push({ key: `cap-${item}`, label: trCapability(item), clear: () => toggleCapability(item) })); return chips; }, [query, developers, sortStack, providers, minContext, maxInputPrice, maxOutputPrice, benchmarkFocus, advancedness, families, openness, licenses, commercialStatuses, modalities, capabilities, companies, facets.providers]);
+        chips.push({ key: "ctx", label: `${Number(minContext).toLocaleString(locale)}+ ctx`, clear: () => { setMinContext(""); setPage(1); } }); if (maxInputPrice)
+        chips.push({ key: "in", label: `${language === "tr" ? "Girdi" : "Input"} ≤ $${maxInputPrice}`, clear: () => { setMaxInputPrice(""); setPage(1); } }); if (maxOutputPrice)
+        chips.push({ key: "out", label: `${language === "tr" ? "Çıktı" : "Output"} ≤ $${maxOutputPrice}`, clear: () => { setMaxOutputPrice(""); setPage(1); } }); if (benchmarkFocus !== "any")
+        chips.push({ key: "bench", label: `${language === "tr" ? "Odağı" : "Focus"}: ${benchmarkFocusLabels[benchmarkFocus] ?? benchmarkFocus}`, clear: () => { setBenchmarkFocus("any"); setPage(1); } }); advancedness.forEach(item => chips.push({ key: `adv-${item}`, label: ADVANCEDNESS_LABELS[language][item] ?? item, clear: () => toggleAdvancedness(item) })); families.forEach(item => chips.push({ key: `family-${item}`, label: item, clear: () => toggleList(item, setFamilies) })); openness.forEach(item => chips.push({ key: `open-${item}`, label: opennessLabels[item] ?? item, clear: () => toggleList(item, setOpenness) })); licenses.forEach(item => chips.push({ key: `license-${item}`, label: item.replaceAll("_", " "), clear: () => toggleList(item, setLicenses) })); commercialStatuses.forEach(item => chips.push({ key: `commercial-${item}`, label: `${language === "tr" ? "Ticari" : "Commercial"}: ${item.replaceAll("_", " ")}`, clear: () => toggleList(item, setCommercialStatuses) })); modalities.forEach(item => chips.push({ key: `mod-${item}`, label: trModalityLabel(item), clear: () => toggleModality(item) })); capabilities.forEach(item => chips.push({ key: `cap-${item}`, label: trCapabilityLabel(item), clear: () => toggleCapability(item) })); return chips; }, [query, developers, sortStack, providers, minContext, maxInputPrice, maxOutputPrice, benchmarkFocus, advancedness, families, openness, licenses, commercialStatuses, modalities, capabilities, companies, facets.providers, language, locale, benchmarkFocusLabels, opennessLabels, sortLabels, trModalityLabel, trCapabilityLabel]);
     useEffect(() => {
         if (activeSection !== "models" || query.trim().length < 2)
             return;
@@ -885,12 +913,12 @@ export default function Home() {
         try {
             const response = await fetch(`${API}/api/v1/models/${modelId}`);
             if (!response.ok)
-                throw new Error("Model ayrıntıları alınamadı");
+                throw new Error(language === "tr" ? "Model ayrıntıları alınamadı" : "Failed to load model details");
             setDetail(await response.json());
             trackEvent(API, "model_viewed", { model_id: modelId });
         }
         catch {
-            setDetailMissing("Model ayrıntıları yüklenemedi.");
+            setDetailMissing(language === "tr" ? "Model ayrıntıları yüklenemedi." : "Failed to load model details.");
         }
         finally {
             setDetailLoading(false);
@@ -951,7 +979,7 @@ export default function Home() {
             const search = new URLSearchParams({ search: primaryName, limit: "8", sort_by: "name" });
             const response = await fetch(`${API}/api/v1/models/search?${search}`);
             if (!response.ok)
-                throw new Error("Arama başarısız");
+                throw new Error(language === "tr" ? "Arama başarısız" : "Search failed");
             const data = await response.json() as { items?: SearchModelItem[] };
             const items = data.items ?? [];
             const orgKey = item.organization.toLowerCase().trim();
@@ -962,10 +990,10 @@ export default function Home() {
                 await openDetailById(match.id);
                 return;
             }
-            setDetailMissing(`${item.model_name} için katalogda eşleşen temel model bulunamadı.`);
+            setDetailMissing(language === "tr" ? `${item.model_name} için katalogda eşleşen temel model bulunamadı.` : `No matching model found in the catalog for ${item.model_name}.`);
         }
         catch {
-            setDetailMissing(`${item.model_name} için katalog bilgisi alınamadı.`);
+            setDetailMissing(language === "tr" ? `${item.model_name} için katalog bilgisi alınamadı.` : `Failed to load catalog data for ${item.model_name}.`);
         }
         finally {
             setDetailLoading(false);
@@ -976,18 +1004,19 @@ export default function Home() {
         setDetailMissing(null);
     }
     return <div className={`app-shell${activeSection === "leaderboard" ? " leaderboard-shell" : ""}`}>
-    <aside className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Ana navigasyon"><button type="button" className="sidebar-brand" onClick={() => navigateToSection("overview")}><span className="brand-mark brand-radar" aria-hidden="true"><i /><b /><em /><em /><em /></span><span><strong>LLM RADAR</strong><small>MODEL INTELLIGENCE</small></span></button><nav className="sidebar-nav">{sidebarGroups.map(group => <div className="sidebar-group" key={group.label}><p>{group.label}</p>{group.items.map(item => <button type="button" key={item.id} className={activeSection === item.id ? "active" : ""} aria-current={activeSection === item.id ? "page" : undefined} onClick={() => navigateToSection(item.id)}><i aria-hidden="true">{item.icon}</i><span>{item.label}</span></button>)}</div>)}</nav><div className="sidebar-status"><span /><div><strong>Veri akışı aktif</strong><small>{stats.models || "—"} model izleniyor</small></div></div></aside>
-    {sidebarOpen && <button className="sidebar-scrim" type="button" aria-label="Menüyü kapat" onClick={() => setSidebarOpen(false)}/>}
-    {!sidebarOpen && <button className="sidebar-toast" type="button" aria-label="Menüyü aç" onClick={() => setSidebarOpen(true)}><span className="sidebar-toast-mark brand-radar" aria-hidden="true"><i /><b /><em /><em /><em /></span><span className="sidebar-toast-label">Menü</span></button>}
+    <LanguageToggle />
+    <aside className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label={language === "tr" ? "Ana navigasyon" : "Main navigation"}><button type="button" className="sidebar-brand" onClick={() => navigateToSection("overview")}><span className="brand-mark brand-radar" aria-hidden="true"><i /><b /><em /><em /><em /></span><span><strong>LLM RADAR</strong><small>MODEL INTELLIGENCE</small></span></button><nav className="sidebar-nav">{sidebarGroups.map(group => <div className="sidebar-group" key={group.label}><p>{group.label}</p>{group.items.map(item => <button type="button" key={item.id} className={activeSection === item.id ? "active" : ""} aria-current={activeSection === item.id ? "page" : undefined} onClick={() => navigateToSection(item.id)}><i aria-hidden="true">{item.icon}</i><span>{item.label}</span></button>)}</div>)}</nav><div className="sidebar-status"><span /><div><strong>{language === "tr" ? "Veri akışı aktif" : "Data feed active"}</strong><small>{stats.models || "—"} {language === "tr" ? "model izleniyor" : "models tracked"}</small></div></div></aside>
+    {sidebarOpen && <button className="sidebar-scrim" type="button" aria-label={language === "tr" ? "Menüyü kapat" : "Close menu"} onClick={() => setSidebarOpen(false)}/>}
+    {!sidebarOpen && <button className="sidebar-toast" type="button" aria-label={language === "tr" ? "Menüyü aç" : "Open menu"} onClick={() => setSidebarOpen(true)}><span className="sidebar-toast-mark brand-radar" aria-hidden="true"><i /><b /><em /><em /><em /></span><span className="sidebar-toast-label">{language === "tr" ? "Menü" : "Menu"}</span></button>}
     <main className={`main-content${activeSection === "leaderboard" ? " leaderboard-layout" : activeSection === "models" ? " catalog-layout" : activeSection === "turkish" ? " turkish-layout" : activeSection === "research" ? " rs-layout" : activeSection === "radar" ? " tr-layout" : activeSection === "sources" ? " sources-layout" : ""}`} id="top">
     {activeSection !== "research" && activeSection !== "radar" && activeSection !== "sources" && (
-    <header className="topbar"><div className="topbar-context"><span>{sectionMeta[activeSection]?.group ?? "LLM Radar"}</span><strong>{sectionMeta[activeSection]?.title ?? "Model ve benchmark görünümü"}</strong></div><div className="live-pill"><span /> CANLI</div></header>
+    <header className="topbar"><div className="topbar-context"><span>{sectionMeta[activeSection]?.group ?? "LLM Radar"}</span><strong>{sectionMeta[activeSection]?.title ?? (language === "tr" ? "Model ve benchmark görünümü" : "Model & benchmark view")}</strong></div><div className="live-pill"><span /> {language === "tr" ? "CANLI" : "LIVE"}</div></header>
     )}
     <div className={`app-view${activeSection === "leaderboard" ? " app-view-leaderboard" : activeSection === "models" ? " app-view-catalog" : activeSection === "turkish" ? " app-view-turkish" : ""}`}>
     {activeSection === "overview" && <>
-    <section className="hero" id="overview"><div><p className="eyebrow">LLM INTELLIGENCE PLATFORM</p><h1>Yapay zekâ dünyasının<br /><em>nabzını tut.</em></h1><p className="hero-copy">Modelleri, fiyatları ve teknoloji değişimlerini tek merkezden, kaynaklarıyla birlikte takip et.</p></div><div className="radar"><span className="orbit orbit-one"/><span className="orbit orbit-two"/><span className="orbit orbit-three"/><span className="sweep"/><span className="dot dot-one"/><span className="dot dot-two"/><span className="dot dot-three"/><b>{stats.models || "—"}</b><small>İZLENEN MODEL</small></div></section>
-    {error && <div className="error">API bağlantısı kurulamadı. Backend servisinin çalıştığını kontrol et.</div>}
-    <section className="metric-grid">{[["İzlenen model", stats.models], ["Takip edilen firma", stats.companies], ["Fiyat gözlemi", stats.price_observations], ["Tespit edilen olay", stats.change_events]].map(([label, value]) => <article className="metric" key={String(label)}><p>{label}</p><strong>{loading ? "—" : compact(Number(value))}</strong><span>● Güncel veri</span></article>)}</section>
+    <section className="hero" id="overview"><div><p className="eyebrow">LLM INTELLIGENCE PLATFORM</p><h1>{language === "tr" ? <>Yapay zekâ dünyasının<br /><em>nabzını tut.</em></> : <>Keep your finger<br /><em>on the pulse of AI.</em></>}</h1><p className="hero-copy">{language === "tr" ? "Modelleri, fiyatları ve teknoloji değişimlerini tek merkezden, kaynaklarıyla birlikte takip et." : "Track models, pricing, and technology shifts from one place, with sources attached."}</p></div><div className="radar"><span className="orbit orbit-one"/><span className="orbit orbit-two"/><span className="orbit orbit-three"/><span className="sweep"/><span className="dot dot-one"/><span className="dot dot-two"/><span className="dot dot-three"/><b>{stats.models || "—"}</b><small>{language === "tr" ? "İZLENEN MODEL" : "MODELS TRACKED"}</small></div></section>
+    {error && <div className="error">{language === "tr" ? "API bağlantısı kurulamadı. Backend servisinin çalıştığını kontrol et." : "Could not connect to the API. Check that the backend service is running."}</div>}
+    <section className="metric-grid">{[[language === "tr" ? "İzlenen model" : "Models tracked", stats.models], [language === "tr" ? "Takip edilen firma" : "Companies tracked", stats.companies], [language === "tr" ? "Fiyat gözlemi" : "Price observations", stats.price_observations], [language === "tr" ? "Tespit edilen olay" : "Events detected", stats.change_events]].map(([label, value]) => <article className="metric" key={String(label)}><p>{label}</p><strong>{loading ? "—" : compactNumber(Number(value))}</strong><span>● {language === "tr" ? "Güncel veri" : "Up to date"}</span></article>)}</section>
     <OverviewIntelligence
         api={API}
         onOpenLeaderboards={() => navigateToSection("leaderboard")}
@@ -1062,8 +1091,8 @@ export default function Home() {
         onToggleCapability={toggleCapability}
         onToggleFamily={value => toggleList(value, setFamilies)}
         runtimeCapabilityOptions={runtimeCapabilityOptions}
-        trModality={trModality}
-        trCapability={trCapability}
+        trModality={trModalityLabel}
+        trCapability={trCapabilityLabel}
         models={visible}
         selectedIds={selected.map(item => item.id)}
         onToggleSelect={toggle}
@@ -1071,7 +1100,7 @@ export default function Home() {
         hasMore={catalogHasMore}
         loadingMore={profileLoading && page > 1}
         onLoadMore={() => { if (catalogHasMore && !profileLoading) setPage(current => current + 1); }}
-        money={money}
+        money={moneyLabel}
         developerSites={developerSites}
     />
     )}
@@ -1080,26 +1109,26 @@ export default function Home() {
     <section className="compare-section app-page" id="compare">
         <div className="section-title compare-title-row">
             <div>
-                <p className="kicker">MODEL KARŞILAŞTIRMA</p>
-                <h2>Akıllı model karşılaştırması.</h2>
+                <p className="kicker">{language === "tr" ? "MODEL KARŞILAŞTIRMA" : "MODEL COMPARISON"}</p>
+                <h2>{language === "tr" ? "Akıllı model karşılaştırması." : "Smart model comparison."}</h2>
             </div>
-            <p>Katalogdan en fazla 3 model seç; fiyat, context, benchmark, yetenekler ve kullanım senaryosuna göre öneri al.</p>
-            <button type="button" className="compare-catalog-btn" onClick={() => navigateToSection("models")}>◫ Model kataloğundan seç</button>
+            <p>{language === "tr" ? "Katalogdan en fazla 3 model seç; fiyat, context, benchmark, yetenekler ve kullanım senaryosuna göre öneri al." : "Pick up to 3 models from the catalog and get recommendations based on price, context, benchmarks, capabilities, and use case."}</p>
+            <button type="button" className="compare-catalog-btn" onClick={() => navigateToSection("models")}>◫ {language === "tr" ? "Model kataloğundan seç" : "Pick from the model catalog"}</button>
         </div>
         {selected.length === 0 ? (
             <div className="compare-empty">
-                <p>Karşılaştırmak istediğin modelleri katalogdan seç.</p>
-                <p className="compare-empty-hint">Tablodaki <strong>+</strong> düğmesiyle model ekle; en az 2 model seçince akıllı özet ve senaryo önerileri açılır.</p>
-                <button type="button" className="compare-catalog-btn compare-catalog-btn-large" onClick={() => navigateToSection("models")}>Model kataloğuna git</button>
+                <p>{language === "tr" ? "Karşılaştırmak istediğin modelleri katalogdan seç." : "Pick the models you want to compare from the catalog."}</p>
+                <p className="compare-empty-hint">{language === "tr" ? <>Tablodaki <strong>+</strong> düğmesiyle model ekle; en az 2 model seçince akıllı özet ve senaryo önerileri açılır.</> : <>Add models with the <strong>+</strong> button in the table; pick at least 2 to unlock the smart summary and scenario recommendations.</>}</p>
+                <button type="button" className="compare-catalog-btn compare-catalog-btn-large" onClick={() => navigateToSection("models")}>{language === "tr" ? "Model kataloğuna git" : "Go to model catalog"}</button>
             </div>
         ) : (
             <>
                 <div className="compare-toolbar">
-                    <p><strong>{selected.length}</strong> / 3 model seçildi</p>
-                    <button type="button" className="compare-catalog-btn" onClick={() => navigateToSection("models")}>+ Model ekle / değiştir</button>
+                    <p><strong>{selected.length}</strong> / 3 {language === "tr" ? "model seçildi" : "models selected"}</p>
+                    <button type="button" className="compare-catalog-btn" onClick={() => navigateToSection("models")}>+ {language === "tr" ? "Model ekle / değiştir" : "Add / change model"}</button>
                 </div>
                 {selected.length < 2 ? (
-                    <div className="compare-hint">Akıllı karşılaştırma için bir model daha seç. Katalogdaki <strong>+</strong> düğmesini kullanabilirsin.</div>
+                    <div className="compare-hint">{language === "tr" ? <>Akıllı karşılaştırma için bir model daha seç. Katalogdaki <strong>+</strong> düğmesini kullanabilirsin.</> : <>Pick one more model for the smart comparison. You can use the <strong>+</strong> button in the catalog.</>}</div>
                 ) : (
                     <SmartModelComparison models={selected} profiles={compareProfiles} developerSites={developerSites} onRemove={toggle} onInspect={openDetail} />
                 )}
@@ -1155,9 +1184,9 @@ export default function Home() {
 
     </div>
 
-    {activeSection !== "leaderboard" && activeSection !== "models" && activeSection !== "turkish" && activeSection !== "events" && activeSection !== "research" && activeSection !== "radar" && activeSection !== "sources" && <footer className="site-foot"><span>LLM RADAR / 2026</span><span>OpenRouter kaynaklı • Yakın gerçek zamanlı takip</span></footer>}
+    {activeSection !== "leaderboard" && activeSection !== "models" && activeSection !== "turkish" && activeSection !== "events" && activeSection !== "research" && activeSection !== "radar" && activeSection !== "sources" && <footer className="site-foot"><span>LLM RADAR / 2026</span><span>{language === "tr" ? "OpenRouter kaynaklı • Yakın gerçek zamanlı takip" : "Sourced via OpenRouter • Near real-time tracking"}</span></footer>}
     {benchmarkInfoOpen && <div className="benchmark-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget)
-        setBenchmarkInfoOpen(false); }}><section className="benchmark-info-modal" role="dialog" aria-modal="true" aria-labelledby="benchmark-info-title"><button type="button" className="benchmark-modal-close" aria-label="Benchmark açıklamasını kapat" onClick={() => setBenchmarkInfoOpen(false)}>×</button><p className="kicker">BENCHMARK REHBERİ</p><h2 id="benchmark-info-title">{benchmarkInfo[leaderboardView].name}</h2><p>{benchmarkInfo[leaderboardView].summary}</p><dl><div><dt>Ne ölçüyor?</dt><dd>{benchmarkInfo[leaderboardView].measure}</dd></div><div><dt>Nasıl okunmalı?</dt><dd>{benchmarkInfo[leaderboardView].reading}</dd></div></dl></section></div>}
+        setBenchmarkInfoOpen(false); }}><section className="benchmark-info-modal" role="dialog" aria-modal="true" aria-labelledby="benchmark-info-title"><button type="button" className="benchmark-modal-close" aria-label={language === "tr" ? "Benchmark açıklamasını kapat" : "Close benchmark explanation"} onClick={() => setBenchmarkInfoOpen(false)}>×</button><p className="kicker">{language === "tr" ? "BENCHMARK REHBERİ" : "BENCHMARK GUIDE"}</p><h2 id="benchmark-info-title">{benchmarkInfo[leaderboardView].name}</h2><p>{benchmarkInfo[leaderboardView].summary}</p><dl><div><dt>{language === "tr" ? "Ne ölçüyor?" : "What does it measure?"}</dt><dd>{benchmarkInfo[leaderboardView].measure}</dd></div><div><dt>{language === "tr" ? "Nasıl okunmalı?" : "How should it be read?"}</dt><dd>{benchmarkInfo[leaderboardView].reading}</dd></div></dl></section></div>}
 
     <ModelDetailDrawer
       loading={detailLoading}

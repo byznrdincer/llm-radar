@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useLanguage, type Language } from "../lib/i18n";
 import {
   Area,
   AreaChart,
@@ -118,23 +119,26 @@ const CHART_TOOLTIP = {
   fontSize: "11px",
 };
 
-const number = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 });
-
-function signed(value: number | null, suffix = "puan"): string {
-  if (value == null) return "Veri yok";
-  return `${value > 0 ? "+" : ""}${number.format(value)} ${suffix}`;
+function formatNumber(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value);
 }
 
-function dateLabel(value: string, includeYear = false): string {
-  return new Intl.DateTimeFormat("tr-TR", {
+function signed(value: number | null, locale: string, language: Language, suffix?: string): string {
+  const resolvedSuffix = suffix ?? (language === "tr" ? "puan" : "pts");
+  if (value == null) return language === "tr" ? "Veri yok" : "No data";
+  return `${value > 0 ? "+" : ""}${formatNumber(value, locale)} ${resolvedSuffix}`;
+}
+
+function dateLabel(value: string, locale: string, includeYear = false): string {
+  return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "short",
     year: includeYear ? "2-digit" : undefined,
   }).format(new Date(`${value}T00:00:00`));
 }
 
-function axisDateLabel(value: number, periodDays: PeriodDays): string {
-  return new Intl.DateTimeFormat("tr-TR", {
+function axisDateLabel(value: number, periodDays: PeriodDays, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     day: periodDays <= 90 ? "2-digit" : undefined,
     month: "short",
     year: periodDays > 90 ? "2-digit" : undefined,
@@ -187,30 +191,37 @@ function CountryTooltip({ active, payload }: {
   active?: boolean;
   payload?: { payload?: CountryChartRow }[];
 }) {
+  const { language, locale } = useLanguage();
   const point = payload?.[0]?.payload;
   if (!active || !point) return null;
 
+  const noModelInfo = language === "tr" ? "Model bilgisi yok" : "No model info";
+  const usaLabel = language === "tr" ? "ABD" : "USA";
+  const chinaLabel = language === "tr" ? "Çin" : "China";
+  const europeLabel = language === "tr" ? "Avrupa" : "Europe";
+  const canadaLabel = language === "tr" ? "Kanada" : "Canada";
+
   return (
     <div className="market-country-tooltip">
-      <strong>{dateLabel(point.date, true)}</strong>
+      <strong>{dateLabel(point.date, locale, true)}</strong>
       <div className="usa">
         <i />
-        <span><b>ABD · {point.usa == null ? "—" : number.format(point.usa)}</b><small>{point.usa_model ?? "Model bilgisi yok"}{point.usa_organization ? ` · ${point.usa_organization}` : ""}</small></span>
+        <span><b>{usaLabel} · {point.usa == null ? "—" : formatNumber(point.usa, locale)}</b><small>{point.usa_model ?? noModelInfo}{point.usa_organization ? ` · ${point.usa_organization}` : ""}</small></span>
       </div>
       <div className="china">
         <i />
-        <span><b>Çin · {point.china == null ? "—" : number.format(point.china)}</b><small>{point.china_model ?? "Model bilgisi yok"}{point.china_organization ? ` · ${point.china_organization}` : ""}</small></span>
+        <span><b>{chinaLabel} · {point.china == null ? "—" : formatNumber(point.china, locale)}</b><small>{point.china_model ?? noModelInfo}{point.china_organization ? ` · ${point.china_organization}` : ""}</small></span>
       </div>
       {point.europe != null && (
         <div className="europe">
           <i />
-          <span><b>Avrupa · {number.format(point.europe)}</b><small>{point.europe_model ?? "Model bilgisi yok"}{point.europe_organization ? ` · ${point.europe_organization}` : ""}</small></span>
+          <span><b>{europeLabel} · {formatNumber(point.europe, locale)}</b><small>{point.europe_model ?? noModelInfo}{point.europe_organization ? ` · ${point.europe_organization}` : ""}</small></span>
         </div>
       )}
       {point.canada != null && (
         <div className="canada">
           <i />
-          <span><b>Kanada · {number.format(point.canada)}</b><small>{point.canada_model ?? "Model bilgisi yok"}{point.canada_organization ? ` · ${point.canada_organization}` : ""}</small></span>
+          <span><b>{canadaLabel} · {formatNumber(point.canada, locale)}</b><small>{point.canada_model ?? noModelInfo}{point.canada_organization ? ` · ${point.canada_organization}` : ""}</small></span>
         </div>
       )}
     </div>
@@ -218,8 +229,14 @@ function CountryTooltip({ active, payload }: {
 }
 
 function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: PeriodDays }) {
+  const { language, locale } = useLanguage();
+
   if (!data.length) {
-    return <div className="market-chart-empty">Seçili dönemde ülke verisi yok.</div>;
+    return (
+      <div className="market-chart-empty">
+        {language === "tr" ? "Seçili dönemde ülke verisi yok." : "No country data for the selected period."}
+      </div>
+    );
   }
 
   const latestTimestamp = Date.parse(`${data[data.length - 1].date}T00:00:00Z`);
@@ -239,10 +256,10 @@ function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: 
     return {
       ...point,
       timestamp: Date.parse(`${point.date}T00:00:00Z`),
-      usa_end: last && point.usa != null ? number.format(point.usa) : "",
-      china_end: last && point.china != null ? number.format(point.china) : "",
-      europe_end: last && point.europe != null ? number.format(point.europe) : "",
-      canada_end: last && point.canada != null ? number.format(point.canada) : "",
+      usa_end: last && point.usa != null ? formatNumber(point.usa, locale) : "",
+      china_end: last && point.china != null ? formatNumber(point.china, locale) : "",
+      europe_end: last && point.europe != null ? formatNumber(point.europe, locale) : "",
+      canada_end: last && point.canada != null ? formatNumber(point.canada, locale) : "",
     };
   });
 
@@ -263,13 +280,13 @@ function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: 
           type="number"
           scale="time"
           domain={[domainStart, latestTimestamp]}
-          tickFormatter={(value) => axisDateLabel(Number(value), periodDays)}
+          tickFormatter={(value) => axisDateLabel(Number(value), periodDays, locale)}
           tick={{ fill: "#93a39a", fontSize: 10 }}
         />
 
         <YAxis
           domain={["dataMin - 5", "dataMax + 5"]}
-          tickFormatter={(value) => number.format(Number(value))}
+          tickFormatter={(value) => formatNumber(Number(value), locale)}
           tick={{ fill: "#93a39a", fontSize: 10 }}
         />
 
@@ -399,7 +416,7 @@ function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: 
         <Line
           type="stepAfter"
           dataKey="usa"
-          name="ABD"
+          name={language === "tr" ? "ABD" : "USA"}
           stroke="#58c7ba"
           strokeWidth={3}
           dot={false}
@@ -419,7 +436,7 @@ function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: 
         <Line
           type="stepAfter"
           dataKey="china"
-          name="Çin"
+          name={language === "tr" ? "Çin" : "China"}
           stroke="#b9ff25"
           strokeWidth={3}
           dot={false}
@@ -439,7 +456,7 @@ function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: 
         <Line
           type="stepAfter"
           dataKey="europe"
-          name="Avrupa"
+          name={language === "tr" ? "Avrupa" : "Europe"}
           stroke="#f2b134"
           strokeWidth={3}
           dot={false}
@@ -459,7 +476,7 @@ function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: 
         <Line
           type="stepAfter"
           dataKey="canada"
-          name="Kanada"
+          name={language === "tr" ? "Kanada" : "Canada"}
           stroke="#e0668a"
           strokeWidth={3}
           dot={false}
@@ -481,11 +498,18 @@ function CountryChart({ data, periodDays }: { data: CountryPoint[]; periodDays: 
 }
 
 function ProviderChart({ data }: { data: ProviderPoint[] }) {
+  const { language } = useLanguage();
   const chartData = data.map((item) => ({
     ...item,
     label: item.organization.length > 18 ? `${item.organization.slice(0, 16)}…` : item.organization,
   }));
-  if (!chartData.length) return <div className="market-chart-empty">Seçili benchmark için sağlayıcı verisi yok.</div>;
+  if (!chartData.length) {
+    return (
+      <div className="market-chart-empty">
+        {language === "tr" ? "Seçili benchmark için sağlayıcı verisi yok." : "No provider data for the selected benchmark."}
+      </div>
+    );
+  }
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 22, left: 8, bottom: 0 }}>
@@ -493,7 +517,7 @@ function ProviderChart({ data }: { data: ProviderPoint[] }) {
         <XAxis type="number" domain={["dataMin - 20", "dataMax + 10"]} tick={{ fill: "#93a39a", fontSize: 10 }} />
         <YAxis dataKey="label" type="category" width={92} tick={{ fill: "#b7c4bd", fontSize: 10 }} />
         <Tooltip contentStyle={CHART_TOOLTIP} />
-        <Bar dataKey="score" name="Skor" radius={[0, 4, 4, 0]} isAnimationActive={false}>
+        <Bar dataKey="score" name={language === "tr" ? "Skor" : "Score"} radius={[0, 4, 4, 0]} isAnimationActive={false}>
           {chartData.map((item) => (
             <Cell
               key={`${item.organization}-${item.model}`}
@@ -507,7 +531,14 @@ function ProviderChart({ data }: { data: ProviderPoint[] }) {
 }
 
 function OpennessChart({ data }: { data: OpennessData["items"] }) {
-  if (!data.length) return <div className="market-chart-empty">Yayın tarihli model verisi yok.</div>;
+  const { language } = useLanguage();
+  if (!data.length) {
+    return (
+      <div className="market-chart-empty">
+        {language === "tr" ? "Yayın tarihli model verisi yok." : "No model release-date data available."}
+      </div>
+    );
+  }
   return (
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data} margin={{ top: 18, right: 18, left: -12, bottom: 0 }}>
@@ -539,6 +570,7 @@ function OpennessChart({ data }: { data: OpennessData["items"] }) {
 }
 
 export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight }: Props) {
+  const { language, locale } = useLanguage();
   const [days, setDays] = useState<PeriodDays>(3650);
   const [benchmark, setBenchmark] = useState("arena-text");
   const [benchmarkOptions, setBenchmarkOptions] = useState<BenchmarkOption[]>([]);
@@ -614,8 +646,8 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
   const gapDelta = dashboard?.summary.frontier_gap_delta ?? null;
   const riser = dashboard?.summary.fastest_riser;
   const snapshotDate = dashboard?.published_at
-    ? new Date(`${dashboard.published_at}T00:00:00`).toLocaleDateString("tr-TR")
-    : "Veri bekleniyor";
+    ? new Date(`${dashboard.published_at}T00:00:00`).toLocaleDateString(locale)
+    : (language === "tr" ? "Veri bekleniyor" : "Awaiting data");
   const changeDays = (value: PeriodDays) => {
     setLoading(true);
     setError(false);
@@ -632,13 +664,13 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
       ? <ProviderChart data={filteredProviders} />
       : <OpennessChart data={opennessRows} />;
   const primaryTitle = view === "country"
-    ? "Çin vs ABD frontier yarışı"
+    ? (language === "tr" ? "Çin vs ABD frontier yarışı" : "China vs USA frontier race")
     : view === "provider"
-      ? "Sağlayıcıların frontier görünümü"
-      : "Açıklık sınıflarının gelişimi";
+      ? (language === "tr" ? "Sağlayıcıların frontier görünümü" : "Provider frontier overview")
+      : (language === "tr" ? "Açıklık sınıflarının gelişimi" : "Evolution of openness classes");
   const primaryDescription = view === "openness"
-    ? openness?.metric ?? "Katalogdaki yayınlanan model sayısı"
-    : dashboard?.benchmark.metric ?? "Benchmark skoru — yüksek daha iyi";
+    ? openness?.metric ?? (language === "tr" ? "Katalogdaki yayınlanan model sayısı" : "Number of published models in the catalog")
+    : dashboard?.benchmark.metric ?? (language === "tr" ? "Benchmark skoru — yüksek daha iyi" : "Benchmark score — higher is better");
   const completeCountryPoints = (dashboard?.country_trend ?? []).filter(
     (point) => point.usa != null && point.china != null,
   );
@@ -652,53 +684,81 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
     <section className="market-dashboard app-page" id="insights" aria-busy={loading}>
       <header className="market-hero">
         <div>
-          <p className="kicker">PAZAR ANALİZİ</p>
-          <h2>Yarışın metriği açık.</h2>
-          <p>Frontier yarışını puanlar, yayın eğilimleri ve doğrulanmış katalog verileriyle izleyin.</p>
+          <p className="kicker">{language === "tr" ? "PAZAR ANALİZİ" : "MARKET ANALYSIS"}</p>
+          <h2>{language === "tr" ? "Yarışın metriği açık." : "The race, measured."}</h2>
+          <p>
+            {language === "tr"
+              ? "Frontier yarışını puanlar, yayın eğilimleri ve doğrulanmış katalog verileriyle izleyin."
+              : "Track the frontier race with scores, release trends, and verified catalog data."}
+          </p>
         </div>
         <p className="market-live-note">
-          Grafikler statik görsel değil; güncel katalog ve benchmark snapshot’larından üretilir.
-          <strong> Veriler scheduler akışıyla güncellenir.</strong>
+          {language === "tr"
+            ? (
+              <>
+                Grafikler statik görsel değil; güncel katalog ve benchmark snapshot’larından üretilir.
+                <strong> Veriler scheduler akışıyla güncellenir.</strong>
+              </>
+            )
+            : (
+              <>
+                These charts aren&apos;t static images; they&apos;re generated from live catalog and benchmark snapshots.
+                <strong> Data is refreshed by the scheduler pipeline.</strong>
+              </>
+            )}
         </p>
       </header>
 
-      <div className="market-controls" aria-label="Pazar analizi filtreleri">
+      <div className="market-controls" aria-label={language === "tr" ? "Pazar analizi filtreleri" : "Market analysis filters"}>
         <div className="market-control-group">
-          <span>Zaman aralığı</span>
-          <div className="market-segmented" role="group" aria-label="Zaman aralığı">
-            {([[30, "30G"], [90, "90G"], [365, "1Y"], [3650, "Tümü"]] as const).map(([value, label]) => (
+          <span>{language === "tr" ? "Zaman aralığı" : "Time range"}</span>
+          <div className="market-segmented" role="group" aria-label={language === "tr" ? "Zaman aralığı" : "Time range"}>
+            {(language === "tr"
+              ? ([[30, "30G"], [90, "90G"], [365, "1Y"], [3650, "Tümü"]] as const)
+              : ([[30, "30D"], [90, "90D"], [365, "1Y"], [3650, "All"]] as const)
+            ).map(([value, label]) => (
               <button key={value} type="button" className={days === value ? "active" : ""} onClick={() => changeDays(value)}>{label}</button>
             ))}
           </div>
         </div>
         <div className="market-control-group">
-          <span>Görünüm</span>
-          <div className="market-segmented" role="group" aria-label="Grafik görünümü">
-            {([['country', 'Ülke'], ['provider', 'Sağlayıcı'], ['openness', 'Açıklık']] as const).map(([value, label]) => (
+          <span>{language === "tr" ? "Görünüm" : "View"}</span>
+          <div className="market-segmented" role="group" aria-label={language === "tr" ? "Grafik görünümü" : "Chart view"}>
+            {(language === "tr"
+              ? ([['country', 'Ülke'], ['provider', 'Sağlayıcı'], ['openness', 'Açıklık']] as const)
+              : ([['country', 'Country'], ['provider', 'Provider'], ['openness', 'Openness']] as const)
+            ).map(([value, label]) => (
               <button key={value} type="button" className={view === value ? "active" : ""} onClick={() => setView(value)}>{label}</button>
             ))}
           </div>
         </div>
         <p className="market-coverage-note">
-          <span>VERİ KAPSAMI</span>
-          {dashboard?.benchmark.name ?? "Benchmark"} · {dashboard?.country_trend.length ?? 0} ölçüm noktası
+          <span>{language === "tr" ? "VERİ KAPSAMI" : "DATA COVERAGE"}</span>
+          {dashboard?.benchmark.name ?? "Benchmark"} · {dashboard?.country_trend.length ?? 0}{" "}
+          {language === "tr" ? "ölçüm noktası" : "data points"}
         </p>
       </div>
 
-      {error && <div className="market-error">Canlı pazar verisi şu anda alınamadı. API bağlantısını kontrol edin.</div>}
+      {error && (
+        <div className="market-error">
+          {language === "tr"
+            ? "Canlı pazar verisi şu anda alınamadı. API bağlantısını kontrol edin."
+            : "Couldn't fetch live market data right now. Please check the API connection."}
+        </div>
+      )}
 
       <div className="market-kpi-grid">
         <article>
-          <i>⌁</i><div><span>Frontier farkı</span><strong>{currentGap == null ? "—" : `${number.format(currentGap)} puan`}</strong><small>Çin ve ABD farkı <b className={gapDelta != null && gapDelta <= 0 ? "positive" : "negative"}>{signed(gapDelta)}</b></small></div>
+          <i>⌁</i><div><span>{language === "tr" ? "Frontier farkı" : "Frontier gap"}</span><strong>{currentGap == null ? "—" : (language === "tr" ? `${formatNumber(currentGap, locale)} puan` : `${formatNumber(currentGap, locale)} pts`)}</strong><small>{language === "tr" ? "Çin ve ABD farkı" : "China vs USA gap"} <b className={gapDelta != null && gapDelta <= 0 ? "positive" : "negative"}>{signed(gapDelta, locale, language)}</b></small></div>
         </article>
         <article>
-          <i>◔</i><div><span>Open-weight payı</span><strong>%{number.format(dashboard?.summary.open_weight_share ?? 0)}</strong><small><b>{number.format(dashboard?.summary.open_weight_models ?? 0)}</b> doğrulanmış model</small></div>
+          <i>◔</i><div><span>{language === "tr" ? "Open-weight payı" : "Open-weight share"}</span><strong>{language === "tr" ? `%${formatNumber(dashboard?.summary.open_weight_share ?? 0, locale)}` : `${formatNumber(dashboard?.summary.open_weight_share ?? 0, locale)}%`}</strong><small><b>{formatNumber(dashboard?.summary.open_weight_models ?? 0, locale)}</b> {language === "tr" ? "doğrulanmış model" : "verified models"}</small></div>
         </article>
         <article>
-          <i>✣</i><div><span>Bu ay yeni model</span><strong>{number.format(dashboard?.summary.new_models_this_month ?? 0)}</strong><small>Kataloğa eklenen <b className={(dashboard?.summary.new_models_delta ?? 0) >= 0 ? "positive" : "negative"}>{signed(dashboard?.summary.new_models_delta ?? 0, "önceki aya göre")}</b></small></div>
+          <i>✣</i><div><span>{language === "tr" ? "Bu ay yeni model" : "New models this month"}</span><strong>{formatNumber(dashboard?.summary.new_models_this_month ?? 0, locale)}</strong><small>{language === "tr" ? "Kataloğa eklenen" : "Added to catalog"} <b className={(dashboard?.summary.new_models_delta ?? 0) >= 0 ? "positive" : "negative"}>{signed(dashboard?.summary.new_models_delta ?? 0, locale, language, language === "tr" ? "önceki aya göre" : "vs last month")}</b></small></div>
         </article>
         <article>
-          <i>↗</i><div><span>En hızlı yükselen</span><strong>{riser?.model ?? "—"}</strong><small>{riser ? `${riser.organization} · ${signed(riser.delta)}` : "Karşılaştırılabilir snapshot bekleniyor"}</small></div>
+          <i>↗</i><div><span>{language === "tr" ? "En hızlı yükselen" : "Fastest riser"}</span><strong>{riser?.model ?? "—"}</strong><small>{riser ? `${riser.organization} · ${signed(riser.delta, locale, language)}` : (language === "tr" ? "Karşılaştırılabilir snapshot bekleniyor" : "Awaiting a comparable snapshot")}</small></div>
         </article>
       </div>
 
@@ -712,7 +772,7 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
 
             <div className="market-chart-head-actions">
               <label className="market-benchmark-picker">
-                <span>Benchmark kaynağı</span>
+                <span>{language === "tr" ? "Benchmark kaynağı" : "Benchmark source"}</span>
                 <select
                   value={benchmark}
                   onChange={(event) => {
@@ -720,7 +780,7 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
                     setError(false);
                     setBenchmark(event.target.value);
                   }}
-                  aria-label="Frontier benchmark kaynağı"
+                  aria-label={language === "tr" ? "Frontier benchmark kaynağı" : "Frontier benchmark source"}
                 >
                   {(benchmarkOptions.length
                     ? benchmarkOptions
@@ -742,15 +802,15 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
               {view === "country" && firstGap != null && currentGap != null ? (
                 <div className="market-gap-chip">
                   <strong>
-                    Fark: {number.format(firstGap)} → {number.format(currentGap)}
+                    {language === "tr" ? "Fark" : "Gap"}: {formatNumber(firstGap, locale)} → {formatNumber(currentGap, locale)}
                   </strong>
                   <small>
                     {firstCountryPoint
-                      ? dateLabel(firstCountryPoint.date, days >= 365)
+                      ? dateLabel(firstCountryPoint.date, locale, days >= 365)
                       : "—"}{" "}
                     →{" "}
                     {lastCountryPoint
-                      ? dateLabel(lastCountryPoint.date, days >= 365)
+                      ? dateLabel(lastCountryPoint.date, locale, days >= 365)
                       : "—"}
                   </small>
                 </div>
@@ -760,10 +820,13 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
             </div>
           </header>
           {view !== "openness" && (
-            <div className="market-chart-openness-filter" role="group" aria-label="Açıklık filtresi">
-              <span>Açıklık</span>
+            <div className="market-chart-openness-filter" role="group" aria-label={language === "tr" ? "Açıklık filtresi" : "Openness filter"}>
+              <span>{language === "tr" ? "Açıklık" : "Openness"}</span>
               <div className="market-segmented">
-                {([['all', 'Tümü'], ['open_source', 'Open Source'], ['open_weight', 'Open Weight'], ['proprietary', 'Closed Source']] as const).map(([value, label]) => (
+                {(language === "tr"
+                  ? ([['all', 'Tümü'], ['open_source', 'Open Source'], ['open_weight', 'Open Weight'], ['proprietary', 'Closed Source']] as const)
+                  : ([['all', 'All'], ['open_source', 'Open Source'], ['open_weight', 'Open Weight'], ['proprietary', 'Closed Source']] as const)
+                ).map(([value, label]) => (
                   <button key={value} type="button" className={opennessFilter === value ? "active" : ""} onClick={() => setOpennessFilter(value)}>{label}</button>
                 ))}
               </div>
@@ -772,13 +835,13 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
           <div className="market-chart-canvas">{primaryChart}</div>
           {view === "country" && lastCountryPoint && (
             <div className="market-frontier-leaders">
-              <span><i className="usa" />ABD lideri <strong>{lastCountryPoint.usa_model}</strong><small>{lastCountryPoint.usa_organization}</small></span>
-              <span><i className="china" />Çin lideri <strong>{lastCountryPoint.china_model}</strong><small>{lastCountryPoint.china_organization}</small></span>
+              <span><i className="usa" />{language === "tr" ? "ABD lideri" : "USA leader"} <strong>{lastCountryPoint.usa_model}</strong><small>{lastCountryPoint.usa_organization}</small></span>
+              <span><i className="china" />{language === "tr" ? "Çin lideri" : "China leader"} <strong>{lastCountryPoint.china_model}</strong><small>{lastCountryPoint.china_organization}</small></span>
               {lastCountryPoint.europe_model && (
-                <span><i className="europe" />Avrupa lideri <strong>{lastCountryPoint.europe_model}</strong><small>{lastCountryPoint.europe_organization}</small></span>
+                <span><i className="europe" />{language === "tr" ? "Avrupa lideri" : "Europe leader"} <strong>{lastCountryPoint.europe_model}</strong><small>{lastCountryPoint.europe_organization}</small></span>
               )}
               {lastCountryPoint.canada_model && (
-                <span><i className="canada" />Kanada lideri <strong>{lastCountryPoint.canada_model}</strong><small>{lastCountryPoint.canada_organization}</small></span>
+                <span><i className="canada" />{language === "tr" ? "Kanada lideri" : "Canada leader"} <strong>{lastCountryPoint.canada_model}</strong><small>{lastCountryPoint.canada_organization}</small></span>
               )}
             </div>
           )}
@@ -786,7 +849,7 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
         </article>
         {view !== "country" && (
           <article className="market-panel market-chart-panel">
-            <header><div><h3>{view === "openness" ? "Ülke frontier eğilimi" : "Açıklık sınıflarının gelişimi"}</h3><p>{view === "openness" ? dashboard?.benchmark.metric : openness?.metric}</p></div><span>Canlı katalog</span></header>
+            <header><div><h3>{view === "openness" ? (language === "tr" ? "Ülke frontier eğilimi" : "Country frontier trend") : (language === "tr" ? "Açıklık sınıflarının gelişimi" : "Evolution of openness classes")}</h3><p>{view === "openness" ? dashboard?.benchmark.metric : openness?.metric}</p></div><span>{language === "tr" ? "Canlı katalog" : "Live catalog"}</span></header>
             <div className="market-chart-canvas">
               {view === "openness"
                 ? <CountryChart data={dashboard?.country_trend ?? []} periodDays={days} />
@@ -799,26 +862,26 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
 
       <div className="market-bottom-grid">
         <article className="market-panel market-insights">
-          <header><i>◉</i><h3>Öne çıkan içgörüler</h3></header>
+          <header><i>◉</i><h3>{language === "tr" ? "Öne çıkan içgörüler" : "Key insights"}</h3></header>
           <ul>{(dashboard?.insights ?? []).map((insight) => <li key={insight}><span>✓</span>{insight}</li>)}</ul>
         </article>
         <article className="market-panel market-movers">
-          <header><i>⌁</i><h3>En hızlı yükselenler</h3></header>
-          <ol>{filteredMovers.slice(0, 3).map((item, index) => <li key={item.model}><b>{index + 1}</b><span><strong>{item.model}</strong><small>{item.organization}</small></span><em>+{number.format(item.delta)}<small>puan</small></em></li>)}</ol>
+          <header><i>⌁</i><h3>{language === "tr" ? "En hızlı yükselenler" : "Fastest risers"}</h3></header>
+          <ol>{filteredMovers.slice(0, 3).map((item, index) => <li key={item.model}><b>{index + 1}</b><span><strong>{item.model}</strong><small>{item.organization}</small></span><em>+{formatNumber(item.delta, locale)}<small>{language === "tr" ? "puan" : "pts"}</small></em></li>)}</ol>
         </article>
         <article className="market-panel market-snapshot">
-          <header><i>▥</i><h3>Pazar özeti</h3></header>
+          <header><i>▥</i><h3>{language === "tr" ? "Pazar özeti" : "Market snapshot"}</h3></header>
           <dl>
-            <div><dt>Toplam model</dt><dd>{number.format(dashboard?.summary.total_models ?? 0)}</dd></div>
-            <div><dt>Aktif fiyat sağlayıcısı</dt><dd>{number.format(dashboard?.summary.active_providers ?? 0)}</dd></div>
-            <div><dt>Open-weight model</dt><dd>{number.format(dashboard?.summary.open_weight_models ?? 0)}</dd></div>
+            <div><dt>{language === "tr" ? "Toplam model" : "Total models"}</dt><dd>{formatNumber(dashboard?.summary.total_models ?? 0, locale)}</dd></div>
+            <div><dt>{language === "tr" ? "Aktif fiyat sağlayıcısı" : "Active pricing providers"}</dt><dd>{formatNumber(dashboard?.summary.active_providers ?? 0, locale)}</dd></div>
+            <div><dt>{language === "tr" ? "Open-weight model" : "Open-weight models"}</dt><dd>{formatNumber(dashboard?.summary.open_weight_models ?? 0, locale)}</dd></div>
           </dl>
         </article>
         <article className="market-panel market-actions">
-          <header><i>◎</i><h3>Harekete geçin</h3></header>
-          <button type="button" className="primary" onClick={() => onNavigate("leaderboard")}>Frontier modelleri incele <span>›</span></button>
-          <button type="button" onClick={onOpenWeight}>Open-weight filtrele <span>›</span></button>
-          <button type="button" className="violet" onClick={() => onNavigate("compare")}>Karşılaştır <span>›</span></button>
+          <header><i>◎</i><h3>{language === "tr" ? "Harekete geçin" : "Take action"}</h3></header>
+          <button type="button" className="primary" onClick={() => onNavigate("leaderboard")}>{language === "tr" ? "Frontier modelleri incele" : "Explore frontier models"} <span>›</span></button>
+          <button type="button" onClick={onOpenWeight}>{language === "tr" ? "Open-weight filtrele" : "Filter open-weight"} <span>›</span></button>
+          <button type="button" className="violet" onClick={() => onNavigate("compare")}>{language === "tr" ? "Karşılaştır" : "Compare"} <span>›</span></button>
         </article>
       </div>
     </section>
