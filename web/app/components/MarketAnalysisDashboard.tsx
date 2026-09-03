@@ -679,16 +679,6 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
             ))}
           </div>
         </div>
-        {view !== "openness" && (
-          <div className="market-control-group">
-            <span>Açıklık</span>
-            <div className="market-segmented" role="group" aria-label="Açıklık filtresi">
-              {([['all', 'Tümü'], ['open_source', 'Open Source'], ['open_weight', 'Open Weight'], ['proprietary', 'Closed Source']] as const).map(([value, label]) => (
-                <button key={value} type="button" className={opennessFilter === value ? "active" : ""} onClick={() => setOpennessFilter(value)}>{label}</button>
-              ))}
-            </div>
-          </div>
-        )}
         <p className="market-coverage-note">
           <span>VERİ KAPSAMI</span>
           {dashboard?.benchmark.name ?? "Benchmark"} · {dashboard?.country_trend.length ?? 0} ölçüm noktası
@@ -769,6 +759,16 @@ export default function MarketAnalysisDashboard({ api, onNavigate, onOpenWeight 
               )}
             </div>
           </header>
+          {view !== "openness" && (
+            <div className="market-chart-openness-filter" role="group" aria-label="Açıklık filtresi">
+              <span>Açıklık</span>
+              <div className="market-segmented">
+                {([['all', 'Tümü'], ['open_source', 'Open Source'], ['open_weight', 'Open Weight'], ['proprietary', 'Closed Source']] as const).map(([value, label]) => (
+                  <button key={value} type="button" className={opennessFilter === value ? "active" : ""} onClick={() => setOpennessFilter(value)}>{label}</button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="market-chart-canvas">{primaryChart}</div>
           {view === "country" && lastCountryPoint && (
             <div className="market-frontier-leaders">
