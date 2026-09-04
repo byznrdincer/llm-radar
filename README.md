@@ -245,6 +245,15 @@ docker compose --profile observability up -d prometheus grafana
 - Grafana: http://localhost:3001
 - API metrikleri: http://localhost:8080/metrics
 
+`observability/alerts.yml` dört temel alarm kuralı taşır: API çökmesi
+(`up == 0`), yüksek 5xx oranı, outbox backlog (`llm_radar_outbox_backlog`) ve
+donan kaynaklar (`llm_radar_stale_sources` — `/api/v1/sources/health`'in
+kullandığı aynı eşik). `promtool check rules` ile doğrulandı. Bu kurallar
+Prometheus'un kendi arayüzünde (http://localhost:9090/alerts) görünür;
+Slack/e-posta gibi bir kanala yönlendirmek için ayrıca bir Alertmanager
+kurulup `alertmanager` bloğu `prometheus.yml`'e eklenmelidir — bu depo
+şu an Alertmanager içermiyor.
+
 Durdurma:
 
 ```bash
@@ -480,7 +489,24 @@ npm --prefix web test
 docker compose exec backup find /backups -maxdepth 1 -type f -name '*.dump'
 ```
 
-Geri yükleme önce ayrı bir test veritabanında denenmelidir.
+Geri yükleme önce ayrı bir test veritabanında denenmelidir - custom-format
+dump'ı ayrı bir veritabanına geri yükleyip satır sayılarını ve `alembic_version`'ı
+karşılaştırın:
+
+```bash
+createdb -h localhost -p 5433 -U llm_radar llm_radar_restore_test
+pg_restore -h localhost -p 5433 -U llm_radar -d llm_radar_restore_test \
+  --no-owner --no-privileges -j 4 /path/to/llm-radar-<tarih>.dump
+psql -h localhost -p 5433 -U llm_radar -d llm_radar_restore_test \
+  -c "select version_num from alembic_version;" \
+  -c "select count(*) from models;"
+dropdb -h localhost -p 5433 -U llm_radar llm_radar_restore_test
+```
+
+Bu prosedür 2026-09-04'te gerçek bir dump ile doğrulandı: 3.791 model / 87k
+leaderboard satırı / 87k outbox olayı dahil dokuz tablonun tamamı restore
+sonrası orijinaliyle birebir eşleşti, `alembic_version` uyuştu ve API restore
+edilen veritabanına karşı sorunsuz açılıp veri döndürdü.
 
 ### Üretim güvenliği
 

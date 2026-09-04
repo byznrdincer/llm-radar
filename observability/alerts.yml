@@ -1,0 +1,51 @@
+groups:
+  - name: llm-radar
+    rules:
+      - alert: LLMRadarAPIDown
+        expr: up{job="llm-radar-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LLM Radar API is not responding to scrapes"
+          description: >-
+            Prometheus has not been able to scrape llm-radar-api for 2 minutes.
+            The API process may be down or unreachable.
+
+      - alert: LLMRadarHighAPIErrorRate
+        expr: >-
+          sum(rate(llm_radar_api_requests_total{status=~"5.."}[5m]))
+          / sum(rate(llm_radar_api_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM Radar API 5xx rate above 5%"
+          description: >-
+            More than 5% of API requests have returned a 5xx status over
+            the last 5 minutes.
+
+      - alert: LLMRadarOutboxBacklog
+        expr: llm_radar_outbox_backlog > 500
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox backlog is growing"
+          description: >-
+            More than 500 OutboxEvent rows have stayed pending/retry for 10
+            minutes. Check the outbox-worker container is running and can
+            reach Kafka/Redpanda.
+
+      - alert: LLMRadarStaleSources
+        expr: llm_radar_stale_sources > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "One or more configured sources have stopped succeeding"
+          description: >-
+            At least one active, configured source has had no successful
+            check for longer than its stale-after threshold
+            (SOURCE_STALE_AFTER_HOURS), sustained for 30 minutes. See
+            /api/v1/sources/health for which one(s).

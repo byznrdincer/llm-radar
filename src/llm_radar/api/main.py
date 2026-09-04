@@ -12,9 +12,9 @@ from llm_radar.admin import ADMIN_SECRET_KEY, create_admin
 from llm_radar.api.engagement import router as engagement_router
 from llm_radar.api.insights import router as insights_router
 from llm_radar.api.intel import router as intel_router
-from llm_radar.api.routes import router
+from llm_radar.api.routes import DatabaseSession, router
 from llm_radar.config import get_settings
-from llm_radar.observability import API_REQUESTS, metrics_response
+from llm_radar.observability import API_REQUESTS, metrics_response, refresh_gauges
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -86,7 +86,13 @@ async def health() -> dict[str, str]:
 
 
 @app.get("/metrics", tags=["system"], include_in_schema=False)
-async def metrics() -> Response:
+async def metrics(session: DatabaseSession) -> Response:
+    # Outbox backlog and stale sources reflect DB state, not something this
+    # process's request handlers naturally emit as they happen (unlike
+    # API_REQUESTS), and processor/outbox-worker/scheduler run as separate
+    # containers Prometheus never scrapes - so compute them here, on every
+    # scrape, from the one process/endpoint that is actually collected.
+    refresh_gauges(session, source_stale_after_hours=settings.source_stale_after_hours)
     payload, content_type = metrics_response()
     return Response(content=payload, media_type=content_type)
 

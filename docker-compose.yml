@@ -201,6 +201,7 @@ services:
       - "9090:9090"
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/alerts.yml:/etc/prometheus/alerts.yml:ro
     depends_on:
       api:
         condition: service_healthy
