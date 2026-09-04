@@ -15,7 +15,8 @@ from llm_radar.database.models import (
 from llm_radar.database.session import SessionLocal
 from llm_radar.events.schemas import EventEnvelope, EventType
 from llm_radar.events.topics import PROCESSED_EVENTS
-from llm_radar.processor.service import _change_event, _handle_announcement
+from llm_radar.processor.common import _change_event
+from llm_radar.processor.handlers import _handle_announcement
 
 ANNOUNCEMENT_TYPES = {
     EventType.COMPANY_ANNOUNCEMENT,
