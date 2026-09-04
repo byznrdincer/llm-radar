@@ -132,6 +132,14 @@ services:
       redpanda:
         condition: service_healthy
 
+  # Do not run more than one replica of this service: publish_batch claims a
+  # batch, commits (releasing the row lock) before the Kafka flush, then
+  # writes results back by row id. A second concurrent worker can re-claim
+  # the same still-pending rows in that gap and double-publish them - which
+  # domain-topic consumers tolerate (idempotent on event_id), so this is a
+  # deliberate scaling tradeoff, not a bug. Scaling this out safely needs a
+  # "publishing" status plus a claimed_at/lease column so a second worker
+  # skips rows another one already claimed instead of racing it.
   outbox-worker:
     build: .
     command: ["python", "-m", "llm_radar.outbox_worker"]

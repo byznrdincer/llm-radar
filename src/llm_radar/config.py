@@ -48,6 +48,18 @@ class Settings(BaseSettings):
                 raise ValueError("API_ALLOWED_ORIGINS must use the deployed web origin")
             if "localhost" in self.api_allowed_hosts:
                 raise ValueError("API_ALLOWED_HOSTS must use the deployed API hostname")
+            # The docker-compose dev stack's own default credentials/hosts -
+            # a production deploy pointed at any of these is either still
+            # talking to a local dev service or, worse, a shared production
+            # instance guarded only by the well-known default password.
+            if ":llm_radar@" in self.database_url or "@localhost" in self.database_url:
+                raise ValueError("DATABASE_URL must use production credentials/host")
+            if "@localhost" in self.redis_url or self.redis_url.startswith("redis://localhost"):
+                raise ValueError("REDIS_URL must not point at the local dev default")
+            if self.kafka_bootstrap_servers.startswith("localhost"):
+                raise ValueError("KAFKA_BOOTSTRAP_SERVERS must use the deployed broker address")
+            if self.minio_access_key == "llm-radar" or "localhost" in self.minio_endpoint:
+                raise ValueError("MINIO_ACCESS_KEY/MINIO_ENDPOINT must use production values")
         return self
 
 

@@ -74,6 +74,12 @@ async def security_headers(
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if settings.app_env == "production":
+        # Only asserted once we know we're a real deployment: TLS itself is
+        # terminated by whatever reverse proxy/load balancer sits in front
+        # of this process, not by FastAPI/uvicorn - this header just tells
+        # browsers to never fall back to plain HTTP once they've seen it.
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
     API_REQUESTS.labels(
         path=request.url.path, method=request.method, status=str(response.status_code)
     ).inc()
