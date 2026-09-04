@@ -362,17 +362,27 @@ python -m llm_radar.read_model            # okuma modeli alanlarını yeniler
 
 ### Okuma modeli
 
-`model_profiles.general_score` (genel benchmark yüzdeliği) ve
-`effective_openness` (lisans/aile fallback'i dahil), olay akışı ve model
-aramasının SQL'de sıralayıp sayfalayabilmesi için denormalize edilir. Scheduler
-bunları benchmark cadence'inde (12 sa) yeniler; elle:
+`model_profiles.general_score` / `effective_openness` (genel benchmark
+yüzdeliği ve lisans/aile fallback'i dahil etkin openness) ve `model_focus_scores`
+tablosu (general dışındaki her benchmark odağı), olay akışı ve model aramasının
+SQL'de filtreleyip sıralayıp sayfalayabilmesi için denormalize edilir. Bir
+modelin kendi değişikliği (lisans, profil) processor tarafından anında (aynı
+transaction'da) yansıtılır; leaderboard'dan gelen skor sürüklenmesi ise
+scheduler'ın benchmark cadence'inde (12 sa, ilk çalışma açılıştan ~15 sn sonra)
+tam taramayla yenilenir. Elle:
 
 ```bash
 python -m llm_radar.read_model
 ```
 
-Yeni bir modelin skoru/openness'i bir sonraki yenilemeye kadar boş kalır
-(birkaç dakika); bu sürede olay akışında "unknown" görünür.
+**Migration sonrası çalıştırın:** `model_focus_scores` yeni bir tablodur ve
+migration onu boş bırakır — ilk scheduler taraması (veya elle çalıştırma)
+tamamlanana kadar `benchmark_focus` (general dışında) ile model araması INNER
+JOIN nedeniyle boş sonuç döner. Var olan bir dağıtımı `alembic upgrade head`
+ile güncelledikten sonra bu komutu bir kere çalıştırmak bu boşluğu kapatır.
+
+Hiç leaderboard kanıtı olmayan yeni bir modelin skoru/openness'i bir sonraki
+yenilemeye kadar boş kalır; bu sürede olay akışında "unknown" görünür.
 
 Arena'nın tarihsel `overall` snapshot'larını yalnızca ilk kurulumda veya kontrollü
 bir veri onarımı sırasında backfill edin. Komut resmî `text/full` Parquet verisini

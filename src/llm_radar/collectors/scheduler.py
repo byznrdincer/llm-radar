@@ -210,7 +210,12 @@ async def main() -> None:
         )
     await asyncio.gather(
         *(run_job(*job) for job in jobs),
-        refresh_read_model_job(settings.benchmark_interval_seconds, 300),
+        # Short delay (this only touches our own DB, not a rate-limited
+        # external API like the collectors above): after a fresh deploy or
+        # migration, model_focus_scores starts empty and benchmark_focus
+        # search results are empty until the first refresh runs, so there is
+        # no reason to wait as long as the collector jobs do.
+        refresh_read_model_job(settings.benchmark_interval_seconds, 15),
     )
 
 

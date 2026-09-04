@@ -107,7 +107,17 @@ def publish_batch(producer: Producer, batch_size: int = 100) -> int:
     results = _deliver(producer, items)
 
     with SessionLocal() as session:
-        rows = session.scalars(select(OutboxEvent).where(OutboxEvent.id.in_(list(results)))).all()
+        # Re-fetch every *claimed* row, not just the ones results has an
+        # entry for: if flush() hits its timeout with messages still
+        # in-flight, their delivery callback never fires and they're simply
+        # absent from results. _apply_delivery_results already treats a
+        # missing id as "no delivery report" (retry/fail it); querying by
+        # results.keys() here would skip those rows entirely, leaving their
+        # status and attempts untouched - they'd get silently re-claimed and
+        # retried forever on the same terms, bypassing _MAX_ATTEMPTS instead
+        # of eventually being marked failed.
+        claimed_ids = [item.id for item in items]
+        rows = session.scalars(select(OutboxEvent).where(OutboxEvent.id.in_(claimed_ids))).all()
         published = _apply_delivery_results(rows, results)
         session.commit()
         return published

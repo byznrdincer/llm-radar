@@ -31,19 +31,28 @@ pytestmark = pytest.mark.skipif(
 
 
 class _FakeProducer:
-    def __init__(self) -> None:
+    def __init__(self, *, never_delivers: str | None = None) -> None:
         self.produced: list[tuple[str, bytes]] = []
-        self._pending: list[Any] = []
+        # never_delivers: a topic whose delivery callback is registered but
+        # never fires, simulating flush() hitting its timeout with that
+        # message still in-flight - a real confluent_kafka Producer's
+        # flush() can return with outstanding messages still queued.
+        self._never_delivers = never_delivers
+        self._pending: list[tuple[Any, str]] = []
 
     def produce(self, topic: str, *, key: bytes, value: bytes, on_delivery: Any) -> None:
         self.produced.append((topic, value))
-        self._pending.append(on_delivery)
+        self._pending.append((on_delivery, topic))
 
     def flush(self, _timeout: float) -> int:
-        for callback in self._pending:
-            callback(None, None)
-        self._pending.clear()
-        return 0
+        still_pending = []
+        for callback, topic in self._pending:
+            if topic == self._never_delivers:
+                still_pending.append((callback, topic))
+            else:
+                callback(None, None)
+        self._pending = still_pending
+        return len(still_pending)
 
     def poll(self, _timeout: float) -> int:  # pragma: no cover
         return 0
@@ -102,3 +111,47 @@ def test_publish_batch_with_zero_batch_size_returns_zero(session: Session) -> No
 
     published = publish_batch(_FakeProducer(), batch_size=0)  # type: ignore[arg-type]
     assert published == 0
+
+
+def test_publish_batch_retries_a_row_whose_callback_never_fired(session: Session) -> None:
+    """Regression: the second-phase re-fetch used to query by
+    results.keys() instead of every claimed row, so a message whose delivery
+    callback never fired (flush() timeout) was silently skipped - left at its
+    original status/attempts instead of being retried."""
+    if _other_pending_rows(session) > 0:
+        pytest.skip("outbox has other pending/retry rows; publish_batch would touch them too")
+
+    from llm_radar.outbox_worker import publish_batch
+
+    delivered_id, stuck_id = uuid4(), uuid4()
+    session.add_all(
+        [
+            OutboxEvent(
+                id=delivered_id, topic="llm.zztest_delivered", event_key="zztest",
+                payload={"probe": True}, status="pending",
+            ),
+            OutboxEvent(
+                id=stuck_id, topic="llm.zztest_never_delivers", event_key="zztest",
+                payload={"probe": True}, status="pending",
+            ),
+        ]
+    )
+    session.commit()
+    try:
+        producer = _FakeProducer(never_delivers="llm.zztest_never_delivers")
+        published = publish_batch(producer, batch_size=500)  # type: ignore[arg-type]
+        assert published == 1
+
+        delivered = session.get(OutboxEvent, delivered_id)
+        assert delivered is not None
+        assert delivered.status == "published"
+
+        stuck = session.get(OutboxEvent, stuck_id)
+        assert stuck is not None
+        # Must have been re-fetched and marked for retry, not left untouched.
+        assert stuck.status == "retry"
+        assert stuck.attempts == 1
+        assert stuck.last_error == "no delivery report"
+    finally:
+        session.execute(delete(OutboxEvent).where(OutboxEvent.id.in_([delivered_id, stuck_id])))
+        session.commit()
