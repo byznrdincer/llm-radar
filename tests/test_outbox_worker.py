@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
-from llm_radar.outbox_worker import drain_rows
+from llm_radar.outbox_worker import _apply_delivery_results, _deliver, _OutboxItem
 
 
 class FakeProducer:
@@ -32,6 +32,10 @@ class FakeProducer:
         return 0
 
 
+def _item(topic: str = "llm.raw") -> _OutboxItem:
+    return _OutboxItem(id=uuid4(), topic=topic, event_key="k", payload={"a": 1})
+
+
 def _row(topic: str = "llm.raw", attempts: int = 0) -> SimpleNamespace:
     return SimpleNamespace(
         id=uuid4(), topic=topic, event_key="k", payload={"a": 1},
@@ -39,42 +43,71 @@ def _row(topic: str = "llm.raw", attempts: int = 0) -> SimpleNamespace:
     )
 
 
-def test_drain_rows_flushes_once_for_the_whole_batch() -> None:
+def test_deliver_flushes_once_for_the_whole_batch() -> None:
     producer = FakeProducer()
-    rows = [_row() for _ in range(5)]
+    items = [_item() for _ in range(5)]
 
-    published = drain_rows(producer, rows)  # type: ignore[arg-type]
+    results = _deliver(producer, items)
 
-    assert published == 5
     assert producer.flush_calls == 1
     assert len(producer.produced) == 5
-    assert all(row.status == "published" and row.published_at is not None for row in rows)
+    assert all(results[item.id] is None for item in items)
 
 
-def test_drain_rows_marks_failed_deliveries_for_retry() -> None:
+def test_deliver_reports_the_failure_reason() -> None:
     producer = FakeProducer(fail_topics={"llm.bad"})
-    ok, bad = _row("llm.ok"), _row("llm.bad")
+    ok, bad = _item("llm.ok"), _item("llm.bad")
 
-    published = drain_rows(producer, [ok, bad])  # type: ignore[arg-type]
+    results = _deliver(producer, [ok, bad])
+
+    assert results[ok.id] is None
+    assert results[bad.id] == "broker down"
+
+
+def test_deliver_no_items_is_a_noop() -> None:
+    producer = FakeProducer()
+    assert _deliver(producer, []) == {}
+    assert producer.flush_calls == 0
+
+
+def test_apply_delivery_results_marks_success() -> None:
+    row = _row()
+
+    published = _apply_delivery_results([row], {row.id: None})
 
     assert published == 1
-    assert ok.status == "published"
-    assert bad.status == "retry"
-    assert bad.attempts == 1
-    assert bad.last_error == "broker down"
+    assert row.status == "published"
+    assert row.published_at is not None
+    assert row.last_error is None
 
 
-def test_drain_rows_gives_up_after_max_attempts() -> None:
-    producer = FakeProducer(fail_topics={"llm.bad"})
-    row = _row("llm.bad", attempts=9)
+def test_apply_delivery_results_marks_failure_for_retry() -> None:
+    row = _row(attempts=0)
 
-    drain_rows(producer, [row])  # type: ignore[arg-type]
+    published = _apply_delivery_results([row], {row.id: "broker down"})
+
+    assert published == 0
+    assert row.status == "retry"
+    assert row.attempts == 1
+    assert row.last_error == "broker down"
+
+
+def test_apply_delivery_results_gives_up_after_max_attempts() -> None:
+    row = _row(attempts=9)
+
+    _apply_delivery_results([row], {row.id: "broker down"})
 
     assert row.status == "failed"
     assert row.attempts == 10
 
 
-def test_drain_rows_no_rows_is_a_noop() -> None:
-    producer = FakeProducer()
-    assert drain_rows(producer, []) == 0
-    assert producer.flush_calls == 0
+def test_apply_delivery_results_treats_a_missing_result_as_failure() -> None:
+    """A row whose id never appears in the delivery results (e.g. it was
+    claimed but _deliver never got to produce it) is treated as failed, not
+    silently left alone."""
+    row = _row()
+
+    _apply_delivery_results([row], {})
+
+    assert row.status == "retry"
+    assert row.last_error == "no delivery report"

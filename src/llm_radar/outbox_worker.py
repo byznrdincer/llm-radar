@@ -1,8 +1,10 @@
 import json
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from confluent_kafka import Producer
@@ -18,41 +20,53 @@ _FLUSH_TIMEOUT_SECONDS = 30.0
 _MAX_ATTEMPTS = 10
 
 
-def drain_rows(producer: Producer, rows: list[OutboxEvent]) -> int:
-    """Produce every row to the local queue with a per-row delivery callback,
-    flush once, then write each row's status from its delivery report.
+@dataclass(frozen=True, slots=True)
+class _OutboxItem:
+    id: UUID
+    topic: str
+    event_key: str
+    payload: dict[str, Any]
 
-    The previous implementation flushed after every row, turning each publish
-    into a synchronous Kafka round-trip.
+
+def _deliver(producer: Producer, items: Sequence[_OutboxItem]) -> dict[UUID, str | None]:
+    """Produce every item to the local queue with a per-item delivery
+    callback, then flush once. Pure Kafka I/O - no DB session touched here -
+    so the caller never has to hold a transaction (and its row locks) open
+    across this call, which can block on network I/O for seconds.
+
+    Returns item id -> None on success, else the delivery error string.
     """
-    if not rows:
-        return 0
-
-    # row id -> None on success, else the delivery error string.
+    if not items:
+        return {}
     results: dict[UUID, str | None] = {}
 
-    def _on_delivery(row_id: UUID) -> Callable[[object, object], None]:
+    def _on_delivery(item_id: UUID) -> Callable[[object, object], None]:
         def _callback(err: object, _msg: object) -> None:
-            results[row_id] = None if err is None else str(err)[:1000]
+            results[item_id] = None if err is None else str(err)[:1000]
 
         return _callback
 
-    for row in rows:
+    for item in items:
         while True:
             try:
                 producer.produce(
-                    row.topic,
-                    key=row.event_key.encode(),
-                    value=json.dumps(row.payload, default=str).encode(),
-                    on_delivery=_on_delivery(row.id),
+                    item.topic,
+                    key=item.event_key.encode(),
+                    value=json.dumps(item.payload, default=str).encode(),
+                    on_delivery=_on_delivery(item.id),
                 )
                 break
             except BufferError:
-                # Local queue full - let it drain, then retry this row.
+                # Local queue full - let it drain, then retry this item.
                 producer.poll(1)
 
     producer.flush(_FLUSH_TIMEOUT_SECONDS)
+    return results
 
+
+def _apply_delivery_results(rows: Sequence[OutboxEvent], results: dict[UUID, str | None]) -> int:
+    """Write each row's status from its _deliver() result. Pure bookkeeping -
+    no Kafka I/O - so the transaction around this stays short."""
     published = 0
     now = datetime.now(UTC)
     for row in rows:
@@ -72,16 +86,29 @@ def drain_rows(producer: Producer, rows: list[OutboxEvent]) -> int:
 
 def publish_batch(producer: Producer, batch_size: int = 100) -> int:
     with SessionLocal() as session:
-        rows = list(
-            session.scalars(
-                select(OutboxEvent)
-                .where(OutboxEvent.status.in_(["pending", "retry"]))
-                .order_by(OutboxEvent.created_at)
-                .with_for_update(skip_locked=True)
-                .limit(batch_size)
-            )
-        )
-        published = drain_rows(producer, rows)
+        rows = session.scalars(
+            select(OutboxEvent)
+            .where(OutboxEvent.status.in_(["pending", "retry"]))
+            .order_by(OutboxEvent.created_at)
+            .with_for_update(skip_locked=True)
+            .limit(batch_size)
+        ).all()
+        if not rows:
+            return 0
+        items = [_OutboxItem(row.id, row.topic, row.event_key, row.payload) for row in rows]
+        # Commit immediately - releasing the SELECT ... FOR UPDATE lock -
+        # instead of holding it open across the Kafka flush below. A
+        # concurrently-scaled worker re-claiming these still-pending/retry
+        # rows only risks a harmless duplicate publish under the outbox's
+        # already-accepted at-least-once design (domain-topic consumers key
+        # off event_id); it should never be blocked on this transaction.
+        session.commit()
+
+    results = _deliver(producer, items)
+
+    with SessionLocal() as session:
+        rows = session.scalars(select(OutboxEvent).where(OutboxEvent.id.in_(list(results)))).all()
+        published = _apply_delivery_results(rows, results)
         session.commit()
         return published
 
