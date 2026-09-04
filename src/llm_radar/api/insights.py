@@ -7,8 +7,13 @@ from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
+from llm_radar.api.routes import (
+    _leaderboard_license_index,
+    _resolved_compare_openness,
+    _scoped_catalog_candidates,
+)
 from llm_radar.composite import (
     RADAR_SCORE_BENCHMARKS,
     RadarScoreInput,
@@ -26,13 +31,8 @@ from llm_radar.database.models import (
     PriceObservation,
     Source,
 )
-from llm_radar.api.routes import (
-    _leaderboard_license_index,
-    _resolved_compare_openness,
-    _scoped_catalog_candidates,
-)
 from llm_radar.database.session import get_db
-from llm_radar.model_selection import benchmark_matches
+from llm_radar.model_selection import selection_matches
 
 router = APIRouter(prefix="/api/v1")
 DatabaseSession = Annotated[Session, Depends(get_db)]
@@ -250,7 +250,9 @@ def _resolved_row_openness(
     # catalog Model's real license/is_open_weight fields (never fabricated).
     model_stub = cast(
         Model,
-        SimpleNamespace(name=model_name, license=model.license, is_open_weight=model.is_open_weight),
+        SimpleNamespace(
+            name=model_name, license=model.license, is_open_weight=model.is_open_weight
+        ),
     )
     return _resolved_compare_openness(model_stub, company_stub, profile)
 
@@ -287,7 +289,9 @@ def _ranked_radar_score(
         published_at_query = select(func.max(LeaderboardSnapshot.published_at)).where(
             LeaderboardSnapshot.benchmark_id == definition.id
         )
-        rows_query = select(LeaderboardSnapshot).where(LeaderboardSnapshot.benchmark_id == definition.id)
+        rows_query = select(LeaderboardSnapshot).where(
+            LeaderboardSnapshot.benchmark_id == definition.id
+        )
         if as_of is not None:
             published_at_query = published_at_query.where(LeaderboardSnapshot.observed_at <= as_of)
             rows_query = rows_query.where(LeaderboardSnapshot.observed_at <= as_of)
@@ -432,7 +436,8 @@ def radar_score_changes(session: DatabaseSession) -> dict[str, Any]:
         elif item["rank"] <= 3 and (prior_rank is None or prior_rank > 3):
             kind = "entered_top3"
             title = (
-                f"{item['model_name']} LLM Radar Skoru'nda Top 3'e girdi (#{prior_rank} → #{item['rank']})"
+                f"{item['model_name']} LLM Radar Skoru'nda Top 3'e girdi "
+                f"(#{prior_rank} → #{item['rank']})"
                 if prior_rank is not None
                 else f"{item['model_name']} doğrudan LLM Radar Skoru Top 3'üne girdi"
             )
@@ -455,7 +460,12 @@ def radar_score_changes(session: DatabaseSession) -> dict[str, Any]:
         )
 
     rank_priority = {"new_leader": 0, "entered_top3": 1, "new_entry": 2}
-    events.sort(key=lambda event: (rank_priority[cast(str, event["kind"])], cast(int, event["rank"])))
+    events.sort(
+        key=lambda event: (
+            rank_priority[cast(str, event["kind"])],
+            cast(int, event["rank"]),
+        )
+    )
 
     counts = {
         "new_leader": sum(1 for event in events if event["kind"] == "new_leader"),
@@ -523,6 +533,8 @@ def _radar_event_kind(event: ChangeEvent) -> str | None:
     if event.event_type == "leaderboard.changed":
         before = next(iter((event.old_value or {}).values()), None)
         after = next(iter((event.new_value or {}).values()), None)
+        if after is None:
+            return None
         try:
             before_rank = int(before) if before is not None else None
             after_rank = int(after)
@@ -667,17 +679,22 @@ def market_dashboard(
     cutoff = today - timedelta(days=days)
     rows: list[LeaderboardSnapshot] = []
     if definition is not None:
-        rows = session.scalars(
-            select(LeaderboardSnapshot)
-            .where(
-                LeaderboardSnapshot.benchmark_id == definition.id,
-                LeaderboardSnapshot.published_at >= cutoff,
-            )
-            .order_by(
-                LeaderboardSnapshot.published_at.asc(),
-                LeaderboardSnapshot.score.desc(),
-            )
-        ).all()
+        rows = list(
+            session.scalars(
+                select(LeaderboardSnapshot)
+                .where(
+                    LeaderboardSnapshot.benchmark_id == definition.id,
+                    LeaderboardSnapshot.published_at >= cutoff,
+                )
+                # raw_data is a large JSONB blob this endpoint never reads;
+                # skipping it avoids ~50k JSON parses on the arena-text history.
+                .options(defer(LeaderboardSnapshot.raw_data))
+                .order_by(
+                    LeaderboardSnapshot.published_at.asc(),
+                    LeaderboardSnapshot.score.desc(),
+                )
+            ).all()
+        )
 
     catalog_index = _leaderboard_license_index(session)
     if openness is not None:
@@ -776,7 +793,9 @@ def market_dashboard(
                 "model": model_name,
                 "organization": latest_row.organization,
                 "region": _organization_region(latest_row.organization),
-                "openness": _resolved_row_openness(model_name, latest_row.organization, catalog_index),
+                "openness": _resolved_row_openness(
+                    model_name, latest_row.organization, catalog_index
+                ),
                 "delta": round(float(latest_row.score - first_row.score), 2),
                 "score": float(latest_row.score),
             }
@@ -791,8 +810,8 @@ def market_dashboard(
         for row in rows:
             if row.published_at != latest_date:
                 continue
-            current = best_by_provider.get(row.organization)
-            if current is None or row.score > current.score:
+            best = best_by_provider.get(row.organization)
+            if best is None or row.score > best.score:
                 best_by_provider[row.organization] = row
         provider_rows = [
             {
@@ -800,7 +819,9 @@ def market_dashboard(
                 "model": row.model_external_id,
                 "score": float(row.score),
                 "region": _organization_region(row.organization),
-                "openness": _resolved_row_openness(row.model_external_id, row.organization, catalog_index),
+                "openness": _resolved_row_openness(
+                    row.model_external_id, row.organization, catalog_index
+                ),
             }
             for row in sorted(best_by_provider.values(), key=lambda item: item.score, reverse=True)[
                 :8
@@ -1112,14 +1133,11 @@ def list_turkish_models(
     session: DatabaseSession,
     limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> dict[str, Any]:
-    benchmark_index = benchmark_matches(session, "general")
+    benchmark_index = selection_matches(session, "general")
     candidates: list[tuple[Model, Company, ModelProfile | None, ModelSnapshot | None, int]] = []
     for model, company, profile, snapshot in _turkish_catalog_rows(session):
-        downloads = (
-            int(snapshot.data.get("downloads"))
-            if snapshot and isinstance(snapshot.data.get("downloads"), int)
-            else 0
-        )
+        downloads_raw = snapshot.data.get("downloads") if snapshot else None
+        downloads = downloads_raw if isinstance(downloads_raw, int) else 0
         candidates.append((model, company, profile, snapshot, downloads))
     candidates.sort(key=lambda item: item[4], reverse=True)
     return {

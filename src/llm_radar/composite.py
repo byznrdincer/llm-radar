@@ -4,6 +4,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
+from functools import lru_cache
 from typing import Any, cast
 
 RADAR_SCORE_VERSION = "radar-score-v1.0"
@@ -122,6 +123,7 @@ def _ascii(value: str) -> str:
     return unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode().lower()
 
 
+@lru_cache(maxsize=8192)
 def canonical_model_name(value: str) -> str:
     """Match formatting/effort variants without merging distinct model generations."""
     clean = _ascii(value).split(":", 1)[-1]

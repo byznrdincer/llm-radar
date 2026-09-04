@@ -5,7 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select, tuple_
 from sqlalchemy.orm import Session
 
 from llm_radar.composite import canonical_model_name
@@ -42,26 +42,61 @@ class BenchmarkMatch:
 
 
 _match_cache: dict[str, tuple[float, dict[str, BenchmarkMatch]]] = {}
-_MATCH_CACHE_TTL_SECONDS = 120.0
+# Leaderboard data refreshes on a ~12h collector cadence, so a few minutes of
+# staleness here is invisible while sparing every caller the recompute.
+_MATCH_CACHE_TTL_SECONDS = 600.0
 
 
 def benchmark_matches(session: Session, focus: str) -> dict[str, BenchmarkMatch]:
     terms = BENCHMARK_FOCUSES.get(focus)
     if not terms:
         return {}
-    rows = session.execute(
-        select(LeaderboardSnapshot, BenchmarkDefinition)
-        .join(BenchmarkDefinition, BenchmarkDefinition.id == LeaderboardSnapshot.benchmark_id)
-        .order_by(LeaderboardSnapshot.published_at.desc())
-    ).all()
-    relevant = [
-        (snapshot, benchmark)
-        for snapshot, benchmark in rows
+
+    # Resolve which benchmark definitions the focus refers to (a few dozen rows).
+    definitions = session.execute(select(BenchmarkDefinition)).scalars().all()
+    relevant_defs = {
+        definition.id: definition
+        for definition in definitions
         if any(
-            term in f"{benchmark.category} {benchmark.slug} {benchmark.name}".lower()
+            term in f"{definition.category} {definition.slug} {definition.name}".lower()
             for term in terms
         )
-    ]
+    }
+    if not relevant_defs:
+        return {}
+
+    # Only the most recent publication of each (benchmark, category) contributes:
+    # older snapshots are always deduped away by the (model, benchmark) guard below,
+    # so loading full leaderboard history here is wasted work.
+    latest = session.execute(
+        select(
+            LeaderboardSnapshot.benchmark_id,
+            LeaderboardSnapshot.category,
+            func.max(LeaderboardSnapshot.published_at),
+        )
+        .where(LeaderboardSnapshot.benchmark_id.in_(relevant_defs))
+        .group_by(LeaderboardSnapshot.benchmark_id, LeaderboardSnapshot.category)
+    ).all()
+    if not latest:
+        return {}
+
+    snapshots = (
+        session.execute(
+            select(LeaderboardSnapshot)
+            .where(
+                tuple_(
+                    LeaderboardSnapshot.benchmark_id,
+                    LeaderboardSnapshot.category,
+                    LeaderboardSnapshot.published_at,
+                ).in_([(bid, category, published) for bid, category, published in latest])
+            )
+            .order_by(LeaderboardSnapshot.published_at.desc(), LeaderboardSnapshot.rank.asc())
+        )
+        .scalars()
+        .all()
+    )
+    relevant = [(snapshot, relevant_defs[snapshot.benchmark_id]) for snapshot in snapshots]
+
     field_sizes: dict[tuple[Any, Any, str], int] = defaultdict(int)
     for snapshot, benchmark in relevant:
         key = (benchmark.id, snapshot.published_at, snapshot.category)
