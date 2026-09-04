@@ -56,8 +56,12 @@ test.describe("Events page", () => {
     await expect(grid).toHaveCount(11);
 
     // The scroll sentinel triggers via IntersectionObserver, not a scroll
-    // event - scrolling the actual document is what puts it in view.
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await expect(grid).toHaveCount(25); // all 26 fixture events, minus the featured card
+    // event - scrolling the actual document is what puts it in view. Under
+    // worker contention (the whole e2e suite shares one dev server) a single
+    // scroll can land before layout catches up, so repeat it while polling.
+    await expect(async () => {
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await expect(grid).toHaveCount(25); // all 26 fixture events, minus the featured card
+    }).toPass({ timeout: 15000 });
   });
 });
