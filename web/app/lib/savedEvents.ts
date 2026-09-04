@@ -1,4 +1,4 @@
-import type { FeedEvent } from "../components/EventsPage";
+import type { FeedEvent } from "./eventTypes";
 
 const STORAGE_KEY = "llm-radar-saved-events";
 

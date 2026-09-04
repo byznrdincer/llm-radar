@@ -7,6 +7,11 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
+  // All specs share one vinext dev server (SSR routes compile on demand);
+  // too much worker concurrency against that single instance makes cold
+  // compiles slow enough to trip hydration/visibility waits. 2 keeps tests
+  // isolated per-context without starving the dev server.
+  workers: 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "line" : "list",
