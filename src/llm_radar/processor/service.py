@@ -605,14 +605,19 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
         )
         session.add(model)
         session.flush()
-        link_cross_source_models(
+        merged_into = link_cross_source_models(
             session,
             model,
             entity_key=event.entity_key,
             display_name=str(payload.get("name") or event.entity_key),
             is_new=True,
         )
-    elif model.company_id != company.id:
+        if merged_into is not None:
+            # The new row denoted an existing canonical model; keep the
+            # canonical one and treat this as an update, not a discovery.
+            model = merged_into
+            is_new = False
+    if model.company_id != company.id:
         # Provider aliases such as OpenRouter's ``~openai`` belong to the
         # canonical company and must never create a separate filter option.
         model.company_id = company.id

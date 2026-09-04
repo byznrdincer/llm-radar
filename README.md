@@ -374,6 +374,22 @@ indirir ve aynı model/kategori/tarih kaydını tekrar eklemez:
 docker compose run --rm api python -m llm_radar.backfill_arena_history
 ```
 
+### Duplicate katalog satırlarını birleştirme
+
+Entity resolution artık aynı modeli ikinci kez oluşturmaz: yeni satır mevcut
+kanonik modelle eşleşirse `merge_models` onu (snapshot, fiyat, profil, provenance
+ve alias'larıyla) kanonik satıra katıp siler. Alias'lar oluşmadan önce yaratılmış
+eski duplicate'ler için tek seferlik onarım:
+
+```bash
+python -m llm_radar.backfill_merge_duplicate_models          # kuru çalışma - planı yazar
+python -m llm_radar.backfill_merge_duplicate_models --apply  # planı uygula
+```
+
+Plan `(kanonik firma, kanonik ad)` bazında gruplar; farklı `release_date` veya
+`family` taşıyan gruplar (ayrı checkpoint olabilir) atlanır. `--apply` öncesi
+çıktıyı gözden geçirin.
+
 Docker içinden:
 
 ```bash
