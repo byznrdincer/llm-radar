@@ -234,7 +234,7 @@ function FeaturedPaper({ item }: { item: ResearchItem }) {
 }
 
 export default function ResearchPage({ api, bootstrap = null }: Props) {
-  const { language, locale } = useLanguage();
+  const { language } = useLanguage();
   const bootReady = bootstrap !== null && bootstrap.items.length > 0;
   const [items, setItems] = useState<ResearchItem[]>(() => bootstrap?.items ?? []);
   const [total, setTotal] = useState(() => bootstrap?.total ?? 0);

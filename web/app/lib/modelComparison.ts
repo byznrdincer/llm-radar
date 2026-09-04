@@ -469,7 +469,7 @@ function relativeAdvantage(a: number | null, b: number | null, higherIsBetter: b
 export function buildInsights(snapshots: ModelSnapshot[], language: Language, locale: string): ModelInsight[] {
     if (snapshots.length < 2)
         return snapshots.map(item => ({ id: item.id, name: item.name, pros: [], cons: [] }));
-  const [first, ...rest] = snapshots;
+    const [first] = snapshots;
     return snapshots.map(current => {
         const pros: string[] = [];
         const cons: string[] = [];

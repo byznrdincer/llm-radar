@@ -15,7 +15,11 @@ async def test_huggingface_requires_downloadable_weight_evidence(
     payload = [
         {
             "id": "example/with-weights",
-            "cardData": {"license": "apache-2.0", "active_parameters": "3B", "base_model": "meta-llama/Llama-3"},
+            "cardData": {
+                "license": "apache-2.0",
+                "active_parameters": "3B",
+                "base_model": "meta-llama/Llama-3",
+            },
             "gated": False,
             "pipeline_tag": "text-generation",
             "siblings": [{"rfilename": "model.safetensors"}],

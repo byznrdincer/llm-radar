@@ -35,6 +35,12 @@ const eslintConfig = defineConfig([
         version: "detect",
       },
     },
+    rules: {
+      // We intentionally hydrate client-only state (stored language, saved
+      // events) from an effect after mount to stay SSR-safe. Keep the signal
+      // as a warning rather than a hard failure.
+      "react-hooks/set-state-in-effect": "warn",
+    },
   },
 ]);
 

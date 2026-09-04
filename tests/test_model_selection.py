@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from llm_radar.database.models import Model, ModelProfile
 from llm_radar.model_selection import (
-    ADVANCEDNESS_TIERS,
     advancedness_tier_for_score,
     matches_advancedness_filter,
     multimodal_profile_matches,

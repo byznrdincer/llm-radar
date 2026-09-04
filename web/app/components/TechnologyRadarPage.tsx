@@ -262,7 +262,7 @@ function useTechMetrics(events: FeedEvent[], slug: TechnologySlug, days: DayRang
 }
 
 export default function TechnologyRadarPage({ api, signals = [], onViewAllEvents }: Props) {
-  const { language, locale } = useLanguage();
+  const { language } = useLanguage();
   const t = STRINGS[language];
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [selected, setSelected] = useState<TechnologySlug | null>(null);

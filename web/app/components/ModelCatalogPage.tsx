@@ -375,6 +375,7 @@ function MultiDeveloperPicker({ values, companies, onToggle, onClear, developerS
             </button>
             {open && (
                 <div className="catalog-dev-picker-menu catalog-col-menu-wide">
+                    {/* eslint-disable-next-line jsx-a11y/no-autofocus -- focus the filter field when the popover opens */}
                     <input value={search} onChange={e => setSearch(e.target.value)} placeholder={language === "tr" ? "Geliştirici ara…" : "Search developers…"} autoFocus />
                     <div className="catalog-dev-picker-list">
                         {values.length > 0 && (
@@ -491,6 +492,7 @@ function ColumnFilterHead({ label, field, sortStack, onSort, filterActive, filte
                 </button>
             </div>
             {open && (
+                // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- containment guard, not an interactive control
                 <div className="catalog-col-filter-menu" onClick={e => e.stopPropagation()}>
                     <div className="catalog-sort-options" role="group" aria-label={language === "tr" ? `${label} sıralama yönü` : `${label} sort direction`}>
                         <button
@@ -646,6 +648,7 @@ export default function ModelCatalogPage(props: Props) {
             </div>
 
             {p.advancedOpen && (
+                // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- click-outside backdrop; the drawer itself is keyboard reachable
                 <div
                     className="catalog-filter-layer"
                     onMouseDown={event => {

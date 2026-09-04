@@ -1,4 +1,8 @@
-from llm_radar.company_domains import canonical_company_slug, company_website_url, known_company_domain
+from llm_radar.company_domains import (
+    canonical_company_slug,
+    company_website_url,
+    known_company_domain,
+)
 
 
 def test_slug_aliases_resolve_to_canonical_domains() -> None:
