@@ -103,7 +103,11 @@ export type CatalogSortOrder = "asc" | "desc";
 
 export type CatalogSortSpec = { field: CatalogSortBy; order: CatalogSortOrder };
 
-export const DEFAULT_SORT_STACK: CatalogSortSpec[] = [{ field: "name", order: "asc" }];
+// Benchmark score, not name: well-known/frontier models (the ones people
+// actually search for) have benchmark data and sort first; the long tail of
+// unbenchmarked checkpoints (nulls) sorts last regardless of order - see
+// _normalize_sort_specs's nullslast() in the API.
+export const DEFAULT_SORT_STACK: CatalogSortSpec[] = [{ field: "benchmark_score", order: "desc" }];
 
 type FilterChip = { key: string; label: string; clear: () => void };
 

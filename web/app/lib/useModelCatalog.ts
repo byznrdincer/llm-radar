@@ -34,7 +34,7 @@ function mapSearchModels(items: SearchModelItem[]): ModelItem[] {
     }));
 }
 
-const isDefaultSort = (stack: CatalogSortSpec[]) => stack.length === 1 && stack[0].field === "name" && stack[0].order === "asc";
+const isDefaultSort = (stack: CatalogSortSpec[]) => stack.length === 1 && stack[0].field === DEFAULT_SORT_STACK[0].field && stack[0].order === DEFAULT_SORT_STACK[0].order;
 
 /**
  * The model catalog's search box, sort stack, and every advanced filter -
@@ -85,8 +85,8 @@ export function useModelCatalog({ enabled, models, setError }: { enabled: boolea
         const bootParams = new URLSearchParams({
             limit: String(PAGE_SIZE),
             offset: "0",
-            sort_by: "name",
-            sort_order: "asc",
+            sort_by: DEFAULT_SORT_STACK[0].field,
+            sort_order: DEFAULT_SORT_STACK[0].order,
         });
 
         fetch(`${API}/api/v1/models/search?${bootParams}`, { signal })
