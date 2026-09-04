@@ -1,4 +1,5 @@
 import re
+import time
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -9,7 +10,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from llm_radar.company_domains import company_website_url
 from llm_radar.composite import canonical_model_name
@@ -448,19 +449,33 @@ def _known_open_source_family(model_name: str) -> bool:
     )
 
 
-def _leaderboard_license_index(
-    session: DatabaseSession,
-) -> dict[str, list[tuple[Model, ModelProfile | None, str]]]:
+_LicenseIndex = dict[str, list[tuple[Model, ModelProfile | None, str]]]
+_LICENSE_INDEX_TTL_SECONDS = 300.0
+_license_index_cache: tuple[float, _LicenseIndex] | None = None
+
+
+def _leaderboard_license_index(session: DatabaseSession) -> _LicenseIndex:
+    """Canonical-name -> catalog rows index. Cached: every leaderboard, market and
+    radar response rebuilds it otherwise, and the catalog only shifts on the
+    multi-hour collector cadence. Profiles are eager-loaded so the cached rows
+    stay usable after their build session closes."""
+    global _license_index_cache
+    now = time.time()
+    cached = _license_index_cache
+    if cached is not None and now - cached[0] < _LICENSE_INDEX_TTL_SECONDS:
+        return cached[1]
+
     index: dict[str, list[tuple[Model, ModelProfile | None, str]]] = {}
     rows = session.execute(
-        select(Model, ModelProfile, Company.name)
-        .outerjoin(ModelProfile, ModelProfile.model_id == Model.id)
+        select(Model, Company.name)
+        .options(joinedload(Model.profile))
         .join(Company, Company.id == Model.company_id)
     )
-    for model, profile, company_name in rows:
+    for model, company_name in rows:
         key = canonical_model_name(model.name)
         if key:
-            index.setdefault(key, []).append((model, profile, company_name))
+            index.setdefault(key, []).append((model, model.profile, company_name))
+    _license_index_cache = (now, index)
     return index
 
 
