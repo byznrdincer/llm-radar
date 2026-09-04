@@ -6,7 +6,10 @@ import type { Page } from "@playwright/test";
  * Retry the click instead of guessing a fixed hydration delay.
  */
 export async function clickSidebarItem(page: Page, label: string) {
-  const button = page.getByRole("button", { name: label, exact: true });
+  // Scoped to the sidebar nav: some page content (e.g. the catalog's
+  // compare-pick buttons) reuses the same accessible name ("Karşılaştır")
+  // as a nav item, which an unscoped getByRole would ambiguously match.
+  const button = page.locator(".sidebar-nav").getByRole("button", { name: label, exact: true });
   await button.waitFor({ state: "visible" });
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
