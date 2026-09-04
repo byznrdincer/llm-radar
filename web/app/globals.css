@@ -758,22 +758,23 @@ h1 em { color:#557049; font-style:normal; }
 .ev-featured-media>strong{position:relative;z-index:1;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#d7e8cf}
 .ev-featured-media .model-avatar{width:64px;height:64px;border-radius:16px;border-color:#ffffff22;background:#ffffff10}
 .ev-featured-body{min-width:0;display:flex;flex-direction:column;justify-content:center}
-.ev-badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.ev-cat{padding:5px 10px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
-.ev-cat.ev-release{background:#e8f4d8;color:#3d6b18}
-.ev-cat.ev-research{background:#e7edf9;color:#35548f}
-.ev-cat.ev-benchmark{background:#f9e5df;color:#933a24}
-.ev-cat.ev-technology{background:#dceeea;color:#21665c}
-.ev-cat.ev-price{background:#f6ecd7;color:#7a5a1a}
-.ev-cat.ev-funding{background:#e5edf8;color:#2f5f9a}
-.ev-cat.ev-other{background:#eceeea;color:#556059}
-.ev-model-level{padding:5px 10px;border:1px solid #cfd5ce;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#526057;background:#f7f8f5}
-.ev-model-level.frontier{border-color:#9dbf65;color:#456b17;background:#edf7dc}
-.ev-model-level.advanced{border-color:#b9c8b3;color:#456147;background:#f0f5ec}
-.ev-score{padding:5px 10px;border-radius:999px;font-size:10px;font-weight:800;background:#eee;color:#555}
-.ev-score.high,.ev-score.critical{background:#fde2dc;color:#a12f1c}
-.ev-score.medium{background:#ffeec4;color:#7a5a00}
-.ev-score.low{background:#eef4d6;color:#5f6f20}
+.ev-badges{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-bottom:12px}
+.ev-cat,.ev-model-level,.ev-score{padding:2px 6px;border-radius:5px;font-size:9px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;line-height:1.55;border:1px solid transparent;white-space:nowrap}
+.ev-cat{background:#f0efe9;border-color:#e3e2da;color:#6c7169}
+.ev-cat.ev-release{color:#516b32}
+.ev-cat.ev-research{color:#445a84}
+.ev-cat.ev-benchmark{color:#8a4d3a}
+.ev-cat.ev-technology{color:#376b62}
+.ev-cat.ev-price{color:#79602f}
+.ev-cat.ev-funding{color:#41608a}
+.ev-cat.ev-other{color:#6c7169}
+.ev-model-level{background:transparent;border-color:#d5d9d3;color:#7c837b}
+.ev-model-level.frontier{border-color:#c3d4a4;color:#5d7a35}
+.ev-model-level.advanced{border-color:#cfd7ca;color:#5d6f5d}
+.ev-score{background:#f0efe9;border-color:#e3e2da;color:#6c7169}
+.ev-score.high,.ev-score.critical{color:#a1492f;border-color:#e8cdc4}
+.ev-score.medium{color:#876a22;border-color:#e7ddc1}
+.ev-score.low{color:#5f6f20;border-color:#dde2c4}
 .ev-featured-body h3{margin:0 0 8px;font-size:24px;letter-spacing:-.03em;line-height:1.2;color:#121513}
 .ev-featured-body>p{margin:0;max-width:560px;color:#6f7678;font-size:14px;line-height:1.55}
 .ev-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
