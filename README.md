@@ -35,10 +35,11 @@ eksik veri uydurulmaz ve sonuçlar kaynak/yayın bilgisiyle saklanır.
 - Ham cevapları MinIO üzerinde denetlenebilir biçimde arşivleme
 - Redpanda üzerinde olay tabanlı, idempotent ve tekrar işlenebilir veri akışı
 - PostgreSQL üzerinde güncel durum, geçmiş snapshot, claim ve bildirim saklama
-- ClickHouse analitik altyapısı ve Redis önbellek/koordinasyon katmanı
-- Server-Sent Events (SSE) ile web paneline canlı güncelleme
+- Redis üzerinde önbellek ve yazma uçları için fail-open hız sınırlama
+- Server-Sent Events (SSE) ile web paneline canlı güncelleme (PostgreSQL'i periyodik yoklar)
 - Kaynak sağlığı, collector çalışması, gecikme ve dead-letter takibi
-- İsteğe bağlı Slack, Telegram ve e-posta bildirim ayarları
+- Slack, Telegram ve e-posta bildirim ayarları (şu an yalnızca log'a yazar; gönderim planlanıyor)
+- ClickHouse tabanlı analitik depo (planlanıyor; kod henüz bağlı değil)
 - Prometheus metrikleri, Grafana profili ve otomatik PostgreSQL yedeği
 
 ## Mimari
@@ -51,13 +52,17 @@ flowchart LR
     K --> P["Processor<br/>normalize • resolve • dedup • verify"]
     P --> D["Değişiklik tespiti<br/>old/new • önem • kanıt"]
     D --> PG["PostgreSQL<br/>operasyonel/geçmiş veri"]
-    D --> CH["ClickHouse<br/>analitik altyapısı"]
     D --> T["Alan topic'leri<br/>alerts • dead letter"]
     PG --> API["FastAPI<br/>REST • SSE • metrics"]
-    CH --> API
+    R["Redis<br/>önbellek • hız sınırlama"] --- API
     API --> W["React web paneli"]
-    API --> N["Bildirimler"]
+    API --> N["Bildirimler<br/>(şu an log)"]
+    D -.-> CH["ClickHouse<br/>(planlanan analitik depo)"]
+    CH -.-> API
 ```
+
+> ClickHouse ve toplu bildirim gönderimi diyagramda kesik çizgiyle gösterilir:
+> altyapı `docker-compose` içinde hazır ama uygulama kodu henüz bağlanmadı.
 
 | Bileşen | Sorumluluk |
 | --- | --- |
@@ -66,8 +71,8 @@ flowchart LR
 | Processor | Event'i doğrular, normalize eder, alias çözer, tekrarları eler ve değişiklik çıkarır. |
 | PostgreSQL | Modelleri, fiyatları, benchmark snapshot'larını, claim'leri, araştırmaları ve bildirimleri saklar. |
 | MinIO | Kaynaklardan alınan ham belge ve cevapları saklar. |
-| ClickHouse | Zaman serisi ve yüksek hacimli analitik sorgular için hazırlanmıştır. |
-| Redis | Önbellek ve kısa ömürlü koordinasyon altyapısıdır. |
+| ClickHouse | Zaman serisi/analitik sorgular için planlanır; `docker-compose` içinde vardır ama uygulama henüz yazmaz/okumaz. |
+| Redis | `storage.py` üzerinden önbellek yardımcıları ve yazma uçlarında fail-open hız sınırlama sağlar. |
 | FastAPI | REST, OpenAPI, SSE, sistem sağlığı ve Prometheus metriklerini sunar. |
 | Web | Sıralama, katalog, karşılaştırma, araştırma ve teknoloji akışını gösterir. |
 | Scheduler | Collector'ları belirlenen aralıklarla otomatik çalıştırır. |
@@ -202,9 +207,14 @@ llm-radar/
 git clone https://github.com/byznrdincer/llm-radar.git
 cd llm-radar
 cp .env.example .env
-cp .admin.env.example .admin.env   # /admin panel kimlik bilgileri — API bunlar olmadan açılmaz
 docker compose up -d --build
 ```
+
+`/admin` paneli geliştirmede `admin` / `change-me` ile açılır. Üretimde
+`LLM_RADAR_ADMIN_USERNAME`, `LLM_RADAR_ADMIN_PASSWORD` ve
+`LLM_RADAR_ADMIN_SECRET_KEY` ortam değişkenleri (ör. `.env` içinde) zorunludur;
+`APP_ENV=production` ile bunlar ayarlanmazsa API açılmaz. Docker dışında yerel
+çalıştırmada `cp .admin.env.example .admin.env` de aynı işi görür.
 
 Yerel geliştirmede varsayılan `.env` değerleri çalışır. Artificial Analysis
 isteniyorsa `ARTIFICIAL_ANALYSIS_API_KEY` doldurulmalıdır. GitHub ve Hugging

@@ -52,11 +52,32 @@ def load_admin_env() -> None:
         os.environ.setdefault(key.strip(), value.strip())
 
 
+# Non-production dev defaults so a clean checkout / `docker compose up` starts
+# without a hand-provided .admin.env. Production must set real values.
+_ADMIN_DEV_DEFAULTS = {
+    "LLM_RADAR_ADMIN_USERNAME": "admin",
+    "LLM_RADAR_ADMIN_PASSWORD": "change-me",
+    "LLM_RADAR_ADMIN_SECRET_KEY": "dev-insecure-admin-secret-key-change-me",  # noqa: S105
+}
+
+
+def _admin_credential(key: str) -> str:
+    value = os.environ.get(key)
+    if value:
+        return value
+    if os.environ.get("APP_ENV") == "production":
+        raise RuntimeError(
+            f"{key} must be set in production - copy .admin.env.example to .admin.env "
+            "or pass it through the environment"
+        )
+    return _ADMIN_DEV_DEFAULTS[key]
+
+
 load_admin_env()
 
-ADMIN_USERNAME = os.environ["LLM_RADAR_ADMIN_USERNAME"]
-ADMIN_PASSWORD = os.environ["LLM_RADAR_ADMIN_PASSWORD"]
-ADMIN_SECRET_KEY = os.environ["LLM_RADAR_ADMIN_SECRET_KEY"]
+ADMIN_USERNAME = _admin_credential("LLM_RADAR_ADMIN_USERNAME")
+ADMIN_PASSWORD = _admin_credential("LLM_RADAR_ADMIN_PASSWORD")
+ADMIN_SECRET_KEY = _admin_credential("LLM_RADAR_ADMIN_SECRET_KEY")
 
 
 class RadarAdminAuth(AuthProvider):

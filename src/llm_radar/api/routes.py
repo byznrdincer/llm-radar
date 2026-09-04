@@ -1929,9 +1929,15 @@ def list_events(
             )
         ]
         if sort_by == "priority":
+            # Urgent news (critical/high) always outranks model level, so a
+            # critical security or regulation item is never buried under a
+            # routine frontier-model event. Within each urgency band, prefer
+            # higher model levels, then the importance score, then recency.
             level_rank = {"frontier": 0, "advanced": 1, "mid": 2, "entry": 3}
+            urgent = {"critical", "high"}
             events.sort(
                 key=lambda event: (
+                    0 if event.importance in urgent else 1,
                     level_rank.get(
                         event_model_metadata.get(event.entity_id, {}).get("level") or "", 4
                     ),
