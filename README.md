@@ -508,16 +508,42 @@ leaderboard satırı / 87k outbox olayı dahil dokuz tablonun tamamı restore
 sonrası orijinaliyle birebir eşleşti, `alembic_version` uyuştu ve API restore
 edilen veritabanına karşı sorunsuz açılıp veri döndürdü.
 
+### Yük testi
+
+2026-09-04'te gerçek dev DB'ye karşı tek uvicorn worker ile `ab` (ApacheBench)
+kullanılarak çekirdek endpoint'lerde çalıştırıldı:
+
+| Endpoint | Eşzamanlılık | İstek | Sonuç |
+| --- | --- | --- | --- |
+| `/health` | 10 | 200 | 0 hata, ~3387 req/s |
+| `/api/v1/stats` | 10 | 200 | 0 hata, ~397 req/s |
+| `/api/v1/models/search` | 10 | 200 | 0 hata, ~116 req/s |
+| `/api/v1/leaderboards/arena` | 10 | 200 | 0 hata, ~84 req/s |
+| `/api/v1/events` | 10 | 200 | 0 hata, ~156 req/s |
+| `/api/v1/leaderboards/arena`, `/models/search`, `/events` (priority sort) | 50 | 500 | 0 hata, ~90-113 req/s |
+
+Eşzamanlılık 50'ye çıkınca hata oranı yine sıfır kaldı ama verim ~90-113 req/s'de
+düzlendi - SQLAlchemy'nin varsayılan connection pool'u (`pool_size=5,
+max_overflow=10`, tek process başına 15 bağlantı) tarafından sınırlanıyor.
+Daha yüksek sürdürülebilir trafik için `create_engine`'e `pool_size`/
+`max_overflow` verilmeli ve/veya API birden fazla worker/replica ile
+çalıştırılmalı.
+
 ### Üretim güvenliği
 
 `APP_ENV=production` olduğunda:
 
-- Varsayılan `MINIO_SECRET_KEY` kabul edilmez.
-- `ADMIN_API_TOKEN` zorunludur.
+- Varsayılan `MINIO_SECRET_KEY`/`MINIO_ACCESS_KEY` kabul edilmez; `MINIO_ENDPOINT`
+  `localhost` olamaz.
+- `DATABASE_URL` varsayılan `llm_radar:llm_radar` kimlik bilgisini veya
+  `localhost` host'unu taşıyamaz; `REDIS_URL` ve `KAFKA_BOOTSTRAP_SERVERS`
+  aynı şekilde `localhost`'a işaret edemez.
+- `ADMIN_API_TOKEN` ve `LLM_RADAR_ADMIN_USERNAME/PASSWORD/SECRET_KEY` zorunludur.
 - CORS origin ve Trusted Host listelerinde `localhost` kabul edilmez.
-- API, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` ve
-  `Permissions-Policy` güvenlik başlıklarını ekler; admin oturum çerezi
-  `Secure` işaretlenir.
+- API, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
+  `Permissions-Policy` ve `Strict-Transport-Security` güvenlik başlıklarını
+  ekler; admin oturum çerezi `Secure` işaretlenir. (TLS'in kendisi bu API'nin
+  önündeki ters proxy/load balancer'da sonlandırılır - bu depo bunu sağlamaz.)
 
 Diğer sertleştirmeler (ortamdan bağımsız):
 
