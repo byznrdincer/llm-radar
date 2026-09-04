@@ -7,10 +7,11 @@ from types import SimpleNamespace
 from typing import Annotated, Any, Literal, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
+from llm_radar.api.deps import DatabaseSession
 from llm_radar.catalog_resolution import (
     _leaderboard_license_index,
     _scoped_catalog_candidates,
@@ -32,12 +33,10 @@ from llm_radar.database.models import (
     PriceObservation,
     Source,
 )
-from llm_radar.database.session import get_db
 from llm_radar.model_selection import selection_matches
 from llm_radar.openness import _resolved_compare_openness
 
 router = APIRouter(prefix="/api/v1")
-DatabaseSession = Annotated[Session, Depends(get_db)]
 
 USA_ORGANIZATIONS = {
     "ai2",

@@ -11,7 +11,7 @@ from llm_radar.api.engagement import (
     ModelDemandRequest,
     record_analytics_event,
 )
-from llm_radar.api.routes import _license_category
+from llm_radar.api.routes_models import _license_category
 from llm_radar.database.models import AnalyticsEvent
 
 
