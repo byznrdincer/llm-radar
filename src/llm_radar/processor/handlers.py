@@ -357,6 +357,7 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
             entity_key=event.entity_key,
             display_name=str(payload.get("name") or event.entity_key),
             is_new=True,
+            company=company,
         )
         if merged_into is not None:
             # The new row denoted an existing canonical model; keep the

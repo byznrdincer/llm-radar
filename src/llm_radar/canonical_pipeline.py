@@ -6,13 +6,14 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import delete, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from llm_radar.composite import canonical_model_name
 from llm_radar.database.models import (
     AnalyticsEvent,
     ChangeEvent,
     Claim,
+    Company,
     EntityAlias,
     FieldObservation,
     Model,
@@ -162,10 +163,22 @@ def link_cross_source_models(
     entity_key: str,
     display_name: str,
     is_new: bool,
+    company: Company | None = None,
 ) -> Model | None:
     """Merge a freshly created provider-specific row into an existing canonical
     model when they denote the same thing. Returns the canonical model to keep
-    using, or ``None`` when ``model`` stands on its own."""
+    using, or ``None`` when ``model`` stands on its own.
+
+    A shared canonical name alone is not proof of identity: two distinct
+    companies can market under the same name (a GGUF re-upload under a
+    different org, an unrelated model with a common word as its name). Merging
+    is only automatic when every candidate that shares the name also shares
+    ``company`` - the same confirmation catalog_resolution.py already requires
+    at read time. When the name is shared but the company doesn't confirm a
+    single candidate, nothing is merged or misattributed: the match is
+    recorded as an unapproved alias for a human to confirm in the admin
+    "Alias Eşleşmeleri" queue.
+    """
     if not is_new:
         return None
     canonical = canonical_model_name(display_name)
@@ -173,17 +186,39 @@ def link_cross_source_models(
         return None
     variant = model_variant_identity(entity_key)
     keys = {entity_key.lower(), variant.lower(), canonical}
-    for candidate in session.scalars(select(Model).where(Model.id != model.id)).all():
-        candidate_keys = {
+
+    candidates = session.scalars(
+        select(Model).where(Model.id != model.id).options(joinedload(Model.company))
+    ).all()
+    matches = [
+        candidate
+        for candidate in candidates
+        if keys
+        & {
             candidate.slug.lower(),
             model_variant_identity(candidate.slug),
             canonical_model_name(candidate.name),
         }
-        if keys & candidate_keys:
-            # merge_models already aliases the duplicate's slug (== entity_key)
-            # onto the canonical row; add the variant key too.
-            merge_models(session, source=model, target=candidate)
-            if variant != entity_key:
-                remember_alias(session, candidate.slug, variant, method="variant_identity")
-            return candidate
+    ]
+    if not matches:
+        return None
+
+    company_key = canonical_model_name(company.name) if company is not None else ""
+    match_company_keys = {canonical_model_name(candidate.company.name) for candidate in matches}
+    if company_key and match_company_keys == {company_key}:
+        target = matches[0]
+        # merge_models already aliases the duplicate's slug (== entity_key)
+        # onto the canonical row; add the variant key too.
+        merge_models(session, source=model, target=target)
+        if variant != entity_key:
+            remember_alias(session, target.slug, variant, method="variant_identity")
+        return target
+
+    remember_alias(
+        session,
+        matches[0].slug,
+        entity_key,
+        method="canonical_name_unconfirmed",
+        approved=False,
+    )
     return None

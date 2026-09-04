@@ -27,6 +27,7 @@ from llm_radar.database.models import (
     BenchmarkRun,
     ChangeEvent,
     Company,
+    EntityAlias,
     Feedback,
     Model,
     ModelDemand,
@@ -140,6 +141,7 @@ MODEL_LABELS: dict[str, tuple[str, str]] = {
     "AnalyticsEvent": ("Kullanıcı Etkileşimi", "Kullanıcı Etkileşimleri"),
     "Feedback": ("Geri Bildirim", "Geri Bildirimler"),
     "ModelDemand": ("LLMaaS Model Talebi", "LLMaaS Model Talepleri"),
+    "EntityAlias": ("Alias Eşleşmesi", "Alias Eşleşmeleri"),
 }
 
 
@@ -189,6 +191,11 @@ FIELD_LABELS: dict[str, str] = {
     "output_price": "Çıktı Fiyatı",
     "currency": "Para Birimi",
     "score": "Skor",
+    "canonical_key": "Kanonik Model",
+    "alias_key": "Alias",
+    "method": "Yöntem",
+    "confidence": "Güven",
+    "approved": "Onaylı",
 }
 
 
@@ -536,6 +543,15 @@ def create_admin() -> Admin:
         )
     )
 
+    alias_view = build_view(EntityAlias, "fa-solid fa-link")
+    alias_view.menu_label = "Alias Eşleşmeleri"
+    # The only view where editing is allowed: approving/rejecting an
+    # ambiguous cross-source model match (EntityAlias.approved) is exactly
+    # the manual review step link_cross_source_models defers to a human
+    # when a canonical name is shared across companies. Every other view
+    # stays read-only per RadarModelView's defaults.
+    alias_view.can_edit = lambda request: True  # type: ignore[method-assign]
+
     admin.add_view(
         DropDown(
             "Model Verileri",
@@ -543,6 +559,7 @@ def create_admin() -> Admin:
             views=[
                 build_view(Model, "fa-solid fa-cube"),
                 build_view(Company, "fa-solid fa-building"),
+                alias_view,
             ],
         )
     )
