@@ -1,4 +1,5 @@
 import re
+import time
 from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
 from email.utils import parsedate_to_datetime
@@ -209,17 +210,33 @@ def _count_models_between(session: Session, start: date, end: date) -> int:
     )
 
 
-def _strict_catalog_identity_index(
-    session: Session,
-) -> dict[tuple[str, str], str]:
-    """Resolve only unique organization + normalized-name catalog matches."""
+_StrictIdentityIndex = dict[tuple[str, str], str]
+_STRICT_IDENTITY_TTL_SECONDS = 300.0
+_strict_identity_cache: tuple[float, _StrictIdentityIndex] | None = None
+
+
+def _strict_catalog_identity_index(session: Session) -> _StrictIdentityIndex:
+    """Resolve only unique organization + normalized-name catalog matches.
+
+    Column-only and cached: radar-24h builds this twice per request and the
+    catalog only shifts on the multi-hour collector cadence."""
+    global _strict_identity_cache
+    now = time.time()
+    cached = _strict_identity_cache
+    if cached is not None and now - cached[0] < _STRICT_IDENTITY_TTL_SECONDS:
+        return cached[1]
+
     candidates: dict[tuple[str, str], list[str]] = defaultdict(list)
-    rows = session.execute(select(Model, Company).join(Company, Company.id == Model.company_id))
-    for model, company in rows:
-        key = (canonical_model_name(company.name), canonical_model_name(model.name))
+    rows = session.execute(
+        select(Model.id, Model.name, Company.name).join(Company, Company.id == Model.company_id)
+    )
+    for model_id, model_name, company_name in rows:
+        key = (canonical_model_name(company_name), canonical_model_name(model_name))
         if all(key):
-            candidates[key].append(str(model.id))
-    return {key: model_ids[0] for key, model_ids in candidates.items() if len(model_ids) == 1}
+            candidates[key].append(str(model_id))
+    index = {key: model_ids[0] for key, model_ids in candidates.items() if len(model_ids) == 1}
+    _strict_identity_cache = (now, index)
+    return index
 
 
 def _resolved_row_openness(
