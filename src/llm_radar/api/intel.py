@@ -297,10 +297,30 @@ def list_notifications(
     rows = session.scalars(
         select(Notification).order_by(Notification.created_at.desc()).limit(limit)
     ).all()
+    change_ids = {row.change_event_id for row in rows if row.change_event_id}
+    changes = (
+        {
+            change.id: change
+            for change in session.scalars(
+                select(ChangeEvent).where(ChangeEvent.id.in_(change_ids))
+            )
+        }
+        if change_ids
+        else {}
+    )
+    source_ids = {change.source_id for change in changes.values() if change.source_id}
+    sources = (
+        {
+            source.id: source
+            for source in session.scalars(select(Source).where(Source.id.in_(source_ids)))
+        }
+        if source_ids
+        else {}
+    )
     items: list[dict[str, Any]] = []
     for row in rows:
-        change = session.get(ChangeEvent, row.change_event_id) if row.change_event_id else None
-        source = session.get(Source, change.source_id) if change is not None else None
+        change = changes.get(row.change_event_id) if row.change_event_id else None
+        source = sources.get(change.source_id) if change is not None else None
         items.append(
             {
                 "id": str(row.id),
@@ -345,7 +365,18 @@ async def stream_events(request: Request) -> StreamingResponse:
                         .limit(20)
                     )
                 rows = session.scalars(query).all()
-                event_rows = [(row, session.get(Source, row.source_id)) for row in rows]
+                source_ids = {row.source_id for row in rows if row.source_id}
+                sources = (
+                    {
+                        source.id: source
+                        for source in session.scalars(
+                            select(Source).where(Source.id.in_(source_ids))
+                        )
+                    }
+                    if source_ids
+                    else {}
+                )
+                event_rows = [(row, sources.get(row.source_id)) for row in rows]
             for row, source in event_rows:
                 last_seen = (
                     row.detected_at if last_seen is None else max(last_seen, row.detected_at)

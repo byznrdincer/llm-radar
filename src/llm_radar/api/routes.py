@@ -529,6 +529,10 @@ def _catalog_model_name_candidates(model_name: str) -> list[str]:
     return candidates
 
 
+_CATALOG_RESOLUTION_TTL_SECONDS = 300.0
+_catalog_resolution_cache: dict[tuple[str, str], tuple[float, UUID | None]] = {}
+
+
 def _resolve_catalog_model(
     session: DatabaseSession,
     model_name: str,
@@ -541,10 +545,36 @@ def _resolve_catalog_model(
         if candidates:
             return candidates[0][0]
 
+    # DB fallback (exact slug, then organization-confirmed fuzzy search). Cached
+    # across requests keyed on its inputs: every leaderboard response re-resolves
+    # the same long-tail names, most of which never match, and the catalog only
+    # shifts on the multi-hour collector cadence.
     lookup_name = candidate_names[0] if candidate_names else model_name
     normalized_name = lookup_name.strip().lower().replace("_", "-")
+    cache_key = (normalized_name, organization.strip().lower())
+    now = time.time()
+    cached = _catalog_resolution_cache.get(cache_key)
+    if cached is not None and now - cached[0] < _CATALOG_RESOLUTION_TTL_SECONDS:
+        if cached[1] is None:
+            return None
+        return session.get(Model, cached[1], options=[joinedload(Model.profile)])
+
+    resolved = _resolve_catalog_model_via_search(
+        session, lookup_name, normalized_name, organization
+    )
+    _catalog_resolution_cache[cache_key] = (now, resolved.id if resolved is not None else None)
+    return resolved
+
+
+def _resolve_catalog_model_via_search(
+    session: DatabaseSession,
+    lookup_name: str,
+    normalized_name: str,
+    organization: str,
+) -> Model | None:
     slug_match = session.scalar(
         select(Model)
+        .options(joinedload(Model.profile))
         .join(Company, Company.id == Model.company_id)
         .where(
             or_(
@@ -559,6 +589,7 @@ def _resolve_catalog_model(
     search_rows = list(
         session.execute(
             select(Model, Company)
+            .options(joinedload(Model.profile))
             .join(Company, Company.id == Model.company_id)
             .where(
                 Model.slug.ilike(f"%{normalized_name}%")
