@@ -55,6 +55,7 @@ from llm_radar.profile_service import (
     propagate_open_weight_evidence,
     upsert_model_profile,
 )
+from llm_radar.read_model import refresh_model_read_fields
 from llm_radar.resolution import resolve_entity_key
 
 logger = logging.getLogger(__name__)
@@ -139,6 +140,7 @@ def _handle_leaderboard(
                 observed_at=event.collected_at,
                 payload=availability_payload,
             )
+            refresh_model_read_fields(session, model.id)
     if existing_snapshot is None:
         snapshot = LeaderboardSnapshot(
             benchmark_id=benchmark.id,
@@ -392,6 +394,9 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
             observed_at=event.collected_at,
             payload=payload,
         )
+        # Keep the openness/level filters in sync with this model's own change
+        # immediately, rather than waiting for the periodic read-model sweep.
+        refresh_model_read_fields(session, model.id)
         if is_new:
             changes.append(
                 _change_event(
