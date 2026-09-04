@@ -42,10 +42,12 @@ class OllamaCollector(BaseCollector):
                 continue
             seen.add(name)
             tag_item = tag_models.get(name)
-            details = (tag_item or {}).get("details") or {}
+            details: dict[str, Any] = (tag_item or {}).get("details") or {}
             capabilities = ["local_runnable", "ollama_compatible"]
             if details.get("family"):
                 capabilities.append(str(details["family"]).lower())
+            families = details.get("families")
+            first_family = families[0] if isinstance(families, list) and families else None
             payload: dict[str, Any] = {
                 "external_id": name,
                 "name": name,
@@ -56,11 +58,7 @@ class OllamaCollector(BaseCollector):
                 "is_open_weight": True,
                 "openness": "open_weight",
                 "availability": "open_weight",
-                "family": details.get("family") or (
-                    details.get("families")[0]
-                    if isinstance(details.get("families"), list) and details.get("families")
-                    else None
-                ),
+                "family": details.get("family") or first_family,
                 "quantization_level": details.get("quantization_level"),
                 "url": f"{OLLAMA_LIBRARY_URL}/{name}",
             }
@@ -84,4 +82,7 @@ class OllamaCollector(BaseCollector):
                 )
             )
 
-        return CollectorResult(events=events, raw_payload={"models": raw_models, "count": len(raw_models)})
+        return CollectorResult(
+            events=events,
+            raw_payload={"models": raw_models, "count": len(raw_models)},
+        )

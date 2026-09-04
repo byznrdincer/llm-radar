@@ -15,6 +15,7 @@ import OverviewIntelligence from "./components/OverviewIntelligence";
 import LanguageToggle from "./components/LanguageToggle";
 import { useLanguage, type Language } from "./lib/i18n";
 import type { TurkishModel } from "./components/TurkishLLMPage";
+import type { CompareModelInput } from "./lib/modelComparison";
 import { trackEvent } from "./lib/analytics";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const PAGE_SIZE = 20;
@@ -266,25 +267,6 @@ type Stats = {
     price_observations: number;
     change_events: number;
 };
-type EventItem = {
-    id: string;
-    event_type: string;
-    category: string;
-    entity_id: string;
-    title: string;
-    old_value: Record<string, unknown> | null;
-    new_value: Record<string, unknown> | null;
-    change_percentage: string | null;
-    importance: string;
-    importance_score: number;
-    detected_at: string;
-    evidence?: {
-        source?: string;
-        source_url?: string;
-        sources?: { source?: string; source_url?: string }[];
-    } | null;
-};
-type LeaderboardItem = import("./components/LeaderboardPage").LeaderboardItem;
 type TechnologyItem = {
     slug: string;
     name: string;
@@ -332,7 +314,6 @@ type Facets = {
     benchmark_focuses: string[];
 };
 type SortBy = "name" | "provider" | "context" | "input_price" | "output_price" | "release_date" | "benchmark_score" | "parameter_count" | "active_parameter_count" | "backend" | "updated_at" | "best_match";
-type SortOrder = "asc" | "desc";
 const emptyStats: Stats = { companies: 0, models: 0, snapshots: 0, price_observations: 0, change_events: 0 };
 const CAPABILITY_LABELS: Record<Language, Record<string, string>> = {
     tr: { reasoning: "Reasoning", coding: "Coding", vision: "Vision", multimodal: "Multimodal", tool_calling: "Tool calling", function_calling: "Function calling", computer_use: "Computer use", agents: "Agents", long_context: "Long context", web_search: "Web arama", prompt_caching: "Prompt önbellek", audio_input: "Ses girdisi", local_runnable: "Yerel çalıştırılabilir", ollama_compatible: "Ollama uyumlu", lm_studio_compatible: "LM Studio uyumlu" },
@@ -400,7 +381,6 @@ function findLocalModel(modelName: string, organization: string, catalog: ModelI
     // ilkini secmek yanlis modeli sessizce gostermek anlamina gelir.
     return candidates.length === 1 ? candidates[0] : null;
 }
-function daysAgoIso(days: number) { const d = new Date(); d.setDate(d.getDate() - days); return d.toISOString(); }
 const SIDEBAR_GROUPS: Record<Language, { label: string; items: { id: string; label: string; icon: string }[] }[]> = {
     tr: [
         { label: "Keşfet", items: [{ id: "overview", label: "Genel bakış", icon: "⌂" }, { id: "leaderboard", label: "Benchmarklar", icon: "▥" }, { id: "models", label: "Model kataloğu", icon: "◫" }, { id: "compare", label: "Karşılaştır", icon: "⇄" }] },
@@ -483,68 +463,8 @@ const BENCHMARK_INFO: Record<Language, Record<LeaderboardView, {
         "mmlu-pro": { name: "MMLU-Pro", summary: "An academic knowledge test across 14 domains with harder options and more reasoning required.", measure: "Percentage of correct answers", reading: "Higher accuracy is better; domain selection makes it easier to see a model's specialty." },
     },
 };
-function MultiSelectFilter({ title, values, options, onToggle, renderLabel = value => value }: {
-    title: string;
-    values: string[];
-    options: { value: string; count?: number }[];
-    onToggle: (value: string) => void;
-    renderLabel?: (value: string) => string;
-}) {
-    const { language } = useLanguage();
-    const summary =
-        values.length === 0
-            ? (language === "tr" ? "Farketmez" : "Any")
-            : values.length <= 2
-              ? values.map(renderLabel).join(" + ")
-              : (language === "tr" ? `${values.length} seçili` : `${values.length} selected`);
-    return (
-        <fieldset className="multi-filter">
-            <legend>{title}</legend>
-            <details>
-                <summary>{summary}</summary>
-                <div className="multi-filter-panel">
-                    {values.length > 0 && (
-                        <button
-                            type="button"
-                            className="multi-filter-clear"
-                            onClick={() => values.forEach((value) => onToggle(value))}
-                        >
-                            {language === "tr" ? "Seçimi temizle" : "Clear selection"}
-                        </button>
-                    )}
-                    <div className="multi-filter-options">
-                        {options.map((item) => (
-                            <label key={item.value}>
-                                <input
-                                    type="checkbox"
-                                    checked={values.includes(item.value)}
-                                    onChange={() => onToggle(item.value)}
-                                />
-                                <span>
-                                    {renderLabel(item.value)}
-                                    {item.count ? ` (${item.count})` : ""}
-                                </span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-            </details>
-        </fieldset>
-    );
-}
-function SortableHeader({ field, label, active, order, onSort }: {
-    field: SortBy;
-    label: string;
-    active: SortBy;
-    order: SortOrder;
-    onSort: (field: SortBy) => void;
-}) {
-    const indicator = active === field ? (order === "asc" ? "↑" : "↓") : "↕";
-    return <th aria-sort={active === field ? (order === "asc" ? "ascending" : "descending") : "none"}><button type="button" className="sort-header" onClick={() => onSort(field)}>{label} <span>{indicator}</span></button></th>;
-}
 export default function Home() {
     const { language, locale } = useLanguage();
-    const capabilityLabels = CAPABILITY_LABELS[language];
     const opennessLabels = OPENNESS_LABELS[language];
     const benchmarkFocusLabels = BENCHMARK_FOCUS_LABELS[language];
     const sortLabels = SORT_LABELS[language];
@@ -556,7 +476,7 @@ export default function Home() {
     const moneyLabel = (value: string | null | undefined) => money(value, locale);
     const compactNumber = (value: number) => compact(value, locale);
     const [stats, setStats] = useState(emptyStats);
-    const [models, setModels] = useState<ModelItem[]>([]);
+    const [models] = useState<ModelItem[]>([]);
     const [arena, setArena] = useState<Leaderboard | null>(null);
     const [swebench, setSwebench] = useState<Leaderboard | null>(null);
     const [swebenchLive, setSwebenchLive] = useState<Leaderboard | null>(null);
@@ -594,7 +514,7 @@ export default function Home() {
     const [advancedness, setAdvancedness] = useState<string[]>([]);
     const [sortStack, setSortStack] = useState<CatalogSortSpec[]>(DEFAULT_SORT_STACK);
     const [benchmarkFocus, setBenchmarkFocus] = useState("any");
-    const [selected, setSelected] = useState<ModelItem[]>([]);
+    const [selected, setSelected] = useState<CompareModelInput[]>([]);
     const [detail, setDetail] = useState<ModelDetail | null>(null);
     const [detailMissing, setDetailMissing] = useState<string | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
@@ -823,13 +743,13 @@ export default function Home() {
     } const params = new URLSearchParams(); selected.forEach(model => params.append("ids", model.id)); fetch(`${API}/api/v1/models/compare?${params}`).then(r => r.ok ? r.json() : null).then(data => { if (data)
         setCompareProfiles(Object.fromEntries((data.items as ComparedModel[]).map(item => [item.id, item]))); }).catch(() => setError(true)); }, [selected]);
     const companies = useMemo(() => facets.developers.length ? facets.developers : Array.from(new Map(models.map(m => [m.company.slug, m.company])).values()).sort((a, b) => a.name.localeCompare(b.name)), [models, facets.developers]);
-    const developerSites = useMemo(() => Object.fromEntries(companies.map(company => [company.slug, "website_url" in company ? company.website_url : null])), [companies]);
+    const developerSites = useMemo<Record<string, string | null>>(() => Object.fromEntries(companies.map(company => [company.slug, "website_url" in company && typeof company.website_url === "string" ? company.website_url : null])), [companies]);
     const filtered = serverFiltering ? (profileResults ?? []) : models;
     const resultTotal = serverFiltering ? profileTotal : stats.models;
     const catalogHasMore = serverFiltering && filtered.length < resultTotal;
     const catalogBootReady = profileResults !== null;
     const visible = serverFiltering ? filtered : filtered.slice(0, PAGE_SIZE);
-    function toggle(model: ModelItem) {
+    function toggle(model: CompareModelInput) {
         setSelected(current => {
             const removing = current.some(item => item.id === model.id);
             if (!removing && current.length < 3)
@@ -924,7 +844,7 @@ export default function Home() {
             setDetailLoading(false);
         }
     }
-    async function openDetail(model: ModelItem) {
+    async function openDetail(model: { id: string }) {
         await openDetailById(model.id);
     }
     async function inspectLeaderboardModel(item: LeaderboardItem) {

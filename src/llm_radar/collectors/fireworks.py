@@ -64,7 +64,10 @@ class FireworksCollector(BaseCollector):
         items: list[dict[str, Any]] = []
         page_token: str | None = None
         while True:
-            params = {"pageSize": _PAGE_SIZE, "filter": "supports_serverless=true"}
+            params: dict[str, str | int] = {
+                "pageSize": _PAGE_SIZE,
+                "filter": "supports_serverless=true",
+            }
             if page_token:
                 params["pageToken"] = page_token
             response = await self.client.get(FIREWORKS_MODELS_URL, headers=headers, params=params)

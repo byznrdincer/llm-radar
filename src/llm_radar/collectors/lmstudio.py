@@ -31,7 +31,8 @@ class LMStudioCollector(BaseCollector):
         events = []
         raw_models: list[dict[str, Any]] = []
         for slug in paths:
-            payload = {
+            url = f"{LMSTUDIO_MODELS_URL}/{slug}"
+            payload: dict[str, Any] = {
                 "external_id": slug,
                 "name": _display_name(slug),
                 "runtime_platform": "lmstudio",
@@ -41,13 +42,13 @@ class LMStudioCollector(BaseCollector):
                 "is_open_weight": True,
                 "openness": "open_weight",
                 "availability": "open_weight",
-                "url": f"{LMSTUDIO_MODELS_URL}/{slug}",
+                "url": url,
             }
             raw_models.append(payload)
             events.append(
                 model_event(
                     source=self.name,
-                    source_url=payload["url"],
+                    source_url=url,
                     reliability=ReliabilityLevel.THIRD_PARTY,
                     entity_key=f"lmstudio/{slug}",
                     payload=payload,
@@ -55,4 +56,7 @@ class LMStudioCollector(BaseCollector):
                 )
             )
 
-        return CollectorResult(events=events, raw_payload={"models": raw_models, "count": len(raw_models)})
+        return CollectorResult(
+            events=events,
+            raw_payload={"models": raw_models, "count": len(raw_models)},
+        )

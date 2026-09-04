@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from datetime import UTC, datetime, timedelta
 from html import escape
+from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -10,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from starlette.requests import Request
 from starlette_admin import (
+    BaseWidget,
     CardRowWidget,
     ChartWidget,
     ColumnWidget,
@@ -20,7 +22,6 @@ from starlette_admin import (
 
 from llm_radar.database.models import AnalyticsEvent, Model
 from llm_radar.database.session import engine
-
 
 TR = ZoneInfo("Europe/Istanbul")
 
@@ -120,7 +121,7 @@ def _event_model_ids(event: AnalyticsEvent) -> list[str]:
     return list(dict.fromkeys(ids))
 
 
-def _filter_parts(filters: dict | None) -> list[str]:
+def _filter_parts(filters: dict[str, Any] | None) -> list[str]:
     if not filters:
         return []
 
@@ -156,8 +157,9 @@ def _event_detail(
         return ", ".join(parts) if parts else "Filtreleri değiştirdi"
 
     if event.event_type == "sort_changed":
-        field = (event.sort or {}).get("field")
-        return f"Sıralama: {SORT_LABELS.get(field, field or '—')}"
+        raw_field = (event.sort or {}).get("field")
+        field = str(raw_field) if raw_field else "—"
+        return f"Sıralama: {SORT_LABELS.get(field, field)}"
 
     if event.event_type == "model_compared":
         model_names = [
@@ -180,7 +182,7 @@ def _event_detail(
     return "—"
 
 
-def _interest_data(db: Session) -> list[dict]:
+def _interest_data(db: Session) -> list[dict[str, Any]]:
     events = db.scalars(
         select(AnalyticsEvent)
         .where(
@@ -192,7 +194,7 @@ def _interest_data(db: Session) -> list[dict]:
         .limit(50000)
     ).all()
 
-    stats: dict[str, dict] = defaultdict(
+    stats: dict[str, dict[str, Any]] = defaultdict(
         lambda: {
             "views": 0,
             "comparisons": 0,
@@ -250,14 +252,14 @@ def _interest_data(db: Session) -> list[dict]:
     )
 
 
-def _session_data(db: Session) -> list[dict]:
+def _session_data(db: Session) -> list[dict[str, Any]]:
     events = db.scalars(
         select(AnalyticsEvent)
         .order_by(AnalyticsEvent.created_at.desc())
         .limit(20000)
     ).all()
 
-    sessions: dict[str, dict] = {}
+    sessions: dict[str, dict[str, Any]] = {}
 
     for event in events:
         if not event.session_id:
@@ -388,7 +390,7 @@ async def requests_24h(_: Request) -> int:
         )
 
 
-async def event_series(_: Request) -> list[dict]:
+async def event_series(_: Request) -> list[dict[str, Any]]:
     since = datetime.now(UTC) - timedelta(hours=24)
 
     with Session(engine) as db:
@@ -411,7 +413,7 @@ async def event_series(_: Request) -> list[dict]:
     ]
 
 
-async def top_model_rows(_: Request) -> list[list]:
+async def top_model_rows(_: Request) -> list[list[Any]]:
     with Session(engine) as db:
         rows = _interest_data(db)[:15]
 
@@ -428,7 +430,7 @@ async def top_model_rows(_: Request) -> list[list]:
     ]
 
 
-async def session_rows(_: Request) -> list[list]:
+async def session_rows(_: Request) -> list[list[Any]]:
     with Session(engine) as db:
         rows = _session_data(db)[:50]
 
@@ -448,7 +450,7 @@ async def session_rows(_: Request) -> list[list]:
     ]
 
 
-async def recent_activity_rows(_: Request) -> list[list]:
+async def recent_activity_rows(_: Request) -> list[list[Any]]:
     with Session(engine) as db:
         events = db.scalars(
             select(AnalyticsEvent)
@@ -490,7 +492,7 @@ async def recent_activity_rows(_: Request) -> list[list]:
     return rows
 
 
-async def search_rows(_: Request) -> list[list]:
+async def search_rows(_: Request) -> list[list[Any]]:
     with Session(engine) as db:
         events = db.scalars(
             select(AnalyticsEvent)
@@ -499,7 +501,7 @@ async def search_rows(_: Request) -> list[list]:
             .limit(20000)
         ).all()
 
-    counts = Counter()
+    counts: Counter[str] = Counter()
 
     for event in events:
         query = (event.filters or {}).get("query")
@@ -509,7 +511,7 @@ async def search_rows(_: Request) -> list[list]:
     return [[query, count] for query, count in counts.most_common(25)]
 
 
-async def filter_rows(_: Request) -> list[list]:
+async def filter_rows(_: Request) -> list[list[Any]]:
     with Session(engine) as db:
         events = db.scalars(
             select(AnalyticsEvent)
@@ -518,7 +520,7 @@ async def filter_rows(_: Request) -> list[list]:
             .limit(20000)
         ).all()
 
-    counts = Counter()
+    counts: Counter[str] = Counter()
 
     for event in events:
         for part in _filter_parts(event.filters):
@@ -527,7 +529,7 @@ async def filter_rows(_: Request) -> list[list]:
     return [[value, count] for value, count in counts.most_common(30)]
 
 
-async def sort_rows(_: Request) -> list[list]:
+async def sort_rows(_: Request) -> list[list[Any]]:
     with Session(engine) as db:
         events = db.scalars(
             select(AnalyticsEvent)
@@ -536,7 +538,7 @@ async def sort_rows(_: Request) -> list[list]:
             .limit(20000)
         ).all()
 
-    counts = Counter()
+    counts: Counter[str] = Counter()
 
     for event in events:
         field = (event.sort or {}).get("field")
@@ -719,7 +721,7 @@ async def build_session_inspector(request: Request) -> ColumnWidget:
     raw_session = request.query_params.get("session", "").strip()
     safe_value = escape(raw_session)
 
-    children = [
+    children: list[BaseWidget] = [
         HtmlWidget(
             html=f"""
                 <div class="card mb-3">
@@ -768,7 +770,7 @@ async def build_session_inspector(request: Request) -> ColumnWidget:
         )
         return ColumnWidget(children=children)
 
-    async def timeline_rows(_: Request) -> list[list]:
+    async def timeline_rows(_: Request) -> list[list[Any]]:
         with Session(engine) as db:
             events = db.scalars(
                 select(AnalyticsEvent)

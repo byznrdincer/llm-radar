@@ -25,5 +25,6 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "//": "worker/, db/ and the D1 example are Cloudflare Workers runtime glue from the vinext starter; their ambient types (Fetcher, D1Database, cloudflare:workers) come from the wrangler/vinext build, not the app's DOM lib, so they are type-checked there rather than in the app tsc pass.",
+  "exclude": ["node_modules", "worker", "db", "drizzle.config.ts", "examples"]
 }

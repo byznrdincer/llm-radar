@@ -69,8 +69,9 @@ def _parameter_count(item: dict[str, Any]) -> int | None:
 
 def _active_parameter_count(card_data: dict[str, Any]) -> int | str | None:
     for key in ("active_parameter_count", "active_parameters", "num_active_parameters"):
-        if card_data.get(key) not in (None, ""):
-            return card_data[key]
+        value = card_data.get(key)
+        if value not in (None, "") and isinstance(value, (int, str)):
+            return value
     return None
 
 
@@ -173,7 +174,10 @@ class HuggingFaceCollector(BaseCollector):
         async def ingest(item: dict[str, Any], *, require_llm_pipeline: bool = False) -> None:
             if require_llm_pipeline:
                 pipeline = item.get("pipeline_tag")
-                if not isinstance(pipeline, str) or pipeline.strip().lower() not in LLM_PIPELINE_TAGS:
+                if (
+                    not isinstance(pipeline, str)
+                    or pipeline.strip().lower() not in LLM_PIPELINE_TAGS
+                ):
                     return
             try:
                 converted = self._to_event(item, collected_at)

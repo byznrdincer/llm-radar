@@ -4,9 +4,10 @@ import os
 import secrets
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import String, Text, func, inspect as sa_inspect, select
+from sqlalchemy import String, Text, func, select
+from sqlalchemy import inspect as sa_inspect
 from starlette.requests import Request
 from starlette_admin import (
     CardRowWidget,
@@ -254,7 +255,7 @@ def build_view(
         if translated:
             field.label = translated
 
-    return view
+    return cast(RadarModelView, view)
 
 
 FEEDBACK_TYPES = {

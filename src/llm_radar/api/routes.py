@@ -1,4 +1,5 @@
 import re
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Any, Literal
@@ -223,8 +224,8 @@ SORT_FIELD_PATTERN = (
 
 
 def _normalize_sort_specs(
-    sort_by: list[str] | None,
-    sort_order: list[str] | None,
+    sort_by: Sequence[str] | None,
+    sort_order: Sequence[str] | None,
 ) -> list[tuple[str, str]]:
     fields = [field for field in (sort_by or ["name"]) if field]
     if not fields:
@@ -1396,10 +1397,12 @@ def select_models(request: ModelSelectionRequest, session: DatabaseSession) -> d
         tool_calling=request.requires_tool_calling,
         reasoning=request.requires_reasoning,
         availability=request.availability,
-        openness=request.openness or None,
+        openness=[str(item) for item in request.openness] or None,
         license=request.licenses or None,
         commercial_use=request.commercial_use,
-        commercial_use_status=request.commercial_use_statuses or None,
+        commercial_use_status=(
+            [str(item) for item in request.commercial_use_statuses] or None
+        ),
         benchmark_focus=request.use_case,
         sort_by=["best_match"],
         sort_order=["asc"],
@@ -1869,7 +1872,7 @@ def list_events(
             events.sort(
                 key=lambda event: (
                     level_rank.get(
-                        event_model_metadata.get(event.entity_id, {}).get("level"), 4
+                        event_model_metadata.get(event.entity_id, {}).get("level") or "", 4
                     ),
                     -event.importance_score,
                     -event.detected_at.timestamp(),
@@ -1879,9 +1882,11 @@ def list_events(
         events = events[offset : offset + limit]
     else:
         total = session.scalar(select(func.count()).select_from(ChangeEvent).where(*filters)) or 0
-        events = session.scalars(
-            select(ChangeEvent).where(*filters).order_by(*ordering).limit(limit).offset(offset)
-        ).all()
+        events = list(
+            session.scalars(
+                select(ChangeEvent).where(*filters).order_by(*ordering).limit(limit).offset(offset)
+            ).all()
+        )
 
     return {
         "total": total,
