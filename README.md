@@ -39,7 +39,6 @@ eksik veri uydurulmaz ve sonuçlar kaynak/yayın bilgisiyle saklanır.
 - Server-Sent Events (SSE) ile web paneline canlı güncelleme (PostgreSQL'i periyodik yoklar)
 - Kaynak sağlığı, collector çalışması, gecikme ve dead-letter takibi
 - Slack, Telegram ve e-posta bildirim ayarları (şu an yalnızca log'a yazar; gönderim planlanıyor)
-- ClickHouse tabanlı analitik depo (planlanıyor; kod henüz bağlı değil)
 - Prometheus metrikleri, Grafana profili ve otomatik PostgreSQL yedeği
 
 ## Mimari
@@ -57,12 +56,10 @@ flowchart LR
     R["Redis<br/>önbellek • hız sınırlama"] --- API
     API --> W["React web paneli"]
     API --> N["Bildirimler<br/>(şu an log)"]
-    D -.-> CH["ClickHouse<br/>(planlanan analitik depo)"]
-    CH -.-> API
 ```
 
-> ClickHouse ve toplu bildirim gönderimi diyagramda kesik çizgiyle gösterilir:
-> altyapı `docker-compose` içinde hazır ama uygulama kodu henüz bağlanmadı.
+> Toplu bildirim gönderimi (Slack/Telegram/e-posta) diyagramda kesik çizgiyle
+> anılır: ayarları vardır ama şu an yalnızca log'a yazılır.
 
 | Bileşen | Sorumluluk |
 | --- | --- |
@@ -71,7 +68,6 @@ flowchart LR
 | Processor | Event'i doğrular, normalize eder, alias çözer, tekrarları eler ve değişiklik çıkarır. |
 | PostgreSQL | Modelleri, fiyatları, benchmark snapshot'larını, claim'leri, araştırmaları ve bildirimleri saklar. |
 | MinIO | Kaynaklardan alınan ham belge ve cevapları saklar. |
-| ClickHouse | Zaman serisi/analitik sorgular için planlanır; `docker-compose` içinde vardır ama uygulama henüz yazmaz/okumaz. |
 | Redis | `storage.py` üzerinden önbellek yardımcıları ve yazma uçlarında fail-open hız sınırlama sağlar. |
 | FastAPI | REST, OpenAPI, SSE, sistem sağlığı ve Prometheus metriklerini sunar. |
 | Web | Sıralama, katalog, karşılaştırma, araştırma ve teknoloji akışını gösterir. |
@@ -104,7 +100,7 @@ Başlıca topic'ler: `llm.raw_updates`, `llm.model_releases`,
 - FastAPI, Uvicorn, Pydantic ve pydantic-settings
 - SQLAlchemy 2, Alembic, PostgreSQL 16 ve psycopg 3
 - Redpanda 25 ve confluent-kafka
-- MinIO, Redis 7 ve ClickHouse 24.8
+- MinIO ve Redis 7
 - HTTPX, Tenacity ve Selectolax
 - Prometheus Client
 
@@ -238,7 +234,6 @@ docker compose logs -f api processor scheduler web
 | API health | http://localhost:8080/health |
 | Redpanda Console | http://localhost:8081 |
 | MinIO API / Console | http://localhost:9000 / http://localhost:9001 |
-| ClickHouse HTTP | http://localhost:8123 |
 
 Gözlemleme profili:
 
@@ -276,13 +271,12 @@ DATABASE_URL=postgresql+psycopg://llm_radar:llm_radar@localhost:5433/llm_radar
 KAFKA_BOOTSTRAP_SERVERS=localhost:19092
 MINIO_ENDPOINT=http://localhost:9000
 REDIS_URL=redis://localhost:6380/0
-CLICKHOUSE_URL=http://localhost:8123
 ```
 
 Altyapıyı ve şemayı hazırlayın:
 
 ```bash
-docker compose up -d postgres redpanda redpanda-console minio redis clickhouse
+docker compose up -d postgres redpanda redpanda-console minio redis
 alembic upgrade head
 python -m llm_radar.events.admin
 python -m llm_radar.bootstrap
@@ -322,7 +316,6 @@ NEXT_PUBLIC_API_URL=http://localhost:8080 npm run dev -- --host 0.0.0.0
 | `MINIO_SECRET_KEY` | MinIO parolası | Üretimde değiştirilmeli |
 | `MINIO_BUCKET` | Ham veri bucket'ı | `llm-radar-raw` |
 | `REDIS_URL` | Redis bağlantısı | Docker'da `redis://redis:6379/0` |
-| `CLICKHOUSE_URL` | ClickHouse adresi | Docker'da `http://clickhouse:8123` |
 | `ARTIFICIAL_ANALYSIS_API_KEY` | AA collector anahtarı | İsteğe bağlı |
 | `GROQ_API_KEY` | GroqCloud model kataloğu | İsteğe bağlı; verilirse collector açılır |
 | `REPLICATE_API_TOKEN` | Replicate model kataloğu | İsteğe bağlı; verilirse collector açılır |
@@ -536,7 +529,7 @@ docker compose run --rm scheduler python -m llm_radar.collectors.run_openrouter
 
 ### Port çakışması
 
-Varsayılan portlar: `3000`, `3001`, `5433`, `6380`, `8080`, `8081`, `8123`,
+Varsayılan portlar: `3000`, `3001`, `5433`, `6380`, `8080`, `8081`,
 `9000`, `9001`, `9090`, `19092` ve `19644`. Çakışan host portu
 `docker-compose.yml` içinde değiştirilmelidir.
 

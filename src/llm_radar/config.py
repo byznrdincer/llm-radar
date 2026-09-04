@@ -15,8 +15,6 @@ class Settings(BaseSettings):
     minio_secret_key: str = "change-me-in-production"
     minio_bucket: str = "llm-radar-raw"
     redis_url: str = "redis://localhost:6380/0"
-    clickhouse_url: str = "http://localhost:8123"
-    clickhouse_database: str = "llm_radar"
     artificial_analysis_api_key: str | None = None
     groq_api_key: str | None = None
     replicate_api_token: str | None = None
