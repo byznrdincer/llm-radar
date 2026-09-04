@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, defer
+from sqlalchemy.orm import Session
 
 from llm_radar.api.routes import (
     _leaderboard_license_index,
@@ -677,37 +677,59 @@ def market_dashboard(
     )
     today = datetime.now(UTC).date()
     cutoff = today - timedelta(days=days)
-    rows: list[LeaderboardSnapshot] = []
-    if definition is not None:
-        rows = list(
-            session.scalars(
-                select(LeaderboardSnapshot)
-                .where(
-                    LeaderboardSnapshot.benchmark_id == definition.id,
-                    LeaderboardSnapshot.published_at >= cutoff,
-                )
-                # raw_data is a large JSONB blob this endpoint never reads;
-                # skipping it avoids ~50k JSON parses on the arena-text history.
-                .options(defer(LeaderboardSnapshot.raw_data))
-                .order_by(
-                    LeaderboardSnapshot.published_at.asc(),
-                    LeaderboardSnapshot.score.desc(),
-                )
-            ).all()
+    catalog_index = _leaderboard_license_index(session)
+
+    def _passes_openness(model_external_id: str, organization: str) -> bool:
+        if openness is None:
+            return True
+        return (
+            _resolved_row_openness(model_external_id, organization, catalog_index) == openness
         )
 
-    catalog_index = _leaderboard_license_index(session)
-    if openness is not None:
-        rows = [
+    # This dashboard only needs, per publication, the top model per organisation
+    # (frontier race + provider board) plus each model's first/last score in the
+    # window (movers). Loading the full arena-text history as ORM rows was ~50k
+    # object builds; these are column-only queries with DISTINCT ON reductions.
+    LS = LeaderboardSnapshot
+    base_where: tuple[Any, ...] = ()
+    if definition is not None:
+        base_where = (LS.benchmark_id == definition.id, LS.published_at >= cutoff)
+
+    frontier_rows: list[Any] = []
+    first_rows: dict[tuple[str, str], Any] = {}
+    last_rows: dict[tuple[str, str], Any] = {}
+    if base_where:
+        cols = (LS.published_at, LS.organization, LS.model_external_id, LS.score)
+        frontier_query = select(*cols).where(*base_where)
+        if openness is None:
+            # one row per (date, org): that org's best model that day
+            frontier_query = frontier_query.distinct(LS.published_at, LS.organization).order_by(
+                LS.published_at, LS.organization, LS.score.desc()
+            )
+        else:
+            frontier_query = frontier_query.order_by(LS.published_at, LS.score.desc())
+        frontier_rows = [
             row
-            for row in rows
-            if _resolved_row_openness(row.model_external_id, row.organization, catalog_index)
-            == openness
+            for row in session.execute(frontier_query).all()
+            if _passes_openness(row.model_external_id, row.organization)
         ]
 
+        for direction, target in (
+            (LS.published_at.asc(), first_rows),
+            (LS.published_at.desc(), last_rows),
+        ):
+            edge = session.execute(
+                select(*cols)
+                .where(*base_where)
+                .distinct(LS.organization, LS.model_external_id)
+                .order_by(LS.organization, LS.model_external_id, direction)
+            ).all()
+            for row in edge:
+                if _passes_openness(row.model_external_id, row.organization):
+                    target[(row.organization, row.model_external_id)] = row
+
     by_date: dict[date, dict[str, dict[str, Any]]] = defaultdict(dict)
-    model_history: dict[tuple[str, str], dict[date, LeaderboardSnapshot]] = defaultdict(dict)
-    for row in rows:
+    for row in frontier_rows:
         region = _organization_region(row.organization)
         if region is None:
             continue
@@ -718,10 +740,6 @@ def market_dashboard(
                 "model": row.model_external_id,
                 "organization": row.organization,
             }
-        model_key = (row.organization, row.model_external_id)
-        previous = model_history[model_key].get(row.published_at)
-        if previous is None or row.score > previous.score:
-            model_history[model_key][row.published_at] = row
 
     # Frontier yarışı:
     # Her tarihte yalnızca o günün liderini göstermek yerine,
@@ -782,20 +800,17 @@ def market_dashboard(
     )
 
     movers: list[dict[str, Any]] = []
-    for (_, model_name), history in model_history.items():
-        ordered = sorted(history.items())
-        if len(ordered) < 2:
+    for key, first_row in first_rows.items():
+        latest_row = last_rows.get(key)
+        if latest_row is None or latest_row.published_at == first_row.published_at:
             continue
-        first_row = ordered[0][1]
-        latest_row = ordered[-1][1]
+        organization, model_name = key
         movers.append(
             {
                 "model": model_name,
-                "organization": latest_row.organization,
-                "region": _organization_region(latest_row.organization),
-                "openness": _resolved_row_openness(
-                    model_name, latest_row.organization, catalog_index
-                ),
+                "organization": organization,
+                "region": _organization_region(organization),
+                "openness": _resolved_row_openness(model_name, organization, catalog_index),
                 "delta": round(float(latest_row.score - first_row.score), 2),
                 "score": float(latest_row.score),
             }
@@ -806,8 +821,8 @@ def market_dashboard(
     latest_date = max(by_date, default=None)
     provider_rows: list[dict[str, Any]] = []
     if latest_date is not None:
-        best_by_provider: dict[str, LeaderboardSnapshot] = {}
-        for row in rows:
+        best_by_provider: dict[str, Any] = {}
+        for row in frontier_rows:
             if row.published_at != latest_date:
                 continue
             best = best_by_provider.get(row.organization)
