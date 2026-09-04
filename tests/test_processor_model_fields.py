@@ -2,7 +2,7 @@ from datetime import date
 
 import pytest
 
-from llm_radar.processor.service import _positive_int, _release_date
+from llm_radar.processor.parsing import _positive_int, _release_date
 
 
 @pytest.mark.parametrize(

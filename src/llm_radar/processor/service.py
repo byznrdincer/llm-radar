@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 from dataclasses import asdict
 from datetime import date, timedelta
 from decimal import Decimal
@@ -38,10 +37,18 @@ from llm_radar.event_intelligence import classify_event, score_importance
 from llm_radar.events.schemas import EventEnvelope, EventType
 from llm_radar.events.topics import PROCESSED_EVENTS, TOPIC_BY_EVENT_TYPE
 from llm_radar.model_family import infer_model_family
-from llm_radar.normalize import company_display_name, normalize_company_name
+from llm_radar.normalize import company_display_name
 from llm_radar.notifications import dispatch_notifications
 from llm_radar.pipeline import canonical_hash, duplicate_reasons, remember_fingerprint
 from llm_radar.processor.change_detector import detect_changes
+from llm_radar.processor.parsing import (
+    _company_slug,
+    _decimal,
+    _positive_int,
+    _price_decimal,
+    _release_date,
+    event_title_similarity,
+)
 from llm_radar.profile_service import (
     propagate_availability_evidence,
     propagate_open_weight_evidence,
@@ -65,56 +72,6 @@ _ANNOUNCEMENT_EVENT_TYPES = {
     EventType.API_UPDATED.value,
 }
 _ANNOUNCEMENT_CHANGE_TYPES = _ANNOUNCEMENT_EVENT_TYPES | {EventType.MODEL_RELEASED.value}
-_TITLE_STOPWORDS = {
-    "about",
-    "announces",
-    "from",
-    "into",
-    "launches",
-    "new",
-    "the",
-    "with",
-    "icin",
-    "için",
-    "ve",
-    "yeni",
-}
-
-
-def _decimal(value: Any) -> Decimal | None:
-    return Decimal(str(value)) if value not in (None, "") else None
-
-
-def _price_decimal(value: Any) -> Decimal | None:
-    amount = _decimal(value)
-    return amount if amount is None or amount >= 0 else None
-
-
-def _positive_int(value: Any) -> int | None:
-    """Parse source-supplied parameter counts without guessing from model names."""
-    if value in (None, "") or isinstance(value, bool):
-        return None
-    if isinstance(value, int):
-        return value if value > 0 else None
-    if isinstance(value, float):
-        parsed = int(value)
-        return parsed if parsed > 0 else None
-    normalized = str(value).strip().lower().replace(",", "").replace("_", "")
-    match = re.fullmatch(r"(\d+(?:\.\d+)?)\s*([kmbt])?", normalized)
-    if match is None:
-        return None
-    multipliers = {None: 1, "k": 1_000, "m": 1_000_000, "b": 1_000_000_000, "t": 1_000_000_000_000}
-    parsed = int(Decimal(match.group(1)) * multipliers[match.group(2)])
-    return parsed if parsed > 0 else None
-
-
-def _release_date(value: Any) -> date | None:
-    if value in (None, ""):
-        return None
-    try:
-        return date.fromisoformat(str(value).strip()[:10])
-    except ValueError:
-        return None
 
 
 def _match_profile_model(session: Session, model_name: str) -> Model | None:
@@ -127,10 +84,6 @@ def _match_profile_model(session: Session, model_name: str) -> Model | None:
         if ":" not in model.slug and canonical_model_name(model.name) == canonical
     ]
     return candidates[0] if len(candidates) == 1 else None
-
-
-def _company_slug(entity_key: str) -> str:
-    return normalize_company_name(entity_key.split("/", 1)[0])
 
 
 def _upsert_source(session: Session, event: EventEnvelope) -> Source:
@@ -254,23 +207,6 @@ def _change_event(
         source_id=source.id,
         detected_at=event.collected_at,
     )
-
-
-def event_title_similarity(left: str, right: str) -> float:
-    """Return a conservative token Jaccard score for cross-source headlines."""
-
-    def tokenize(value: str) -> set[str]:
-        return {
-            token
-            for token in re.findall(r"[a-z0-9çğıöşü]+", value.lower())
-            if len(token) >= 3 and token not in _TITLE_STOPWORDS
-        }
-
-    left_tokens = tokenize(left)
-    right_tokens = tokenize(right)
-    if not left_tokens or not right_tokens:
-        return 0.0
-    return len(left_tokens & right_tokens) / len(left_tokens | right_tokens)
 
 
 def _corroborate_change(existing: ChangeEvent, event: EventEnvelope, source: Source) -> None:

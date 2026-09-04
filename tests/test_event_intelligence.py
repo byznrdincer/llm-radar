@@ -1,7 +1,7 @@
 from llm_radar.collectors.news import _announcement_type
 from llm_radar.event_intelligence import classify_event, score_importance
 from llm_radar.events.schemas import EventType
-from llm_radar.processor.service import event_title_similarity
+from llm_radar.processor.parsing import event_title_similarity
 
 
 def test_importance_combines_event_magnitude_source_and_verification() -> None:
