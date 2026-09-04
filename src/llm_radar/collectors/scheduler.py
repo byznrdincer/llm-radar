@@ -53,6 +53,28 @@ async def run_job(
         await asyncio.sleep(interval_seconds)
 
 
+async def refresh_read_model_job(interval_seconds: int, delay: int) -> None:
+    """Rebuild model_profiles.general_score / effective_openness on the benchmark
+    cadence so the event feed and model search filter and sort in SQL."""
+    await asyncio.sleep(delay)
+    while True:
+        try:
+            from llm_radar.database.session import SessionLocal
+            from llm_radar.read_model import refresh_read_model
+
+            def _run() -> tuple[int, int]:
+                with SessionLocal() as session:
+                    result = refresh_read_model(session)
+                    session.commit()
+                    return result.scanned, result.updated
+
+            scanned, updated = await asyncio.to_thread(_run)
+            logger.info("read model refresh: %s scanned, %s updated", scanned, updated)
+        except Exception:
+            logger.exception("read model refresh failed")
+        await asyncio.sleep(interval_seconds)
+
+
 async def main() -> None:
     settings = get_settings()
     jobs: list[tuple[Callable[[httpx.AsyncClient], BaseCollector], int, int]] = [
@@ -179,7 +201,10 @@ async def main() -> None:
                 75,
             )
         )
-    await asyncio.gather(*(run_job(*job) for job in jobs))
+    await asyncio.gather(
+        *(run_job(*job) for job in jobs),
+        refresh_read_model_job(settings.benchmark_interval_seconds, 300),
+    )
 
 
 def run() -> None:

@@ -9,7 +9,7 @@ from uuid import UUID
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from llm_radar.company_domains import company_website_url
@@ -1229,13 +1229,14 @@ def search_models(
         filters.append(or_(ModelProfile.openness.is_(None), ModelProfile.openness == "unknown"))
     elif availability:
         filters.append(ModelProfile.openness == availability)
-    # Openness filtering happens in Python (see requires_python_ranking below),
-    # not as a SQL predicate here: the effective openness a row displays can
-    # come from _resolved_compare_openness's license-based/curated-family
-    # fallback, not just the raw ModelProfile.openness column, so a SQL WHERE
-    # on that column alone would silently exclude rows the UI shows as
-    # matching.
+    # Effective openness (profile openness, else the license-based / curated-
+    # family fallback) is denormalized onto ModelProfile.effective_openness by
+    # llm_radar.read_model, so it filters and paginates in SQL. The displayed
+    # value in serialize() still comes from the live resolver so a not-yet-
+    # refreshed row shows the right thing.
     normalized_openness = [item.lower().replace("-", "_") for item in openness] if openness else []
+    if normalized_openness:
+        filters.append(ModelProfile.effective_openness.in_(normalized_openness))
     license_clause = _license_filter(license or [])
     if license_clause is not None:
         filters.append(license_clause)
@@ -1289,19 +1290,11 @@ def search_models(
     matches = selection_matches(session, match_focus)
     requires_python_ranking = bool(
         normalized_advancedness
-        or normalized_openness
         or benchmark_focus
         or primary_sort_by in {"benchmark_score", "best_match"}
     )
     if requires_python_ranking:
         rows = list(session.execute(query).all())
-        if normalized_openness:
-            rows = [
-                row
-                for row in rows
-                if (_resolved_compare_openness(row[0], row[1], row[2]) or "unknown")
-                in normalized_openness
-            ]
         if benchmark_focus:
             rows = [row for row in rows if canonical_model_name(row[0].name) in matches]
         if normalized_advancedness:
@@ -1879,81 +1872,71 @@ def list_events(
         filters.append(ChangeEvent.detected_at >= since)
     if min_score is not None:
         filters.append(ChangeEvent.importance_score >= min_score)
+    # ChangeEvent.id is the final key everywhere so paging is deterministic
+    # across requests when the leading keys tie.
     ordering = (
-        (ChangeEvent.importance_score.desc(), ChangeEvent.detected_at.desc())
+        (ChangeEvent.importance_score.desc(), ChangeEvent.detected_at.desc(), ChangeEvent.id)
         if sort_by == "importance"
-        else (ChangeEvent.detected_at.desc(),)
+        else (ChangeEvent.detected_at.desc(), ChangeEvent.id)
     )
 
-    event_model_metadata: dict[Any, dict[str, str | None]] = {}
-    if openness is not None or model_level is not None or sort_by == "priority":
-        # Openness and model level belong to the model an event is about, not
-        # to the event row. Only direct model events can therefore be filtered
-        # without guessing; papers, companies and leaderboard rows are omitted
-        # while either model-specific filter is active.
-        candidate_filters = list(filters)
-        if openness is not None or model_level is not None:
-            candidate_filters.append(ChangeEvent.entity_type == "model")
-        candidates = session.scalars(
-            select(ChangeEvent).where(*candidate_filters).order_by(*ordering)
-        ).all()
-        model_ids = {event.entity_id for event in candidates}
-        if model_ids:
-            rows = session.execute(
-                select(Model, Company, ModelProfile)
-                .join(Company, Company.id == Model.company_id)
-                .outerjoin(ModelProfile, ModelProfile.model_id == Model.id)
-                .where(Model.id.in_(model_ids))
-            ).all()
-            general_matches = (
-                selection_matches(session, "general")
-                if model_level is not None or sort_by == "priority"
-                else {}
-            )
-            for model, company, profile in rows:
-                match = general_matches.get(canonical_model_name(model.name))
-                event_model_metadata[model.id] = {
-                    "openness": _resolved_compare_openness(model, company, profile),
-                    "level": advancedness_tier_for_score(match.score if match else None),
-                }
-        events = [
-            event
-            for event in candidates
-            if (
-                openness is None
-                or event_model_metadata.get(event.entity_id, {}).get("openness") == openness
-            )
-            and (
-                model_level is None
-                or event_model_metadata.get(event.entity_id, {}).get("level") == model_level
-            )
-        ]
-        if sort_by == "priority":
-            # Urgent news (critical/high) always outranks model level, so a
-            # critical security or regulation item is never buried under a
-            # routine frontier-model event. Within each urgency band, prefer
-            # higher model levels, then the importance score, then recency.
-            level_rank = {"frontier": 0, "advanced": 1, "mid": 2, "entry": 3}
-            urgent = {"critical", "high"}
-            events.sort(
-                key=lambda event: (
-                    0 if event.importance in urgent else 1,
-                    level_rank.get(
-                        event_model_metadata.get(event.entity_id, {}).get("level") or "", 4
-                    ),
-                    -event.importance_score,
-                    -event.detected_at.timestamp(),
-                )
-            )
-        total = len(events)
-        events = events[offset : offset + limit]
-    else:
-        total = session.scalar(select(func.count()).select_from(ChangeEvent).where(*filters)) or 0
-        events = list(
-            session.scalars(
-                select(ChangeEvent).where(*filters).order_by(*ordering).limit(limit).offset(offset)
-            ).all()
+    # model_openness / model_level belong to the model an event is about; they
+    # are denormalized onto model_profiles by llm_radar.read_model. LEFT JOIN so
+    # non-model events still flow through, and filter / sort / paginate in SQL
+    # rather than materializing every candidate in memory.
+    score = ModelProfile.general_score
+    query = (
+        select(ChangeEvent, ModelProfile.effective_openness, score)
+        .outerjoin(
+            ModelProfile,
+            and_(
+                ChangeEvent.entity_type == "model",
+                ModelProfile.model_id == ChangeEvent.entity_id,
+            ),
         )
+        .where(*filters)
+    )
+    if openness is not None:
+        query = query.where(
+            ChangeEvent.entity_type == "model", ModelProfile.effective_openness == openness
+        )
+    if model_level is not None:
+        lower, upper = {
+            "mid": (Decimal(40), Decimal(70)),
+            "advanced": (Decimal(70), Decimal(85)),
+            "frontier": (Decimal(85), Decimal("100.1")),
+        }[model_level]
+        query = query.where(
+            ChangeEvent.entity_type == "model", score >= lower, score < upper
+        )
+
+    if sort_by == "priority":
+        # Urgent news (critical/high) always outranks model level, so a critical
+        # security or regulation item is never buried under a routine
+        # frontier-model event. Within each urgency band, prefer higher model
+        # levels, then the importance score, then recency.
+        urgent_rank = case((ChangeEvent.importance.in_(("critical", "high")), 0), else_=1)
+        level_rank = case(
+            (score.is_(None), 4),
+            (score >= 85, 0),
+            (score >= 70, 1),
+            (score >= 40, 2),
+            else_=3,
+        )
+        order_by: tuple[Any, ...] = (
+            urgent_rank,
+            level_rank,
+            ChangeEvent.importance_score.desc(),
+            ChangeEvent.detected_at.desc(),
+            ChangeEvent.id,
+        )
+    else:
+        order_by = ordering
+
+    total = (
+        session.scalar(select(func.count()).select_from(query.order_by(None).subquery())) or 0
+    )
+    rows = session.execute(query.order_by(*order_by).limit(limit).offset(offset)).all()
 
     return {
         "total": total,
@@ -1975,12 +1958,14 @@ def list_events(
                 "importance": event.importance,
                 "importance_score": event.importance_score,
                 "importance_factors": event.importance_factors,
-                "model_openness": event_model_metadata.get(event.entity_id, {}).get("openness"),
-                "model_level": event_model_metadata.get(event.entity_id, {}).get("level"),
+                "model_openness": effective_openness,
+                "model_level": advancedness_tier_for_score(
+                    float(general_score) if general_score is not None else None
+                ),
                 "evidence": event.evidence,
                 "verification_status": event.verification_status,
                 "detected_at": event.detected_at,
             }
-            for event in events
+            for event, effective_openness, general_score in rows
         ],
     }

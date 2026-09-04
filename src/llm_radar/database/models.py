@@ -138,6 +138,10 @@ class ModelProfile(TimestampMixin, Base):
     commercial_use_allowed: Mapped[bool | None] = mapped_column(Boolean)
     commercial_use_status: Mapped[str | None] = mapped_column(String(32), index=True)
     field_provenance: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    # Read-model fields maintained by llm_radar.read_model.refresh_read_model:
+    # denormalized so leaderboard/openness filters sort and paginate in SQL.
+    general_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), index=True)
+    effective_openness: Mapped[str | None] = mapped_column(String(32), index=True)
     source_id: Mapped[UUID] = mapped_column(ForeignKey("sources.id"), index=True)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 

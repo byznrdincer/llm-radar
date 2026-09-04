@@ -49,6 +49,7 @@ llm-radar-backfill-profiles = "llm_radar.backfill_profiles:main"
 llm-radar-backfill-events = "llm_radar.backfill_event_intelligence:main"
 llm-radar-backfill-arena = "llm_radar.backfill_arena_history:main"
 llm-radar-merge-duplicate-models = "llm_radar.backfill_merge_duplicate_models:main"
+llm-radar-refresh-read-model = "llm_radar.read_model:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -364,7 +364,22 @@ python -m llm_radar.collectors.run_github
 python -m llm_radar.collectors.run_arxiv
 python -m llm_radar.collectors.run_provider_catalogs
 python -m llm_radar.backfill_arena_history
+python -m llm_radar.read_model            # okuma modeli alanlarını yeniler
 ```
+
+### Okuma modeli
+
+`model_profiles.general_score` (genel benchmark yüzdeliği) ve
+`effective_openness` (lisans/aile fallback'i dahil), olay akışı ve model
+aramasının SQL'de sıralayıp sayfalayabilmesi için denormalize edilir. Scheduler
+bunları benchmark cadence'inde (12 sa) yeniler; elle:
+
+```bash
+python -m llm_radar.read_model
+```
+
+Yeni bir modelin skoru/openness'i bir sonraki yenilemeye kadar boş kalır
+(birkaç dakika); bu sürede olay akışında "unknown" görünür.
 
 Arena'nın tarihsel `overall` snapshot'larını yalnızca ilk kurulumda veya kontrollü
 bir veri onarımı sırasında backfill edin. Komut resmî `text/full` Parquet verisini
