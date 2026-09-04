@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 
 from llm_radar.api.routes import (
     _leaderboard_license_index,
-    _resolved_compare_openness,
     _scoped_catalog_candidates,
 )
 from llm_radar.composite import (
@@ -35,6 +34,7 @@ from llm_radar.database.models import (
 )
 from llm_radar.database.session import get_db
 from llm_radar.model_selection import selection_matches
+from llm_radar.openness import _resolved_compare_openness
 
 router = APIRouter(prefix="/api/v1")
 DatabaseSession = Annotated[Session, Depends(get_db)]
@@ -314,9 +314,7 @@ def _ranked_radar_score(
             LeaderboardSnapshot.observed_at <= as_of
         )
         rows_query = rows_query.where(LeaderboardSnapshot.observed_at <= as_of)
-    latest_published = latest_published_query.group_by(
-        LeaderboardSnapshot.benchmark_id
-    ).subquery()
+    latest_published = latest_published_query.group_by(LeaderboardSnapshot.benchmark_id).subquery()
     rows_by_benchmark: dict[UUID, list[LeaderboardSnapshot]] = {}
     for row in session.scalars(
         rows_query.join(
@@ -714,9 +712,7 @@ def market_dashboard(
     def _passes_openness(model_external_id: str, organization: str) -> bool:
         if openness is None:
             return True
-        return (
-            _resolved_row_openness(model_external_id, organization, catalog_index) == openness
-        )
+        return _resolved_row_openness(model_external_id, organization, catalog_index) == openness
 
     # This dashboard only needs, per publication, the top model per organisation
     # (frontier race + provider board) plus each model's first/last score in the

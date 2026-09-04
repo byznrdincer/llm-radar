@@ -1,4 +1,5 @@
-from llm_radar.api.routes import _known_family_license, _resolve_leaderboard_license
+from llm_radar.api.routes import _resolve_leaderboard_license
+from llm_radar.openness import _known_family_license
 
 
 def test_known_closed_model_families_are_not_left_unknown() -> None:

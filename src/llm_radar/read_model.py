@@ -21,6 +21,7 @@ from llm_radar.composite import canonical_model_name
 from llm_radar.database.models import Company, Model, ModelProfile
 from llm_radar.database.session import SessionLocal
 from llm_radar.model_selection import selection_matches
+from llm_radar.openness import _resolved_compare_openness
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,10 +32,6 @@ class ReadModelRefreshResult:
 
 def refresh_read_model(session: Session) -> ReadModelRefreshResult:
     """Recompute ``general_score`` and ``effective_openness`` for every profile."""
-    # Local import: the openness resolver lives in the API module and pulls a
-    # large dependency tree that this job does not otherwise need.
-    from llm_radar.api.routes import _resolved_compare_openness
-
     general = selection_matches(session, "general")
     rows = session.execute(
         select(Model, Company, ModelProfile)

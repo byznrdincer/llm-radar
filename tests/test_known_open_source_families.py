@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from llm_radar.api.routes import _known_open_source_family, _resolved_compare_openness
+from llm_radar.openness import _known_open_source_family, _resolved_compare_openness
 
 
 def test_known_open_source_families_are_detected() -> None:
