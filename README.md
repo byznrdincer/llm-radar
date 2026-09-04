@@ -595,6 +595,14 @@ Varsayılan portlar: `3000`, `3001`, `5433`, `6380`, `8080`, `8081`,
 `9000`, `9001`, `9090`, `19092` ve `19644`. Çakışan host portu
 `docker-compose.yml` içinde değiştirilmelidir.
 
+`api` ve `web` dışındaki tüm servisler (`postgres`, `redis`, `redpanda`,
+`redpanda-console`, `minio`, `prometheus`, `grafana`) host portlarını
+yalnızca `127.0.0.1`'e bağlar - ağdan değil, yalnızca bu makineden erişilir.
+Bu dosyayı olduğu gibi herkese açık bir sunucuda çalıştırmak yine de bir
+production topolojisi değildir: production'da bu servisler ayrı yönetilen
+altyapıda veya private network'te olmalı, önünde gerçek bir firewall
+bulunmalıdır.
+
 ## Ek dokümantasyon
 
 - [Mimari özeti](docs/architecture.md)
