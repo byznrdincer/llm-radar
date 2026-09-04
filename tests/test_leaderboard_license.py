@@ -1,4 +1,4 @@
-from llm_radar.api.routes import _resolve_leaderboard_license
+from llm_radar.catalog_resolution import _resolve_leaderboard_license
 from llm_radar.openness import _known_family_license
 
 

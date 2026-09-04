@@ -3,7 +3,7 @@ from typing import Any, cast
 
 from sqlalchemy.orm import Session
 
-from llm_radar.api.routes import _catalog_model_name_candidates, _resolve_catalog_model
+from llm_radar.catalog_resolution import _catalog_model_name_candidates, _resolve_catalog_model
 from llm_radar.composite import canonical_model_name
 
 

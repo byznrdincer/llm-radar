@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from llm_radar.api.routes import (
+from llm_radar.catalog_resolution import (
     _leaderboard_license_index,
     _scoped_catalog_candidates,
 )
