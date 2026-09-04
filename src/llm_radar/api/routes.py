@@ -1651,23 +1651,38 @@ def model_detail(model_id: UUID, session: DatabaseSession) -> dict[str, Any]:
     model_key = canonical_model_name(model.name)
     benchmarks = session.scalars(select(BenchmarkDefinition)).all()
     benchmark_scores = []
-    for benchmark in benchmarks:
-        published_at = session.scalar(
-            select(func.max(LeaderboardSnapshot.published_at)).where(
-                LeaderboardSnapshot.benchmark_id == benchmark.id
+    if model_key:
+        # One pass over every benchmark's latest published leaderboard instead of
+        # two queries per benchmark definition. Canonical-name matching stays in
+        # Python, so the rows are filtered here rather than in SQL.
+        latest_published = (
+            select(
+                LeaderboardSnapshot.benchmark_id.label("benchmark_id"),
+                func.max(LeaderboardSnapshot.published_at).label("published_at"),
             )
+            .group_by(LeaderboardSnapshot.benchmark_id)
+            .subquery()
         )
-        candidates = session.scalars(
-            select(LeaderboardSnapshot).where(
-                LeaderboardSnapshot.benchmark_id == benchmark.id,
-                LeaderboardSnapshot.published_at == published_at,
+        latest_rows = session.scalars(
+            select(LeaderboardSnapshot).join(
+                latest_published,
+                and_(
+                    LeaderboardSnapshot.benchmark_id == latest_published.c.benchmark_id,
+                    LeaderboardSnapshot.published_at == latest_published.c.published_at,
+                ),
             )
         ).all()
-        matches = [
-            row for row in candidates if canonical_model_name(row.model_external_id) == model_key
-        ]
-        if matches:
-            best = min(matches, key=lambda row: row.rank)
+        best_by_benchmark: dict[UUID, LeaderboardSnapshot] = {}
+        for row in latest_rows:
+            if canonical_model_name(row.model_external_id) != model_key:
+                continue
+            current = best_by_benchmark.get(row.benchmark_id)
+            if current is None or row.rank < current.rank:
+                best_by_benchmark[row.benchmark_id] = row
+        for benchmark in benchmarks:
+            best = best_by_benchmark.get(benchmark.id)
+            if best is None:
+                continue
             benchmark_scores.append(
                 {
                     "benchmark": benchmark.name,

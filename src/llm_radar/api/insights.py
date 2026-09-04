@@ -4,9 +4,10 @@ from datetime import UTC, date, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from types import SimpleNamespace
 from typing import Annotated, Any, Literal, cast
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from llm_radar.api.routes import (
@@ -282,29 +283,43 @@ def _ranked_radar_score(
     leaders: list[dict[str, Any]] = []
     snapshot_dates: list[date] = []
 
+    # Fetch every benchmark's latest published leaderboard in two queries rather
+    # than two per benchmark definition: one to pick each benchmark's newest
+    # published_at, one to pull that snapshot's rows.
+    definition_ids = [definition.id for definition in definitions.values()]
+    latest_published_query = select(
+        LeaderboardSnapshot.benchmark_id.label("benchmark_id"),
+        func.max(LeaderboardSnapshot.published_at).label("published_at"),
+    ).where(LeaderboardSnapshot.benchmark_id.in_(definition_ids))
+    rows_query = select(LeaderboardSnapshot)
+    if as_of is not None:
+        latest_published_query = latest_published_query.where(
+            LeaderboardSnapshot.observed_at <= as_of
+        )
+        rows_query = rows_query.where(LeaderboardSnapshot.observed_at <= as_of)
+    latest_published = latest_published_query.group_by(
+        LeaderboardSnapshot.benchmark_id
+    ).subquery()
+    rows_by_benchmark: dict[UUID, list[LeaderboardSnapshot]] = {}
+    for row in session.scalars(
+        rows_query.join(
+            latest_published,
+            and_(
+                LeaderboardSnapshot.benchmark_id == latest_published.c.benchmark_id,
+                LeaderboardSnapshot.published_at == latest_published.c.published_at,
+            ),
+        ).order_by(LeaderboardSnapshot.rank.asc())
+    ):
+        rows_by_benchmark.setdefault(row.benchmark_id, []).append(row)
+
     for slug, (category_group, label) in RADAR_SCORE_BENCHMARKS.items():
         definition = definitions.get(slug)
         if definition is None:
             continue
-        published_at_query = select(func.max(LeaderboardSnapshot.published_at)).where(
-            LeaderboardSnapshot.benchmark_id == definition.id
-        )
-        rows_query = select(LeaderboardSnapshot).where(
-            LeaderboardSnapshot.benchmark_id == definition.id
-        )
-        if as_of is not None:
-            published_at_query = published_at_query.where(LeaderboardSnapshot.observed_at <= as_of)
-            rows_query = rows_query.where(LeaderboardSnapshot.observed_at <= as_of)
-        published_at = session.scalar(published_at_query)
-        if published_at is None:
-            continue
-        rows = session.scalars(
-            rows_query.where(LeaderboardSnapshot.published_at == published_at).order_by(
-                LeaderboardSnapshot.rank.asc()
-            )
-        ).all()
+        rows = rows_by_benchmark.get(definition.id, [])
         if not rows:
             continue
+        published_at = rows[0].published_at
         field_size = max(len(rows), max(row.rank for row in rows))
         snapshot_dates.append(published_at)
         leader = rows[0]
@@ -942,48 +957,44 @@ def frontier_benchmarks(
         select(BenchmarkDefinition).order_by(BenchmarkDefinition.name.asc())
     ).all()
 
+    # Two grouped queries instead of four per benchmark definition: the distinct
+    # organizations behind each benchmark, and each benchmark's snapshot / date
+    # counts and latest published date.
+    regions_by_benchmark: dict[UUID, set[str | None]] = {}
+    for benchmark_id, organization in session.execute(
+        select(LeaderboardSnapshot.benchmark_id, LeaderboardSnapshot.organization).distinct()
+    ):
+        if organization:
+            regions_by_benchmark.setdefault(benchmark_id, set()).add(
+                _organization_region(organization)
+            )
+
+    stats_by_benchmark: dict[UUID, tuple[int, int, date | None]] = {
+        benchmark_id: (snapshot_count, date_count, latest_date)
+        for benchmark_id, snapshot_count, date_count, latest_date in session.execute(
+            select(
+                LeaderboardSnapshot.benchmark_id,
+                func.count(LeaderboardSnapshot.id),
+                func.count(func.distinct(LeaderboardSnapshot.published_at)),
+                func.max(LeaderboardSnapshot.published_at),
+            ).group_by(LeaderboardSnapshot.benchmark_id)
+        )
+    }
+
     items: list[dict[str, Any]] = []
 
     for definition in definitions:
-        organizations = session.scalars(
-            select(LeaderboardSnapshot.organization)
-            .where(LeaderboardSnapshot.benchmark_id == definition.id)
-            .distinct()
-        ).all()
-
-        regions = {
-            _organization_region(organization) for organization in organizations if organization
-        }
+        regions = regions_by_benchmark.get(definition.id, set())
 
         if not {"USA", "China"}.issubset(regions):
             continue
 
-        snapshot_count = (
-            session.scalar(
-                select(func.count(LeaderboardSnapshot.id)).where(
-                    LeaderboardSnapshot.benchmark_id == definition.id
-                )
-            )
-            or 0
-        )
-
-        date_count = (
-            session.scalar(
-                select(func.count(func.distinct(LeaderboardSnapshot.published_at))).where(
-                    LeaderboardSnapshot.benchmark_id == definition.id
-                )
-            )
-            or 0
+        snapshot_count, date_count, latest_date = stats_by_benchmark.get(
+            definition.id, (0, 0, None)
         )
 
         if date_count < 2:
             continue
-
-        latest_date = session.scalar(
-            select(func.max(LeaderboardSnapshot.published_at)).where(
-                LeaderboardSnapshot.benchmark_id == definition.id
-            )
-        )
 
         items.append(
             {
