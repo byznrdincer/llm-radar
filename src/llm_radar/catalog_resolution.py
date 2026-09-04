@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import re
 import time
+from types import SimpleNamespace
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -27,6 +29,7 @@ from llm_radar.openness import (
     _catalog_model_license,
     _known_family_license,
     _meaningful_license,
+    _resolved_compare_openness,
 )
 
 _LicenseIndex = dict[str, list[tuple[Model, ModelProfile | None, str]]]
@@ -89,6 +92,42 @@ def _scoped_catalog_candidates(
             return scoped
     distinct_companies = {canonical_model_name(candidate[2]) for candidate in candidates}
     return candidates if len(distinct_companies) == 1 else []
+
+
+def _resolved_row_openness(
+    model_name: str,
+    organization: str,
+    catalog_index: dict[str, list[tuple[Model, ModelProfile | None, str]]],
+) -> str | None:
+    """Resolve a leaderboard row's openness the same way the catalog does.
+
+    Matches on canonical model name, scoped to the organization the same
+    ambiguity-safe way leaderboard->catalog matching already works elsewhere
+    (a leaderboard's organization string, e.g. "Ai2", often doesn't equal
+    the catalog Company.name, e.g. "Allenai" - matching on model name alone
+    and only trusting it when the organization confirms one candidate, or
+    all candidates agree, avoids both false negatives and false positives).
+    Uses the same resolver as the model catalog and leaderboards (asserted
+    profile value, then a license-based/curated-family fallback) so "Open
+    Source" means the same thing everywhere in the app.
+    """
+    candidates = _scoped_catalog_candidates(model_name, organization, catalog_index)
+    if len(candidates) != 1:
+        return None
+    model, profile, company_name = candidates[0]
+    company_stub = cast(Company, SimpleNamespace(name=company_name))
+    # _known_family_license's verified-model dict is keyed on the
+    # leaderboard-style spelling (e.g. "Nex-N2-Pro"), which can differ from
+    # the catalog's own display name (e.g. "Nex N2 Pro") enough to miss an
+    # exact-match lookup. Use a stub carrying the original name/org but the
+    # catalog Model's real license/is_open_weight fields (never fabricated).
+    model_stub = cast(
+        Model,
+        SimpleNamespace(
+            name=model_name, license=model.license, is_open_weight=model.is_open_weight
+        ),
+    )
+    return _resolved_compare_openness(model_stub, company_stub, profile)
 
 
 def _catalog_model_name_candidates(model_name: str) -> list[str]:

@@ -11,7 +11,9 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from llm_radar.admin import ADMIN_SECRET_KEY, create_admin
 from llm_radar.api.deps import DatabaseSession
 from llm_radar.api.engagement import router as engagement_router
-from llm_radar.api.insights import router as insights_router
+from llm_radar.api.insights_market import router as insights_market_router
+from llm_radar.api.insights_radar import router as insights_radar_router
+from llm_radar.api.insights_turkish import router as insights_turkish_router
 from llm_radar.api.intel import router as intel_router
 from llm_radar.api.routes_events import router as events_router
 from llm_radar.api.routes_leaderboards import router as leaderboards_router
@@ -41,9 +43,11 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
-# insights_router must register before models_router so /models/turkish is not
-# captured by /models/{model_id}.
-app.include_router(insights_router)
+# insights_turkish_router must register before models_router so /models/turkish
+# is not captured by /models/{model_id}.
+app.include_router(insights_radar_router)
+app.include_router(insights_market_router)
+app.include_router(insights_turkish_router)
 app.include_router(engagement_router)
 app.include_router(intel_router)
 app.include_router(system_router)
