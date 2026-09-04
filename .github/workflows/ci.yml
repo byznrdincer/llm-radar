@@ -46,3 +46,7 @@ jobs:
         run: npm run build
       - name: render tests
         run: node --test tests/rendered-html.test.mjs
+      - name: install playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: e2e tests
+        run: npx playwright test
