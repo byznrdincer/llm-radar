@@ -44,3 +44,5 @@ jobs:
         run: npx tsc --noEmit
       - name: build
         run: npm run build
+      - name: render tests
+        run: node --test tests/rendered-html.test.mjs

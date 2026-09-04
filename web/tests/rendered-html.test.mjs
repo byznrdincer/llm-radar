@@ -22,43 +22,53 @@ async function render() {
   );
 }
 
-test("server-renders the LLM Radar dashboard shell", async () => {
+// The app is a client component: only the default "overview" view is
+// server-rendered. These assertions cover the SSR shell - the parts that must
+// be present before hydration. View-specific content (catalog table, compare
+// chart, event filters) renders after navigation and is not asserted here.
+
+test("server-renders the dashboard shell", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>LLM Radar — AI Intelligence Platform<\/title>/i);
+  assert.match(html, /<title>LLM Radar<\/title>/i);
+  assert.match(html, /LLM INTELLIGENCE PLATFORM/);
   assert.match(html, /Yapay zekâ dünyasının/);
-  assert.match(html, /MODEL KATALOĞU/);
-  assert.match(html, /MODEL KARŞILAŞTIRMA/);
-  assert.match(html, /TEKNOLOJİ AKIŞI/);
-  assert.match(html, /Önemli gelişmeler önce/);
-  assert.match(html, /EVENT KATEGORİSİ/);
-  assert.match(html, /Model Release/);
-  assert.match(html, /İzlenen model/);
+  assert.match(html, /nabzını tut/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/i);
 });
 
-test("renders accessible catalog toggle and navigation", async () => {
-  const response = await render();
-  const html = await response.text();
-  assert.match(html, /aria-expanded="false"/);
-  assert.match(html, /aria-controls="model-catalog-content"/);
-  assert.match(html, /href="#models"/);
-  assert.match(html, /href="#compare"/);
-  assert.match(html, /href="#events"/);
-});
-
-test("renders the sidebar, comparison chart entry point and benchmark help", async () => {
+test("renders the sidebar navigation", async () => {
   const response = await render();
   const html = await response.text();
 
   assert.match(html, /aria-label="Ana navigasyon"/);
-  assert.match(html, /Model kataloğu/);
-  assert.match(html, /Benchmarklar/);
-  assert.match(html, /Akıllı model karşılaştırması/);
-  assert.match(html, /Model kataloğundan seç/);
-  assert.match(html, /aria-haspopup="dialog"/);
-  assert.match(html, /Chatbot Arena hakkında bilgi/);
+  for (const item of [
+    "Genel bakış",
+    "Benchmarklar",
+    "Model kataloğu",
+    "Karşılaştır",
+    "Popüler modeller",
+    "Gelişmeler",
+    "Araştırma",
+    "Teknoloji radarı",
+    "Geri bildirim",
+  ]) {
+    assert.match(html, new RegExp(`<span>${item}</span>`));
+  }
+});
+
+test("renders the topbar and overview metrics", async () => {
+  const response = await render();
+  const html = await response.text();
+
+  assert.match(html, /language-toggle/);
+  assert.match(html, /aria-label="Language \/ Dil"/);
+  assert.match(html, /CANLI/);
+  assert.match(html, /<strong>Genel bakış<\/strong>/);
+  for (const metric of ["İzlenen model", "Takip edilen firma", "Fiyat gözlemi"]) {
+    assert.match(html, new RegExp(metric));
+  }
 });
