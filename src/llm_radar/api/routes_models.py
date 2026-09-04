@@ -1,27 +1,25 @@
+"""Model catalog, search, comparison and detail endpoints."""
+
 import re
 from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, case, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, func, or_, select
 
+from llm_radar.api.deps import DatabaseSession
 from llm_radar.catalog_resolution import (
     _leaderboard_license_index,
     _resolve_catalog_model,
-    _resolve_leaderboard_license,
 )
 from llm_radar.company_domains import company_website_url
 from llm_radar.composite import canonical_model_name
-from llm_radar.config import get_settings, source_is_configured
 from llm_radar.database.models import (
     BenchmarkDefinition,
-    ChangeEvent,
     Company,
     LeaderboardSnapshot,
     Model,
@@ -31,8 +29,6 @@ from llm_radar.database.models import (
     PriceObservation,
     Source,
 )
-from llm_radar.database.session import get_db
-from llm_radar.event_intelligence import EVENT_CATEGORIES
 from llm_radar.model_selection import (
     ADVANCEDNESS_TIERS,
     BENCHMARK_FOCUSES,
@@ -47,7 +43,6 @@ from llm_radar.openness import (
 )
 
 router = APIRouter(prefix="/api/v1")
-DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
 class ModelSelectionRequest(BaseModel):
@@ -76,7 +71,6 @@ class ModelSelectionRequest(BaseModel):
     commercial_use: bool | None = None
     limit: int = Field(default=10, ge=1, le=50)
 
-
 def _translate_to_turkish(text: str | None) -> str | None:
     if not text:
         return text
@@ -96,22 +90,8 @@ def _translate_to_turkish(text: str | None) -> str | None:
     except Exception:
         return text
 
-
-@router.get("/stats", tags=["stats"])
-def stats(session: DatabaseSession) -> dict[str, int]:
-    return {
-        "companies": session.scalar(select(func.count()).select_from(Company)) or 0,
-        "models": session.scalar(select(func.count()).select_from(Model)) or 0,
-        "snapshots": session.scalar(select(func.count()).select_from(ModelSnapshot)) or 0,
-        "price_observations": session.scalar(select(func.count()).select_from(PriceObservation))
-        or 0,
-        "change_events": session.scalar(select(func.count()).select_from(ChangeEvent)) or 0,
-    }
-
-
 def _resolved_company_website(company: Company) -> str | None:
     return company.website_url or company_website_url(company.slug)
-
 
 def _license_category(value: str | None) -> str:
     normalized = (value or "").strip().lower().replace("_", "-")
@@ -127,7 +107,6 @@ def _license_category(value: str | None) -> str:
         return "model_specific"
     return "other"
 
-
 def _search_term_variants(term: str) -> list[str]:
     normalized = " ".join(term.strip().split())
     if not normalized:
@@ -142,7 +121,6 @@ def _search_term_variants(term: str) -> list[str]:
             variants.append(spaced)
     return variants
 
-
 def _model_field_search(pattern: str) -> Any:
     like_pattern = f"%{pattern}%"
     return or_(
@@ -152,7 +130,6 @@ def _model_field_search(pattern: str) -> Any:
         Company.name.ilike(like_pattern),
         Company.slug.ilike(like_pattern),
     )
-
 
 def _model_search_filter(search: str) -> Any | None:
     term = " ".join(search.strip().split())
@@ -164,12 +141,10 @@ def _model_search_filter(search: str) -> Any | None:
         clauses.append(and_(*[_model_field_search(token) for token in tokens]))
     return or_(*clauses)
 
-
 SORT_FIELD_PATTERN = (
     "^(name|provider|input_price|output_price|context|release_date|"
     "benchmark_score|parameter_count|active_parameter_count|backend|updated_at|best_match)$"
 )
-
 
 def _normalize_sort_specs(
     sort_by: Sequence[str] | None,
@@ -186,7 +161,6 @@ def _normalize_sort_specs(
         specs.append((field, order))
     return specs
 
-
 def _build_sql_order_by(
     sort_specs: list[tuple[str, str]], sort_columns: dict[str, Any]
 ) -> list[Any]:
@@ -202,7 +176,6 @@ def _build_sql_order_by(
         ordering.append(Model.name.asc())
     ordering.append(Model.id.asc())
     return ordering
-
 
 def _capability_filter_clause(item: str) -> Any:
     normalized_capability = item.lower().replace("-", "_").strip()
@@ -223,7 +196,6 @@ def _capability_filter_clause(item: str) -> Any:
             ModelProfile.capabilities.contains(["agentic"]),
         )
     return ModelProfile.capabilities.contains([normalized_capability])
-
 
 def _license_filter(categories: list[str]) -> Any:
     clauses: list[Any] = []
@@ -256,348 +228,6 @@ def _license_filter(categories: list[str]) -> Any:
         elif normalized == "unknown":
             clauses.append(ModelProfile.license.is_(None))
     return or_(*clauses) if clauses else None
-
-
-def _leaderboard_response(
-    session: DatabaseSession,
-    benchmark_slug: str,
-    category: str,
-    limit: int,
-    source_name: str,
-    source_url: str,
-) -> dict[str, Any]:
-    benchmark = session.scalar(
-        select(BenchmarkDefinition).where(BenchmarkDefinition.slug == benchmark_slug)
-    )
-    if benchmark is None:
-        raise HTTPException(status_code=503, detail=f"{source_name} has not been collected")
-    published_at = session.scalar(
-        select(func.max(LeaderboardSnapshot.published_at)).where(
-            LeaderboardSnapshot.benchmark_id == benchmark.id,
-            LeaderboardSnapshot.category == category,
-        )
-    )
-    rows = session.scalars(
-        select(LeaderboardSnapshot)
-        .where(
-            LeaderboardSnapshot.benchmark_id == benchmark.id,
-            LeaderboardSnapshot.category == category,
-            LeaderboardSnapshot.published_at == published_at,
-        )
-        .order_by(LeaderboardSnapshot.rank)
-        .limit(limit)
-    ).all()
-    catalog_index = _leaderboard_license_index(session)
-    items = []
-    for display_rank, row in enumerate(rows, start=1):
-        license_name, license_method = _resolve_leaderboard_license(
-            raw_license=row.license,
-            model_name=row.model_external_id,
-            organization=row.organization,
-            catalog_index=catalog_index,
-        )
-        catalog_model = _resolve_catalog_model(
-            session,
-            row.model_external_id,
-            row.organization,
-            catalog_index,
-        )
-        details = dict(row.raw_data or {})
-        details["license_resolution"] = {
-            "method": license_method,
-            "raw_license": row.license,
-        }
-        items.append(
-            {
-                "model_name": row.model_external_id,
-                "organization": row.organization,
-                "license": license_name,
-                "rating": float(row.score),
-                "rating_lower": (float(row.score_lower) if row.score_lower is not None else None),
-                "rating_upper": (float(row.score_upper) if row.score_upper is not None else None),
-                "vote_count": row.vote_count,
-                "rank": display_rank,
-                "category": row.category,
-                "leaderboard_publish_date": row.published_at,
-                "catalog_model_id": str(catalog_model.id) if catalog_model is not None else None,
-                "openness": (
-                    catalog_model.profile.openness
-                    if catalog_model is not None and catalog_model.profile is not None
-                    else None
-                ),
-                "details": details,
-            }
-        )
-    return {
-        "source": {
-            "name": source_name,
-            "url": source_url,
-            "benchmark": benchmark.name,
-        },
-        "category": category,
-        "published_at": published_at,
-        "items": items,
-    }
-
-
-@router.get("/leaderboards/arena", tags=["leaderboards"])
-def arena_leaderboard(
-    session: DatabaseSession,
-    category: str = "overall",
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> dict[str, Any]:
-    return _leaderboard_response(
-        session,
-        benchmark_slug="arena-text",
-        category=category,
-        limit=limit,
-        source_name="Arena",
-        source_url="https://arena.ai/leaderboard/text",
-    )
-
-
-@router.get("/leaderboards/swe-bench", tags=["leaderboards"])
-def swebench_leaderboard(
-    session: DatabaseSession,
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> dict[str, Any]:
-    return _leaderboard_response(
-        session,
-        benchmark_slug="swe-bench-verified",
-        category="coding_agent",
-        limit=limit,
-        source_name="SWE-bench",
-        source_url="https://www.swebench.com/",
-    )
-
-
-@router.get("/leaderboards/artificial-analysis/{category}", tags=["leaderboards"])
-def artificial_analysis_leaderboard(
-    category: str,
-    session: DatabaseSession,
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> dict[str, Any]:
-    allowed = {"intelligence", "coding", "agentic"}
-    if category not in allowed:
-        raise HTTPException(status_code=404, detail="Unknown Artificial Analysis category")
-    return _leaderboard_response(
-        session,
-        benchmark_slug=f"artificial-analysis-{category}",
-        category=category,
-        limit=limit,
-        source_name="Artificial Analysis",
-        source_url="https://artificialanalysis.ai/",
-    )
-
-
-@router.get("/leaderboards/livebench", tags=["leaderboards"])
-def livebench_leaderboard(
-    session: DatabaseSession,
-    category: str = "overall",
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> dict[str, Any]:
-    return _leaderboard_response(
-        session,
-        f"livebench-{category}",
-        "general" if category == "overall" else category,
-        limit,
-        "LiveBench",
-        "https://livebench.ai/",
-    )
-
-
-@router.get("/leaderboards/mmlu-pro", tags=["leaderboards"])
-def mmlu_pro_leaderboard(
-    session: DatabaseSession,
-    category: str = "overall",
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> dict[str, Any]:
-    return _leaderboard_response(
-        session,
-        f"mmlu-pro-{category}",
-        "knowledge" if category == "overall" else category,
-        limit,
-        "MMLU-Pro",
-        "https://huggingface.co/spaces/TIGER-Lab/MMLU-Pro",
-    )
-
-
-@router.get("/benchmarks/catalog", tags=["leaderboards"])
-def benchmark_catalog() -> dict[str, Any]:
-    return {
-        "items": [
-            {
-                "source": "Arena",
-                "source_class": "independent_human_preference",
-                "categories": ["overall"],
-                "score_unit": "arena_rating",
-            },
-            {
-                "source": "SWE-bench",
-                "source_class": "academic",
-                "categories": ["coding_agent"],
-                "score_unit": "resolved_percent",
-            },
-            {
-                "source": "LiveBench",
-                "source_class": "academic",
-                "categories": [
-                    "overall",
-                    "reasoning",
-                    "math",
-                    "coding",
-                    "data_analysis",
-                    "writing",
-                    "instruction_following",
-                    "agentic_coding",
-                ],
-                "score_unit": "percent",
-            },
-            {
-                "source": "MMLU-Pro",
-                "source_class": "academic",
-                "categories": [
-                    "overall",
-                    "biology",
-                    "business",
-                    "chemistry",
-                    "computer_science",
-                    "economics",
-                    "engineering",
-                    "health",
-                    "history",
-                    "law",
-                    "math",
-                    "philosophy",
-                    "physics",
-                    "psychology",
-                    "other",
-                ],
-                "score_unit": "accuracy_percent",
-            },
-            {
-                "source": "Artificial Analysis",
-                "source_class": "independent_measurement",
-                "categories": ["intelligence", "coding", "agentic"],
-                "score_unit": "source_index",
-            },
-            {
-                "source": "LiveCodeBench",
-                "source_class": "academic",
-                "categories": ["code_generation"],
-                "score_unit": "pass_at_1_percent",
-            },
-            {
-                "source": "SWE-bench Live",
-                "source_class": "academic",
-                "categories": [
-                    "lite",
-                    "full",
-                    "verified",
-                    "ccpp",
-                    "csharp",
-                    "go",
-                    "java",
-                    "rust",
-                    "tsjs",
-                    "windows",
-                ],
-                "score_unit": "resolved_percent",
-            },
-            {
-                "source": "τ-bench",
-                "source_class": "academic",
-                "categories": ["airline", "retail", "telecom", "banking_knowledge"],
-                "score_unit": "pass_at_1_percent",
-            },
-        ],
-        "policy": (
-            "Scores are shown only within the benchmark protocol that produced them; "
-            "no cross-benchmark composite is calculated."
-        ),
-    }
-
-
-@router.get("/leaderboards/livecodebench", tags=["leaderboards"])
-def livecodebench_leaderboard(
-    session: DatabaseSession,
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> dict[str, Any]:
-    return _leaderboard_response(
-        session,
-        "livecodebench-code-generation",
-        "code_generation",
-        limit,
-        "LiveCodeBench",
-        "https://livecodebench.github.io/leaderboard.html",
-    )
-
-
-@router.get("/leaderboards/swe-bench-live", tags=["leaderboards"])
-def swebench_live_leaderboard(
-    session: DatabaseSession,
-    category: str = "lite",
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> dict[str, Any]:
-    return _leaderboard_response(
-        session,
-        f"swe-bench-live-{category}",
-        category,
-        limit,
-        "SWE-bench Live",
-        "https://swe-bench-live.github.io/",
-    )
-
-
-@router.get("/leaderboards/tau-bench", tags=["leaderboards"])
-def tau_bench_leaderboard(
-    session: DatabaseSession,
-    category: str = "airline",
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> dict[str, Any]:
-    return _leaderboard_response(
-        session,
-        f"tau-bench-{category}",
-        category,
-        limit,
-        "τ-bench",
-        "https://taubench.com/leaderboard",
-    )
-
-
-@router.get("/sources/health", tags=["sources"])
-def source_health(session: DatabaseSession) -> dict[str, Any]:
-    stale_after = timedelta(hours=get_settings().source_stale_after_hours)
-    now = datetime.now(UTC)
-    sources = session.scalars(select(Source).order_by(Source.name)).all()
-    items = []
-    for source in sources:
-        configured = source.is_active and source_is_configured(source.slug or source.name)
-        stale = configured and (
-            source.last_success_at is None or now - source.last_success_at > stale_after
-        )
-        status = source.status
-        if not source.is_active:
-            status = "disabled"
-        elif not configured:
-            status = "not_configured"
-        elif stale and source.status == "active":
-            status = "stale"
-        items.append(
-            {
-                "name": source.name,
-                "url": source.url,
-                "status": status,
-                "last_checked_at": source.last_checked_at,
-                "last_success_at": source.last_success_at,
-                "has_error": source.last_error is not None,
-                "consecutive_failures": source.consecutive_failures,
-                "stale": stale,
-                "configured": configured,
-            }
-        )
-    return {"checked_at": now, "items": items}
-
 
 @router.get("/models", tags=["models"])
 def list_models(
@@ -686,7 +316,6 @@ def list_models(
         ],
     }
 
-
 @router.get("/models/facets", tags=["models"])
 def model_facets(session: DatabaseSession) -> dict[str, Any]:
     rows = session.execute(
@@ -746,7 +375,6 @@ def model_facets(session: DatabaseSession) -> dict[str, Any]:
         ],
         "benchmark_focuses": list(BENCHMARK_FOCUSES),
     }
-
 
 @router.get("/models/search", tags=["models"])
 def search_models(
@@ -1025,7 +653,6 @@ def search_models(
         "items": [serialize(model, company, profile) for model, company, profile in paged_rows],
     }
 
-
 @router.post("/models/select", tags=["models"])
 def select_models(request: ModelSelectionRequest, session: DatabaseSession) -> dict[str, Any]:
     """Return ranked LLMaaS candidates after applying hard, explainable constraints."""
@@ -1064,7 +691,6 @@ def select_models(request: ModelSelectionRequest, session: DatabaseSession) -> d
         "items": items,
     }
 
-
 def _compare_modalities(model: Model, profile: ModelProfile | None) -> list[str]:
     if profile is not None and profile.modalities:
         return list(profile.modalities)
@@ -1075,7 +701,6 @@ def _compare_modalities(model: Model, profile: ModelProfile | None) -> list[str]
             if item and item not in merged:
                 merged.append(str(item))
     return merged
-
 
 @router.get("/models/compare", tags=["models"])
 def compare_model_features(
@@ -1136,7 +761,6 @@ def compare_model_features(
         ]
     }
 
-
 @router.get("/models/{model_id}/history", tags=["models"])
 def model_history(
     model_id: UUID,
@@ -1174,7 +798,6 @@ def model_history(
         ]
     return {"model_id": str(model_id), "metric": metric, "items": points}
 
-
 @router.get("/models/resolve", tags=["models"])
 def resolve_model(
     session: DatabaseSession,
@@ -1192,7 +815,6 @@ def resolve_model(
         "name": model.name,
         "company": company.name if company is not None else None,
     }
-
 
 @router.get("/models/{model_id}", tags=["models"])
 def model_detail(model_id: UUID, session: DatabaseSession) -> dict[str, Any]:
@@ -1395,134 +1017,4 @@ def model_detail(model_id: UUID, session: DatabaseSession) -> dict[str, Any]:
             for price in prices
         ],
         "benchmarks": benchmark_scores,
-    }
-
-
-@router.get("/events", tags=["events"])
-def list_events(
-    session: DatabaseSession,
-    event_type: str | None = None,
-    category: str | None = None,
-    search: Annotated[str | None, Query(max_length=160)] = None,
-    importance: Literal["critical", "high", "medium", "low", "info"] | None = None,
-    since: datetime | None = None,
-    min_score: Annotated[int | None, Query(ge=0, le=100)] = None,
-    openness: Literal["open_source", "open_weight", "proprietary"] | None = None,
-    model_level: Literal["frontier", "advanced", "mid"] | None = None,
-    sort_by: Literal["priority", "importance", "recent"] = "importance",
-    limit: Annotated[int, Query(ge=1, le=200)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
-) -> dict[str, Any]:
-    filters: list[Any] = []
-    if event_type:
-        filters.append(ChangeEvent.event_type == event_type)
-    if category:
-        if category not in EVENT_CATEGORIES:
-            raise HTTPException(status_code=422, detail="Unknown event category")
-        filters.append(ChangeEvent.category == category)
-    if search and search.strip():
-        term = f"%{search.strip()}%"
-        filters.append(or_(ChangeEvent.title.ilike(term), ChangeEvent.description.ilike(term)))
-    if importance:
-        filters.append(ChangeEvent.importance == importance)
-    if since is not None:
-        filters.append(ChangeEvent.detected_at >= since)
-    if min_score is not None:
-        filters.append(ChangeEvent.importance_score >= min_score)
-    # ChangeEvent.id is the final key everywhere so paging is deterministic
-    # across requests when the leading keys tie.
-    ordering = (
-        (ChangeEvent.importance_score.desc(), ChangeEvent.detected_at.desc(), ChangeEvent.id)
-        if sort_by == "importance"
-        else (ChangeEvent.detected_at.desc(), ChangeEvent.id)
-    )
-
-    # model_openness / model_level belong to the model an event is about; they
-    # are denormalized onto model_profiles by llm_radar.read_model. LEFT JOIN so
-    # non-model events still flow through, and filter / sort / paginate in SQL
-    # rather than materializing every candidate in memory.
-    score = ModelProfile.general_score
-    query = (
-        select(ChangeEvent, ModelProfile.effective_openness, score)
-        .outerjoin(
-            ModelProfile,
-            and_(
-                ChangeEvent.entity_type == "model",
-                ModelProfile.model_id == ChangeEvent.entity_id,
-            ),
-        )
-        .where(*filters)
-    )
-    if openness is not None:
-        query = query.where(
-            ChangeEvent.entity_type == "model", ModelProfile.effective_openness == openness
-        )
-    if model_level is not None:
-        lower, upper = {
-            "mid": (Decimal(40), Decimal(70)),
-            "advanced": (Decimal(70), Decimal(85)),
-            "frontier": (Decimal(85), Decimal("100.1")),
-        }[model_level]
-        query = query.where(
-            ChangeEvent.entity_type == "model", score >= lower, score < upper
-        )
-
-    if sort_by == "priority":
-        # Urgent news (critical/high) always outranks model level, so a critical
-        # security or regulation item is never buried under a routine
-        # frontier-model event. Within each urgency band, prefer higher model
-        # levels, then the importance score, then recency.
-        urgent_rank = case((ChangeEvent.importance.in_(("critical", "high")), 0), else_=1)
-        level_rank = case(
-            (score.is_(None), 4),
-            (score >= 85, 0),
-            (score >= 70, 1),
-            (score >= 40, 2),
-            else_=3,
-        )
-        order_by: tuple[Any, ...] = (
-            urgent_rank,
-            level_rank,
-            ChangeEvent.importance_score.desc(),
-            ChangeEvent.detected_at.desc(),
-            ChangeEvent.id,
-        )
-    else:
-        order_by = ordering
-
-    total = (
-        session.scalar(select(func.count()).select_from(query.order_by(None).subquery())) or 0
-    )
-    rows = session.execute(query.order_by(*order_by).limit(limit).offset(offset)).all()
-
-    return {
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "items": [
-            {
-                "id": str(event.id),
-                "event_type": event.event_type,
-                "category": event.category,
-                "entity_type": event.entity_type,
-                "entity_id": str(event.entity_id),
-                "title": event.title,
-                "old_value": event.old_value,
-                "new_value": event.new_value,
-                "change_percentage": (
-                    str(event.change_percentage) if event.change_percentage is not None else None
-                ),
-                "importance": event.importance,
-                "importance_score": event.importance_score,
-                "importance_factors": event.importance_factors,
-                "model_openness": effective_openness,
-                "model_level": advancedness_tier_for_score(
-                    float(general_score) if general_score is not None else None
-                ),
-                "evidence": event.evidence,
-                "verification_status": event.verification_status,
-                "detected_at": event.detected_at,
-            }
-            for event, effective_openness, general_score in rows
-        ],
     }

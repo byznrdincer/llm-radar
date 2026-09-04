@@ -7,12 +7,11 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from llm_radar.api.deps import DatabaseSession
 from llm_radar.database.models import AnalyticsEvent, Company, Feedback, Model, ModelDemand
-from llm_radar.database.session import get_db
 from llm_radar.storage import rate_limit_exceeded
 
 router = APIRouter(prefix="/api/v1")
-DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
 def _client_ip(request: Request) -> str:

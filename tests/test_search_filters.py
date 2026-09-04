@@ -1,4 +1,4 @@
-from llm_radar.api.routes import _capability_filter_clause, _normalize_sort_specs
+from llm_radar.api.routes_models import _capability_filter_clause, _normalize_sort_specs
 
 
 def test_normalize_sort_specs_pairs_fields_and_orders() -> None:

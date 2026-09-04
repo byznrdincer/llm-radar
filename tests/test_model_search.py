@@ -1,4 +1,4 @@
-from llm_radar.api.routes import _search_term_variants
+from llm_radar.api.routes_models import _search_term_variants
 
 
 def test_search_term_variants_include_compact_and_separated_forms() -> None:

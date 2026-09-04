@@ -11,6 +11,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from llm_radar.api.deps import DatabaseSession
 from llm_radar.catalog import (
     EVENT_CATALOG,
     RANKING_CATEGORIES,
@@ -34,13 +35,11 @@ from llm_radar.database.models import (
     Source,
     TechnologySignal,
 )
-from llm_radar.database.session import get_db
 from llm_radar.event_intelligence import EVENT_CATEGORIES, classify_event
 from llm_radar.ranking import ranking_catalog, value_score
 from llm_radar.resolution import remember_alias
 
 router = APIRouter(prefix="/api/v1")
-DatabaseSession = Annotated[Session, Depends(get_db)]
 
 _research_summary_cache: tuple[float, dict[str, Any]] | None = None
 _RESEARCH_SUMMARY_TTL_SECONDS = 60.0
