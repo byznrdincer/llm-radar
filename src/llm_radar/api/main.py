@@ -37,7 +37,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
-# insights_router must register before router so /models/turkish is not captured by /models/{model_id}.
+# insights_router must register before router so /models/turkish is not captured
+# by /models/{model_id}.
 app.include_router(insights_router)
 app.include_router(engagement_router)
 app.include_router(intel_router)
@@ -57,7 +58,7 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=ADMIN_SECRET_KEY,
     same_site="lax",
-    https_only=False,
+    https_only=settings.app_env == "production",
 )
 
 admin = create_admin()

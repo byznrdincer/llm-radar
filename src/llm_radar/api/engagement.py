@@ -2,16 +2,44 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from llm_radar.database.models import AnalyticsEvent, Company, Feedback, Model, ModelDemand
 from llm_radar.database.session import get_db
+from llm_radar.storage import rate_limit_exceeded
 
 router = APIRouter(prefix="/api/v1")
 DatabaseSession = Annotated[Session, Depends(get_db)]
+
+
+def _client_ip(request: Request) -> str:
+    # Behind the deployed reverse proxy the first X-Forwarded-For hop is the
+    # real client; direct exposure would let a caller spoof it, so the proxy
+    # must overwrite this header (standard ingress behaviour).
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+class RateLimit:
+    """Per-IP fixed-window guard for unauthenticated write endpoints."""
+
+    def __init__(self, name: str, limit: int, window_seconds: int) -> None:
+        self.name = name
+        self.limit = limit
+        self.window_seconds = window_seconds
+
+    def __call__(self, request: Request) -> None:
+        bucket = f"{self.name}:{_client_ip(request)}"
+        if rate_limit_exceeded(bucket, self.limit, self.window_seconds):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many requests, please slow down.",
+            )
 
 AnalyticsEventType = Literal[
     "model_viewed",
@@ -217,7 +245,12 @@ class ModelDemandRequest(BaseModel):
         return cleaned or None
 
 
-@router.post("/analytics/events", tags=["analytics"], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/analytics/events",
+    tags=["analytics"],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(RateLimit("analytics", limit=180, window_seconds=60))],
+)
 def record_analytics_event(
     request: AnalyticsEventRequest, session: DatabaseSession
 ) -> dict[str, Any]:
@@ -243,7 +276,12 @@ def record_analytics_event(
     return {"accepted": True, "duplicate": False, "event_id": str(event.id)}
 
 
-@router.post("/feedback", tags=["feedback"], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/feedback",
+    tags=["feedback"],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(RateLimit("feedback", limit=12, window_seconds=60))],
+)
 def submit_feedback(request: FeedbackRequest, session: DatabaseSession) -> dict[str, Any]:
     existing = session.get(Feedback, request.submission_id)
     if existing is not None:
@@ -289,7 +327,12 @@ def submit_feedback(request: FeedbackRequest, session: DatabaseSession) -> dict[
     }
 
 
-@router.post("/model-demands", tags=["feedback"], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/model-demands",
+    tags=["feedback"],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(RateLimit("model-demands", limit=8, window_seconds=60))],
+)
 def submit_model_demand(request: ModelDemandRequest, session: DatabaseSession) -> dict[str, Any]:
     if not request.requested_model_ids and not request.requested_models and not request.other_model:
         raise HTTPException(

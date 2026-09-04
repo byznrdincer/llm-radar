@@ -202,6 +202,7 @@ llm-radar/
 git clone https://github.com/byznrdincer/llm-radar.git
 cd llm-radar
 cp .env.example .env
+cp .admin.env.example .admin.env   # /admin panel kimlik bilgileri — API bunlar olmadan açılmaz
 docker compose up -d --build
 ```
 
@@ -445,7 +446,17 @@ Geri yükleme önce ayrı bir test veritabanında denenmelidir.
 - `ADMIN_API_TOKEN` zorunludur.
 - CORS origin ve Trusted Host listelerinde `localhost` kabul edilmez.
 - API, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` ve
-  `Permissions-Policy` güvenlik başlıklarını ekler.
+  `Permissions-Policy` güvenlik başlıklarını ekler; admin oturum çerezi
+  `Secure` işaretlenir.
+
+Diğer sertleştirmeler (ortamdan bağımsız):
+
+- API container'ı root olmayan `appuser` ile çalışır.
+- Kimliksiz yazma uçları (`/analytics/events`, `/feedback`, `/model-demands`)
+  IP başına sabit-pencere rate limit uygular; ters proxy `X-Forwarded-For`
+  başlığını gerçek istemci IP'siyle geçmelidir.
+- `.env` / `.admin.env` dosyaları yerine üretimde secret'lar ortam
+  değişkeni olarak enjekte edilmelidir.
 
 Gözlem noktaları: `/health`, `/api/v1/system/health`, `/metrics`, Redpanda
 Console, collector-run ve dead-letter admin endpoint'leridir.

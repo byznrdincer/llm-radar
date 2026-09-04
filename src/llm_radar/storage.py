@@ -66,3 +66,25 @@ def cache_set(key: str, value: str, ttl_seconds: int = 3600) -> None:
         client.setex(key, ttl_seconds, value)
     except Exception:
         return
+
+
+_rate_limit_client: Any = None
+
+
+def rate_limit_exceeded(bucket: str, limit: int, window_seconds: int) -> bool:
+    """Fixed-window counter keyed by ``bucket``. Fails open if Redis is unavailable."""
+    global _rate_limit_client
+    try:
+        import redis
+
+        if _rate_limit_client is None:
+            _rate_limit_client = redis.Redis.from_url(
+                get_settings().redis_url, socket_timeout=0.5
+            )
+        key = f"ratelimit:{bucket}"
+        count = _rate_limit_client.incr(key)
+        if count == 1:
+            _rate_limit_client.expire(key, window_seconds)
+        return int(count) > limit
+    except Exception:
+        return False

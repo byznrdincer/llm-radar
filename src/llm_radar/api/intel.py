@@ -1,5 +1,6 @@
 import asyncio
 import json
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
@@ -125,9 +126,12 @@ def _translate_to_turkish(text: str | None) -> str | None:
 
 def require_admin(x_admin_token: Annotated[str | None, Header()] = None) -> None:
     expected = get_settings().admin_api_token
-    if get_settings().app_env == "production" and not expected:
-        raise HTTPException(status_code=503, detail="Admin token is not configured")
-    if expected and x_admin_token != expected:
+    if not expected:
+        # Fail closed everywhere except explicit local development.
+        if get_settings().app_env != "development":
+            raise HTTPException(status_code=503, detail="Admin token is not configured")
+        return
+    if x_admin_token is None or not secrets.compare_digest(x_admin_token, expected):
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
 
