@@ -10,11 +10,11 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
-from llm_radar.database.models import Company, Model, ModelProfile
-from llm_radar.read_model import refresh_read_model
+from llm_radar.database.models import Company, Model, ModelFocusScore, ModelProfile
+from llm_radar.read_model import refresh_focus_scores, refresh_read_model
 
 DATABASE_URL = os.getenv("LLM_RADAR_INTEGRATION_DATABASE_URL")
 pytestmark = pytest.mark.skipif(
@@ -79,3 +79,65 @@ def test_refresh_sets_score_for_a_leaderboard_model(session: Session) -> None:
     profile = session.get(ModelProfile, scored)
     assert profile is not None
     assert Decimal(0) <= profile.general_score <= Decimal(100)
+
+
+def test_refresh_focus_scores_writes_sane_rows(session: Session) -> None:
+    written = refresh_focus_scores(session)
+    assert written >= 0
+    row = session.execute(select(ModelFocusScore).limit(1)).first()
+    if row is not None:
+        score = row[0].score
+        assert Decimal(0) <= score <= Decimal(100)
+        assert row[0].focus != "general"  # general lives on ModelProfile, not this table
+
+
+def test_refresh_focus_scores_is_idempotent(session: Session) -> None:
+    first = refresh_focus_scores(session)
+    session.flush()
+    second = refresh_focus_scores(session)
+    assert first == second
+    total_rows = session.scalar(select(func.count()).select_from(ModelFocusScore))
+    assert total_rows == second
+
+
+def test_refresh_focus_scores_scores_every_duplicate_row(session: Session) -> None:
+    """Two catalog rows sharing a canonical name (unmerged duplicates) each get
+    the same focus score independently, matching how general_score and the old
+    in-Python search filter both already treat duplicates."""
+    company_id = session.scalar(select(Company.id).limit(1))
+    # Reuse the name of a model already known to have coding-focus evidence
+    # (from the outer refresh_focus_scores calls above/below), rather than a
+    # made-up name that would trivially have no evidence at all.
+    existing = session.execute(
+        select(Model.name)
+        .join(ModelFocusScore, ModelFocusScore.model_id == Model.id)
+        .where(ModelFocusScore.focus == "coding")
+        .limit(1)
+    ).first()
+    if existing is None:
+        pytest.skip("no model with coding-focus evidence in this DB")
+    twin_name = existing[0]
+    twin_id = uuid4()
+    session.add(
+        Model(
+            id=twin_id, company_id=company_id, name=twin_name,
+            slug="ztest/focus-twin-duplicate", status="active", capabilities={},
+        )
+    )
+    session.flush()
+
+    refresh_focus_scores(session)
+
+    original_score = session.scalar(
+        select(ModelFocusScore.score)
+        .join(Model, Model.id == ModelFocusScore.model_id)
+        .where(Model.name == twin_name, Model.id != twin_id, ModelFocusScore.focus == "coding")
+        .limit(1)
+    )
+    twin_score = session.scalar(
+        select(ModelFocusScore.score).where(
+            ModelFocusScore.model_id == twin_id, ModelFocusScore.focus == "coding"
+        )
+    )
+    assert original_score is not None
+    assert twin_score == original_score

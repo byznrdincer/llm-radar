@@ -148,6 +148,21 @@ class ModelProfile(TimestampMixin, Base):
     model: Mapped[Model] = relationship(back_populates="profile")
 
 
+class ModelFocusScore(Base):
+    """Per-(model, benchmark-focus) percentile, maintained by
+    llm_radar.read_model. Denormalized so /models/search can filter, sort and
+    paginate by a non-general benchmark focus in SQL instead of materializing
+    every candidate to score it in Python."""
+
+    __tablename__ = "model_focus_scores"
+
+    model_id: Mapped[UUID] = mapped_column(
+        ForeignKey("models.id", ondelete="CASCADE"), primary_key=True
+    )
+    focus: Mapped[str] = mapped_column(String(20), primary_key=True)
+    score: Mapped[Decimal] = mapped_column(Numeric(5, 1), index=True)
+
+
 class ModelVersion(TimestampMixin, Base):
     __tablename__ = "model_versions"
     __table_args__ = (UniqueConstraint("model_id", "version", name="uq_model_version"),)

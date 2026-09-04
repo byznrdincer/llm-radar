@@ -23,14 +23,21 @@ from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from llm_radar.composite import canonical_model_name
-from llm_radar.database.models import Company, Model, ModelProfile
+from llm_radar.database.models import Company, Model, ModelFocusScore, ModelProfile
 from llm_radar.database.session import SessionLocal
-from llm_radar.model_selection import BenchmarkMatch, selection_matches
+from llm_radar.model_selection import BENCHMARK_FOCUSES, BenchmarkMatch, selection_matches
 from llm_radar.openness import _resolved_compare_openness
+
+# "general" stays on ModelProfile.general_score - it is kept fresh inline by
+# the processor (see refresh_model_read_fields). The other focuses are niche
+# enough, and cheap enough to recompute from a 600s-cached selection_matches
+# call, that they only need the periodic sweep.
+_SIDE_TABLE_FOCUSES = tuple(focus for focus in BENCHMARK_FOCUSES if focus != "general")
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +78,44 @@ def refresh_read_model(session: Session) -> ReadModelRefreshResult:
     return ReadModelRefreshResult(scanned=len(rows), updated=updated)
 
 
+def refresh_focus_scores(session: Session) -> int:
+    """Rebuild model_focus_scores for every non-general benchmark focus, so
+    /models/search's benchmark_focus / advancedness / best_match sort work in
+    SQL for those focuses too, the same way general_score already does for
+    the default focus. Returns the number of (model, focus) rows written.
+
+    Scores every *row*, not every distinct canonical name: two catalog rows
+    that happen to share a canonical name (unmerged duplicates) each get the
+    match independently, the same way the per-model-row general_score refresh
+    and the old in-Python search filter both already treat duplicates - a
+    name -> single model_id map here would arbitrarily drop one of them.
+    """
+    catalog = list(session.execute(select(Model.id, Model.name)))
+    written = 0
+    for focus in _SIDE_TABLE_FOCUSES:
+        matches = selection_matches(session, focus)
+        rows = [
+            {"model_id": model_id, "focus": focus, "score": Decimal(str(match.score))}
+            for model_id, name in catalog
+            if (match := matches.get(canonical_model_name(name))) is not None
+        ]
+        if rows:
+            stmt = pg_insert(ModelFocusScore).values(rows)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[ModelFocusScore.model_id, ModelFocusScore.focus],
+                set_={"score": stmt.excluded.score},
+            )
+            session.execute(stmt)
+            written += len(rows)
+        session.execute(
+            delete(ModelFocusScore).where(
+                ModelFocusScore.focus == focus,
+                ModelFocusScore.model_id.notin_([row["model_id"] for row in rows]),
+            )
+        )
+    return written
+
+
 def refresh_model_read_fields(session: Session, model_id: UUID) -> bool:
     """Recompute the read-model fields for a single model right after the
     processor changes it, so a filter on openness or model level reflects the
@@ -95,8 +140,12 @@ def refresh_model_read_fields(session: Session, model_id: UUID) -> bool:
 def main() -> None:
     with SessionLocal() as session:
         result = refresh_read_model(session)
+        focus_rows = refresh_focus_scores(session)
         session.commit()
-    print(f"Read model refresh: {result.scanned} scanned, {result.updated} updated")
+    print(
+        f"Read model refresh: {result.scanned} scanned, {result.updated} updated, "
+        f"{focus_rows} focus scores written"
+    )
 
 
 if __name__ == "__main__":

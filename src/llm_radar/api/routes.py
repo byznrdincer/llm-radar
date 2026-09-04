@@ -25,6 +25,7 @@ from llm_radar.database.models import (
     Company,
     LeaderboardSnapshot,
     Model,
+    ModelFocusScore,
     ModelProfile,
     ModelSnapshot,
     PriceObservation,
@@ -36,7 +37,6 @@ from llm_radar.model_selection import (
     ADVANCEDNESS_TIERS,
     BENCHMARK_FOCUSES,
     advancedness_tier_for_score,
-    matches_advancedness_filter,
     selection_matches,
 )
 from llm_radar.openness import (
@@ -872,65 +872,78 @@ def search_models(
         "updated_at": ModelProfile.updated_at,
         "best_match": Model.name,
     }
-    ordering = _build_sql_order_by(sort_specs, sort_columns)
     query = (
         select(Model, Company, ModelProfile)
         .join(ModelProfile, ModelProfile.model_id == Model.id)
         .join(Company, Company.id == Model.company_id)
-        .where(*filters)
-        .order_by(*ordering)
     )
+    count_query = (
+        select(func.count())
+        .select_from(Model)
+        .join(ModelProfile, ModelProfile.model_id == Model.id)
+        .join(Company, Company.id == Model.company_id)
+    )
+
+    # A benchmark-focus score column - general_score by default, or a row from
+    # model_focus_scores for any other focus - both denormalized by
+    # llm_radar.read_model, so the evidence filter/tier/sort below run in SQL
+    # instead of loading every candidate into Python to score it.
+    if benchmark_focus == "general":
+        score_col: Any = ModelProfile.general_score
+        filters.append(ModelProfile.general_score.is_not(None))
+    elif benchmark_focus:
+        focus_join = and_(
+            ModelFocusScore.model_id == Model.id, ModelFocusScore.focus == benchmark_focus
+        )
+        query = query.join(ModelFocusScore, focus_join)
+        count_query = count_query.join(ModelFocusScore, focus_join)
+        score_col = ModelFocusScore.score
+    else:
+        score_col = ModelProfile.general_score
+
+    if normalized_advancedness:
+        tier_clauses: list[Any] = []
+        if "unscored" in normalized_advancedness:
+            tier_clauses.append(score_col.is_(None))
+        for tier in normalized_advancedness & set(ADVANCEDNESS_TIERS):
+            lower, upper = ADVANCEDNESS_TIERS[tier]
+            tier_clauses.append(and_(score_col >= lower, score_col <= upper))
+        if tier_clauses:
+            filters.append(or_(*tier_clauses))
+
+    if primary_sort_by == "best_match":
+        # Same as benchmark_score/desc regardless of the requested sort_order -
+        # "best match" always means highest evidence first. Model.name (exact,
+        # case-sensitive) then Model.id are the final keys so paging stays
+        # deterministic when names tie case-insensitively (e.g. "Kimi-K3" vs
+        # "kimi-k3" duplicates) rather than however Postgres breaks the tie.
+        order_by: tuple[Any, ...] = (
+            score_col.is_(None),
+            score_col.desc(),
+            func.lower(Model.name),
+            Model.name,
+            Model.id,
+        )
+    elif primary_sort_by == "benchmark_score":
+        score_order = score_col.asc() if primary_sort_order == "asc" else score_col.desc()
+        order_by = (
+            score_col.is_(None),
+            score_order,
+            func.lower(Model.name),
+            Model.name,
+            Model.id,
+        )
+    else:
+        order_by = tuple(_build_sql_order_by(sort_specs, sort_columns))
+
+    query = query.where(*filters).order_by(*order_by)
+    count_query = count_query.where(*filters)
+
     match_focus = benchmark_focus or "general"
     matches = selection_matches(session, match_focus)
-    requires_python_ranking = bool(
-        normalized_advancedness
-        or benchmark_focus
-        or primary_sort_by in {"benchmark_score", "best_match"}
-    )
-    if requires_python_ranking:
-        rows = list(session.execute(query).all())
-        if benchmark_focus:
-            rows = [row for row in rows if canonical_model_name(row[0].name) in matches]
-        if normalized_advancedness:
-            rows = [
-                row
-                for row in rows
-                if matches_advancedness_filter(
-                    matches[canonical_model_name(row[0].name)].score
-                    if canonical_model_name(row[0].name) in matches
-                    else None,
-                    normalized_advancedness,
-                )
-            ]
-        if primary_sort_by in {"benchmark_score", "best_match"}:
-            score_direction = (
-                1
-                if primary_sort_by == "benchmark_score" and primary_sort_order == "asc"
-                else -1
-            )
-            rows.sort(
-                key=lambda row: (
-                    canonical_model_name(row[0].name) not in matches,
-                    score_direction * matches[canonical_model_name(row[0].name)].score
-                    if canonical_model_name(row[0].name) in matches
-                    else 0,
-                    row[0].name.lower(),
-                )
-            )
-        total = len(rows)
-        paged_rows = rows[offset : offset + limit]
-    else:
-        total = (
-            session.scalar(
-                select(func.count())
-                .select_from(Model)
-                .join(ModelProfile, ModelProfile.model_id == Model.id)
-                .join(Company, Company.id == Model.company_id)
-                .where(*filters)
-            )
-            or 0
-        )
-        paged_rows = list(session.execute(query.offset(offset).limit(limit)).all())
+
+    total = session.scalar(count_query) or 0
+    paged_rows = list(session.execute(query.offset(offset).limit(limit)).all())
     provider_by_model: dict[UUID, set[str]] = {}
     paged_model_ids = [model.id for model, _, _ in paged_rows]
     if paged_model_ids:

@@ -54,22 +54,29 @@ async def run_job(
 
 
 async def refresh_read_model_job(interval_seconds: int, delay: int) -> None:
-    """Rebuild model_profiles.general_score / effective_openness on the benchmark
-    cadence so the event feed and model search filter and sort in SQL."""
+    """Rebuild model_profiles.general_score / effective_openness and the
+    per-focus model_focus_scores table on the benchmark cadence so the event
+    feed and model search filter and sort in SQL."""
     await asyncio.sleep(delay)
     while True:
         try:
             from llm_radar.database.session import SessionLocal
-            from llm_radar.read_model import refresh_read_model
+            from llm_radar.read_model import refresh_focus_scores, refresh_read_model
 
-            def _run() -> tuple[int, int]:
+            def _run() -> tuple[int, int, int]:
                 with SessionLocal() as session:
                     result = refresh_read_model(session)
+                    focus_rows = refresh_focus_scores(session)
                     session.commit()
-                    return result.scanned, result.updated
+                    return result.scanned, result.updated, focus_rows
 
-            scanned, updated = await asyncio.to_thread(_run)
-            logger.info("read model refresh: %s scanned, %s updated", scanned, updated)
+            scanned, updated, focus_rows = await asyncio.to_thread(_run)
+            logger.info(
+                "read model refresh: %s scanned, %s updated, %s focus scores",
+                scanned,
+                updated,
+                focus_rows,
+            )
         except Exception:
             logger.exception("read model refresh failed")
         await asyncio.sleep(interval_seconds)
