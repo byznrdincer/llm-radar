@@ -48,6 +48,7 @@ export default defineConfig(async () => {
       host: true,
       port: 3000,
       strictPort: true,
+      allowedHosts: ["llmradar.planetai9.com"],
       ...(isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
         : {}),
