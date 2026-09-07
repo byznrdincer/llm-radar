@@ -8,7 +8,16 @@ export type PublicSourceOptions = {
 
 const SOURCE_HOME: Record<string, string> = {
   openrouter: "https://openrouter.ai/models",
-  nanogpt: "https://nano-gpt.com/pricing",
+  nanogpt: "https://nano-gpt.com/settings/models",
+  bifrost: "https://www.getmaxim.ai/bifrost/model-library?utm_source=chatgpt.com",
+  "ai-ml-api": "https://docs.aimlapi.com/api-references/service-endpoints/complete-model-list?utm_source=chatgpt.com",
+  aimlapi: "https://docs.aimlapi.com/api-references/service-endpoints/complete-model-list?utm_source=chatgpt.com",
+  deepinfra: "https://deepinfra.com/models",
+  groqcloud: "https://console.groq.com/docs/models",
+  groq: "https://console.groq.com/docs/models",
+  replicate: "https://replicate.com/explore",
+  together: "https://www.together.ai/models",
+  "google-gemini-blog": "https://blog.google/innovation-and-ai/models-and-research/gemini-models/",
   "vercel-ai-gateway": "https://vercel.com/docs/ai-gateway/pricing",
   vercel: "https://vercel.com/docs/ai-gateway/pricing",
   "openai-pricing": "https://developers.openai.com/api/docs/pricing",
@@ -23,6 +32,7 @@ const SOURCE_HOME: Record<string, string> = {
   "google-deepmind": "https://deepmind.google/discover/blog/",
   deepmind: "https://deepmind.google/discover/blog/",
   nvidia: "https://blogs.nvidia.com/",
+  "nvidia-generative-ai": "https://blogs.nvidia.com/blog/category/generative-ai/",
   "meta-ai": "https://ai.meta.com/blog/",
   meta: "https://ai.meta.com/blog/",
   xai: "https://x.ai/",
@@ -59,9 +69,6 @@ export function modelHintFromTitle(title: string | null | undefined): string | n
 }
 
 function providerModelUrl(sourceSlug: string, modelSlug: string): string | null {
-  if (sourceSlug === "nanogpt") {
-    return `https://nano-gpt.com/models/${modelSlug}`;
-  }
   if (sourceSlug === "openrouter") {
     return `https://openrouter.ai/${modelSlug}`;
   }
@@ -75,6 +82,22 @@ export function toPublicSourceUrl(
   const sourceSlug = options.sourceSlug?.trim().toLowerCase() ?? null;
   const category = options.category?.trim().toLowerCase() ?? null;
   const modelSlug = options.modelHint?.trim().toLowerCase() ?? null;
+
+  if (sourceSlug && [
+    "bifrost",
+    "ai-ml-api",
+    "aimlapi",
+    "nanogpt",
+    "deepinfra",
+    "groqcloud",
+    "groq",
+    "replicate",
+    "together",
+    "google-gemini-blog",
+    "nvidia-generative-ai",
+  ].includes(sourceSlug)) {
+    return SOURCE_HOME[sourceSlug];
+  }
 
   // Pricing/catalog events: link to the specific model page when we know the slug.
   if (modelSlug && sourceSlug && (category === "pricing_change" || category === "model_release")) {
