@@ -99,6 +99,7 @@ async def test_huggingface_org_scrape_excludes_non_llm_pipeline_tags(
     fetches have no pipeline_tag filter at the API level, so we must apply
     one ourselves or every repo type from a watched org enters the catalog."""
     monkeypatch.setattr("llm_radar.collectors.huggingface.WATCHED_HF_ORGS", ("example",))
+    monkeypatch.setattr("llm_radar.collectors.huggingface.TURKISH_HF_ORGS", frozenset())
     monkeypatch.setattr("llm_radar.collectors.huggingface.HF_HUB_TASKS", ())
     monkeypatch.setattr("llm_radar.collectors.huggingface.TURKISH_HF_SEARCH_QUERIES", ())
     monkeypatch.setattr("llm_radar.collectors.huggingface.PINNED_HF_MODELS", ())
@@ -130,6 +131,92 @@ async def test_huggingface_org_scrape_excludes_non_llm_pipeline_tags(
 
     assert len(result.events) == 1
     assert result.events[0].entity_key == "example/chat-model"
+
+
+@pytest.mark.asyncio
+async def test_huggingface_turkish_org_keeps_embeddings_and_technique(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """YTÜ Cosmos / dbmdz catalogs intentionally include embeddings and
+    encoder models that the Turkey LLM page should surface."""
+    monkeypatch.setattr("llm_radar.collectors.huggingface.WATCHED_HF_ORGS", ("ytu-ce-cosmos",))
+    monkeypatch.setattr(
+        "llm_radar.collectors.huggingface.TURKISH_HF_ORGS",
+        frozenset({"ytu-ce-cosmos"}),
+    )
+    monkeypatch.setattr("llm_radar.collectors.huggingface.HF_HUB_TASKS", ())
+    monkeypatch.setattr("llm_radar.collectors.huggingface.TURKISH_HF_SEARCH_QUERIES", ())
+    monkeypatch.setattr("llm_radar.collectors.huggingface.PINNED_HF_MODELS", ())
+    payload = [
+        {
+            "id": "ytu-ce-cosmos/Turkish-Llama-8b-v0.1",
+            "cardData": {
+                "license": "llama3",
+                "base_model": "meta-llama/Meta-Llama-3-8B",
+            },
+            "pipeline_tag": "text-generation",
+            "tags": ["base_model:finetune:meta-llama/Meta-Llama-3-8B"],
+            "createdAt": "2024-05-23T13:54:27.000Z",
+            "siblings": [{"rfilename": "model.safetensors"}],
+        },
+        {
+            "id": "ytu-ce-cosmos/turkish-e5-large",
+            "cardData": {
+                "license": "mit",
+                "base_model": ["intfloat/multilingual-e5-large-instruct"],
+            },
+            "pipeline_tag": "feature-extraction",
+            "tags": ["base_model:finetune:intfloat/multilingual-e5-large-instruct"],
+            "createdAt": "2025-04-11T07:50:37.000Z",
+            "siblings": [{"rfilename": "model.safetensors"}],
+        },
+        {
+            "id": "ytu-ce-cosmos/audio-noise",
+            "cardData": {"license": "mit"},
+            "pipeline_tag": "automatic-speech-recognition",
+            "siblings": [{"rfilename": "model.safetensors"}],
+        },
+    ]
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path.endswith("/README.md"):
+            if "turkish-e5-large" in path:
+                return httpx.Response(
+                    200,
+                    text=(
+                        "# Turkish-e5-Large\n\n"
+                        "This is a finetune version of model "
+                        "intfloat/multilingual-e5-large-instruct with various "
+                        "Turkish datasets.\n"
+                    ),
+                )
+            return httpx.Response(
+                200,
+                text=(
+                    "# Cosmos LLaMa\n\n"
+                    "This model is a fully fine-tuned version of the LLaMA-3 8B "
+                    "model with a 30GB Turkish dataset.\n"
+                ),
+            )
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await HuggingFaceCollector(client).collect()
+
+    keys = {event.entity_key for event in result.events}
+    assert keys == {
+        "ytu-ce-cosmos/turkish-llama-8b-v0.1",
+        "ytu-ce-cosmos/turkish-e5-large",
+    }
+    llama = next(e for e in result.events if e.entity_key.endswith("turkish-llama-8b-v0.1"))
+    embed = next(e for e in result.events if e.entity_key.endswith("turkish-e5-large"))
+    assert llama.payload["technique"] == "Fine-tuned"
+    assert llama.payload["datasets"] == ["30GB Turkish dataset"]
+    assert llama.payload["published_at"] == "2024-05-23T13:54:27.000Z"
+    assert embed.payload["technique"] == "Embedding"
+    assert embed.payload["base_model"] == "intfloat/multilingual-e5-large-instruct"
+    assert embed.payload["datasets"] == ["Turkish datasets"]
 
 
 @pytest.mark.asyncio

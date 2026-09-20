@@ -262,9 +262,25 @@ WATCHED_HF_ORGS = (
     "tubitak",
     "TURKCELL",
     "vngrs-ai",
-    "YildizTechnicalUniversity",
+    # YTÜ Cosmos publishes as ytu-ce-cosmos on HF (not YildizTechnicalUniversity).
+    "ytu-ce-cosmos",
+    "dbmdz",
     "ODMDATA",
     "KartalBT",
+)
+
+# Orgs whose catalogs include Turkish embeddings / BERT-style models that
+# should not be dropped by the strict chat-LLM pipeline filter.
+TURKISH_HF_ORGS = frozenset(
+    {
+        "ytu-ce-cosmos",
+        "tubitak",
+        "TURKCELL",
+        "vngrs-ai",
+        "dbmdz",
+        "ODMDATA",
+        "KartalBT",
+    }
 )
 
 TURKISH_HF_SEARCH_QUERIES = (
@@ -272,6 +288,8 @@ TURKISH_HF_SEARCH_QUERIES = (
     "turkce",
     "türkçe",
     "turkish language",
+    "turkish embedding",
+    "berturk",
 )
 
 # High-value repositories whose weight evidence must remain attached even when
@@ -281,6 +299,13 @@ PINNED_HF_MODELS = (
     "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8",
     "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-NVFP4",
     "TURKCELL/Turkcell-LLM-7b-v1",
+    "ytu-ce-cosmos/Turkish-Gemma-9b-T1",
+    "ytu-ce-cosmos/turkish-e5-large",
+    "ytu-ce-cosmos/Turkish-Llama-8b-v0.1",
+    "ytu-ce-cosmos/Turkish-Llama-8b-Instruct-v0.1",
+    "ytu-ce-cosmos/Turkish-Gemma-9b-v0.1",
+    "dbmdz/bert-base-turkish-cased",
+    "dbmdz/electra-base-turkish-cased-discriminator",
 )
 
 SOURCE_CATALOG: tuple[SourceSpec, ...] = (

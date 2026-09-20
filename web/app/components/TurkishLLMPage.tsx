@@ -8,15 +8,18 @@ export type TurkishModel = {
   name: string;
   organization: string;
   base_model: string | null;
+  technique?: string | null;
+  datasets?: string[];
   license: string | null;
   openness: string | null;
   tags: string[];
   downloads: number | null;
+  published_at?: string | null;
   last_updated: string;
   source_url?: string | null;
 };
 
-type SortField = "name" | "downloads" | "last_updated";
+type SortField = "name" | "downloads" | "published_at";
 
 const PAGE_SIZE = 20;
 
@@ -25,25 +28,29 @@ function compact(value: number | null, locale: string): string {
   return new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
-function formatDate(value: string, locale: string): string {
-  return new Date(value).toLocaleDateString(locale);
+function formatDate(value: string | null | undefined, locale: string): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString(locale);
 }
 
-function formatBase(value: string | null): string {
-  if (!value) return "";
-  const cleaned = value.trim().replace(/^\[+|\]+$/g, "").replace(/^['"]|['"]$/g, "");
-  return cleaned.length > 32 ? `${cleaned.slice(0, 30)}…` : cleaned;
-}
-
-function rowTags(tags: string[]): string[] {
-  return tags.filter(tag => tag !== "TR").slice(0, 2);
+function formatDataset(datasets: string[] | undefined): string {
+  if (!datasets?.length) return "";
+  const first = datasets[0];
+  return datasets.length > 1 ? `${first} +${datasets.length - 1}` : first;
 }
 
 function matchesQuery(model: TurkishModel, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [model.name, model.organization, model.license ?? "", model.base_model ?? ""]
-    .some(field => field.toLowerCase().includes(q));
+  return [
+    model.name,
+    model.organization,
+    model.technique ?? "",
+    model.base_model ?? "",
+    ...(model.datasets ?? []),
+  ].some(field => field.toLowerCase().includes(q));
 }
 
 function isOpenWeight(model: TurkishModel): boolean {
@@ -99,9 +106,9 @@ const STRINGS: Record<Language, {
   openSourceLink: (name: string) => string;
   colModel: string;
   colOrg: string;
-  colLicense: string;
+  colTechnique: string;
   colDownloads: string;
-  colUpdated: string;
+  colPublished: string;
   prev: string;
   next: string;
 }> = {
@@ -115,21 +122,21 @@ const STRINGS: Record<Language, {
     radarExplain: "LLM Radar Skoru ile aynı motor, aynı kurallarla — yalnızca Türkiye sinyali taşıyan modellere uygulanır. Ayrı bir Türkçe değerlendirme paketi değildir.",
     category: "kategori",
     coverage: "kapsam",
-    searchPlaceholder: "Model veya kuruluş ara",
+    searchPlaceholder: "Model, geliştirici veya teknik ara",
     sortLabel: "Sırala",
     sortDownloads: "En çok indirilen",
-    sortRecent: "En güncel",
+    sortRecent: "Yayın tarihi",
     sortName: "Ada göre",
     clear: "Temizle",
     loading: "Modeller yükleniyor…",
     noneMatch: "Filtrelere uyan model yok.",
     noneYet: "Henüz model bulunamadı.",
-    openSourceLink: (name) => `${name} için kaynağı aç`,
-    colModel: "Model",
-    colOrg: "Kuruluş",
-    colLicense: "Lisans",
-    colDownloads: "İndirme",
-    colUpdated: "Güncelleme",
+    openSourceLink: (name) => `${name} model sayfasını aç`,
+    colModel: "Model adı",
+    colOrg: "Geliştiren",
+    colTechnique: "Model tekniği",
+    colDownloads: "İndirme sayısı",
+    colPublished: "Yayın tarihi",
     prev: "Önceki",
     next: "Sonraki",
   },
@@ -143,21 +150,21 @@ const STRINGS: Record<Language, {
     radarExplain: "The same engine and rules as the LLM Radar Score — applied only to models carrying a Turkey signal. It is not a separate Turkish evaluation suite.",
     category: "categories",
     coverage: "coverage",
-    searchPlaceholder: "Search model or organization",
+    searchPlaceholder: "Search model, developer, or technique",
     sortLabel: "Sort",
     sortDownloads: "Most downloaded",
-    sortRecent: "Most recent",
+    sortRecent: "Publish date",
     sortName: "By name",
     clear: "Clear",
     loading: "Loading models…",
     noneMatch: "No models match the filters.",
     noneYet: "No models found yet.",
-    openSourceLink: (name) => `Open source for ${name}`,
-    colModel: "Model",
-    colOrg: "Organization",
-    colLicense: "License",
+    openSourceLink: (name) => `Open model page for ${name}`,
+    colModel: "Model name",
+    colOrg: "Developer",
+    colTechnique: "Technique",
     colDownloads: "Downloads",
-    colUpdated: "Updated",
+    colPublished: "Published",
     prev: "Previous",
     next: "Next",
   },
@@ -167,6 +174,7 @@ function normalizeTurkishItems(items: TurkishModel[]): TurkishModel[] {
   return items.map(item => ({
     ...item,
     tags: item.tags?.length ? item.tags : ["TR"],
+    datasets: item.datasets ?? [],
   }));
 }
 
@@ -189,9 +197,6 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
       .then(response => (response.ok ? response.json() : null))
       .then(data => {
         if (!data) return;
-        // The endpoint also lists catalog models with no score yet (used by
-        // the Overview full-catalog view) - this leaderboard only wants
-        // the ranked, actually-scored ones.
         const scored = ((data.items ?? []) as TurkishRadarRawItem[])
           .filter((item): item is TurkishRadarItem => item.score != null && item.rank != null);
         setRadar({ eligible_count: data.eligible_count, items: scored });
@@ -237,8 +242,10 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
 
     rows.sort((a, b) => {
       if (sortField === "name") return a.name.localeCompare(b.name, "tr");
-      if (sortField === "last_updated") {
-        return new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime();
+      if (sortField === "published_at") {
+        const aTime = new Date(a.published_at || a.last_updated).getTime();
+        const bTime = new Date(b.published_at || b.last_updated).getTime();
+        return bTime - aTime;
       }
       return (b.downloads ?? 0) - (a.downloads ?? 0);
     });
@@ -309,7 +316,7 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
           aria-label={t.sortLabel}
         >
           <option value="downloads">{t.sortDownloads}</option>
-          <option value="last_updated">{t.sortRecent}</option>
+          <option value="published_at">{t.sortRecent}</option>
           <option value="name">{t.sortName}</option>
         </select>
         <button
@@ -340,45 +347,54 @@ export default function TurkishLLMPage({ api, bootstrap = null }: Props) {
                 <tr>
                   <th>{t.colModel}</th>
                   <th>{t.colOrg}</th>
-                  <th>{t.colLicense}</th>
+                  <th>{t.colTechnique}</th>
                   <th>{t.colDownloads}</th>
-                  <th>{t.colUpdated}</th>
+                  <th>{t.colPublished}</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map(model => {
-                  const tags = rowTags(model.tags);
-                  const base = formatBase(model.base_model);
+                  const dataset = formatDataset(model.datasets);
                   return (
                     <tr key={model.id}>
                       <td>
-                        <span className="turkish-name-row">
+                        {model.source_url ? (
+                          <a
+                            className="turkish-model-link"
+                            href={model.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={t.openSourceLink(model.name)}
+                          >
+                            <strong title={model.name}>{model.name}</strong>
+                            <span aria-hidden="true">↗</span>
+                          </a>
+                        ) : (
                           <strong title={model.name}>{model.name}</strong>
-                          {model.source_url && (
-                            <a
-                              className="turkish-source-link"
-                              href={model.source_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              aria-label={t.openSourceLink(model.name)}
-                            >
-                              {"↗"}
-                            </a>
-                          )}
-                        </span>
-                        {(base || tags.length > 0) && (
+                        )}
+                        {dataset && (
                           <div className="turkish-row-sub">
-                            {base && <span className="turkish-base">{base}</span>}
-                            {tags.map(tag => (
-                              <i key={tag}>{tag}</i>
-                            ))}
+                            <span className="turkish-dataset" title={model.datasets?.join(", ")}>
+                              {dataset}
+                            </span>
                           </div>
                         )}
                       </td>
                       <td>{model.organization}</td>
-                      <td className="turkish-muted">{model.license ?? "—"}</td>
+                      <td>
+                        <span className="turkish-technique">{model.technique ?? "—"}</span>
+                        {model.base_model && (
+                          <div className="turkish-row-sub">
+                            <span className="turkish-base" title={model.base_model}>
+                              {model.base_model}
+                            </span>
+                          </div>
+                        )}
+                      </td>
                       <td className="mono turkish-num">{compact(model.downloads, locale)}</td>
-                      <td className="turkish-muted">{formatDate(model.last_updated, locale)}</td>
+                      <td className="turkish-muted">
+                        {formatDate(model.published_at || model.last_updated, locale)}
+                      </td>
                     </tr>
                   );
                 })}

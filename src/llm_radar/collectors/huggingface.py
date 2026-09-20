@@ -1,9 +1,11 @@
 import logging
+import re
 from datetime import UTC, datetime
 from typing import Any
 
 from llm_radar.catalog import (
     PINNED_HF_MODELS,
+    TURKISH_HF_ORGS,
     TURKISH_HF_SEARCH_QUERIES,
     WATCHED_HF_ORGS,
     importance_for,
@@ -25,6 +27,26 @@ logger = logging.getLogger(__name__)
 HF_HUB_TASKS = ("text-generation", "image-text-to-text", "text-to-image")
 WEIGHT_SUFFIXES = (".safetensors", ".gguf", ".bin", ".pt", ".pth")
 
+# README prose often carries the only training-data hint for Turkish models
+# whose HF card YAML omits `datasets:` (e.g. Cosmos LLaMA "30GB Turkish dataset").
+_README_DATASET_PATTERNS = (
+    re.compile(
+        r"(?:with|using|on)\s+(?:a\s+|various\s+)?"
+        r"(\d[\d.,]*\s*(?:GB|MB|K|M|B)?\s+"
+        r"(?:Turkish|Türkçe)[^.!\n]{0,48}(?:dataset|corpus|instructions?))",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"dataset consisting of\s+(\d[\d.,]*\s*K?\s+instructions?)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"finetune(?:d)?\s+(?:version\s+of\s+[^\n]+?\s+)?"
+        r"with\s+(?:various\s+)?(Turkish datasets?)",
+        re.IGNORECASE,
+    ),
+)
+
 # Organization- and search-based fetches have no task filter at the API level
 # (unlike HF_HUB_TASKS, which asks the API for one specific pipeline_tag), so
 # without this a watched org's non-LLM repos (embeddings, audio, adapters,
@@ -34,6 +56,22 @@ WEIGHT_SUFFIXES = (".safetensors", ".gguf", ".bin", ".pt", ".pth")
 # cards) so we don't accidentally drop known model lines like Google's T5.
 LLM_PIPELINE_TAGS = frozenset(
     {*HF_HUB_TASKS, "text2text-generation", "conversational"}
+)
+
+# Turkish open-source catalogs (YTÜ Cosmos, dbmdz, …) intentionally include
+# embeddings and classic encoder models alongside chat LLMs. Keep those when
+# scraping Turkish orgs / Turkish search queries, but still reject audio/vision
+# noise that is unrelated to the Turkey LLM page.
+TURKISH_PIPELINE_TAGS = frozenset(
+    {
+        *LLM_PIPELINE_TAGS,
+        "feature-extraction",
+        "sentence-similarity",
+        "fill-mask",
+        "text-classification",
+        "token-classification",
+        "text-ranking",
+    }
 )
 
 
@@ -78,8 +116,96 @@ def _active_parameter_count(card_data: dict[str, Any]) -> int | str | None:
 def _base_model(card_data: dict[str, Any]) -> str | None:
     for key in ("base_model", "base", "base_model_name"):
         value = card_data.get(key)
+        if isinstance(value, list):
+            for entry in value:
+                if entry not in (None, ""):
+                    return str(entry)
+            continue
         if value not in (None, ""):
             return str(value)
+    return None
+
+
+def _datasets(card_data: dict[str, Any], tags: list[str]) -> list[str] | None:
+    values: list[str] = []
+    raw = card_data.get("datasets")
+    if raw is None:
+        raw = card_data.get("dataset")
+    if isinstance(raw, list):
+        values.extend(str(entry).strip() for entry in raw if entry not in (None, ""))
+    elif raw not in (None, ""):
+        values.append(str(raw).strip())
+    for tag in tags:
+        lowered = tag.lower()
+        if lowered.startswith("dataset:"):
+            name = tag.split(":", 1)[1].strip()
+            if name:
+                values.append(name)
+    unique = sorted({value for value in values if value})
+    return unique[:8] or None
+
+
+def _datasets_from_readme(text: str) -> list[str] | None:
+    values: list[str] = []
+    stripped = text.strip()
+    if stripped.startswith("---"):
+        end = stripped.find("\n---", 3)
+        if end != -1:
+            for line in stripped[3:end].splitlines():
+                if not line.lower().startswith("datasets:"):
+                    continue
+                remainder = line.split(":", 1)[1].strip()
+                if remainder.startswith("[") and remainder.endswith("]"):
+                    inner = remainder[1:-1]
+                    values.extend(
+                        part.strip().strip("'\"")
+                        for part in inner.split(",")
+                        if part.strip()
+                    )
+                elif remainder:
+                    values.append(remainder.strip().strip("'\""))
+    body = stripped[stripped.find("\n---", 3) + 4 :] if stripped.startswith("---") else stripped
+    for pattern in _README_DATASET_PATTERNS:
+        match = pattern.search(body)
+        if match:
+            values.append(re.sub(r"\s+", " ", match.group(1)).strip())
+    unique: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        key = value.lower()
+        if not value or key in seen:
+            continue
+        seen.add(key)
+        unique.append(value)
+    return unique[:8] or None
+
+
+def _technique(item: dict[str, Any], card_data: dict[str, Any], tags: list[str]) -> str | None:
+    pipeline = str(item.get("pipeline_tag") or "").strip().lower()
+    haystack = " ".join(tags).lower()
+    base = _base_model(card_data)
+    if pipeline in {"feature-extraction", "sentence-similarity"}:
+        return "Embedding"
+    if pipeline in {"fill-mask"}:
+        return "Pretrained"
+    if pipeline in {"text-classification", "token-classification"}:
+        return "Encoder"
+    if pipeline in {"text-ranking"}:
+        return "Reranker"
+    if "base_model:quantized" in haystack or "gguf" in haystack:
+        return "Quantized"
+    if "base_model:adapter" in haystack or "adapter" in haystack:
+        return "Adapter"
+    if (
+        "base_model:finetune" in haystack
+        or "fine-tune" in haystack
+        or "finetune" in haystack
+        or "instruct" in haystack
+        or bool(base)
+    ):
+        return "Fine-tuned"
+    if pipeline in LLM_PIPELINE_TAGS:
+        return "Base"
     return None
 
 
@@ -114,6 +240,27 @@ def _task_tags(item: dict[str, Any], card_data: dict[str, Any]) -> list[str]:
 class HuggingFaceCollector(BaseCollector):
     name = "huggingface"
 
+    async def _fill_datasets_from_readme(
+        self, model_id: str, payload: dict[str, Any]
+    ) -> None:
+        if payload.get("datasets"):
+            return
+        try:
+            response = await self.client.get(
+                f"https://huggingface.co/{model_id}/raw/main/README.md",
+                headers=_headers(),
+            )
+        except Exception:
+            logger.debug(
+                "huggingface: README fetch failed for %s", model_id, exc_info=True
+            )
+            return
+        if response.status_code >= 400:
+            return
+        found = _datasets_from_readme(response.text)
+        if found:
+            payload["datasets"] = found
+
     @staticmethod
     def _to_event(
         item: dict[str, Any], collected_at: datetime
@@ -123,17 +270,25 @@ class HuggingFaceCollector(BaseCollector):
             return None
         weight_files = _weight_files(item)
         card_data = as_dict(item.get("cardData"))
+        tasks = _task_tags(item, card_data)
+        tag_list = tasks[:]
+        raw_tags = item.get("tags")
+        if isinstance(raw_tags, list):
+            tag_list.extend(str(entry) for entry in raw_tags if entry)
+        organization = model_id.split("/", 1)[0]
         payload = {
             "external_id": model_id,
             "name": model_id.split("/")[-1],
-            "organization": model_id.split("/", 1)[0],
+            "organization": organization,
             "pipeline_tag": item.get("pipeline_tag"),
-            "tasks": _task_tags(item, card_data),
+            "tasks": tasks,
             "likes": item.get("likes"),
             "downloads": item.get("downloads"),
             "parameter_count": _parameter_count(item),
             "active_parameter_count": _active_parameter_count(card_data),
             "base_model": _base_model(card_data),
+            "datasets": _datasets(card_data, tag_list),
+            "technique": _technique(item, card_data, tag_list),
             "gated": _gated_status(item, card_data),
             "license": normalize_license(card_data.get("license")),
             "model_card": card_data.get("model_summary") or card_data.get("summary"),
@@ -146,6 +301,7 @@ class HuggingFaceCollector(BaseCollector):
             if weight_files
             else None,
             "last_modified": item.get("lastModified"),
+            "published_at": item.get("createdAt"),
             "url": f"https://huggingface.co/{model_id}",
         }
         event = EventEnvelope(
@@ -171,13 +327,19 @@ class HuggingFaceCollector(BaseCollector):
         raw: list[dict[str, Any]] = []
         seen: set[str] = set()
 
-        async def ingest(item: dict[str, Any], *, require_llm_pipeline: bool = False) -> None:
-            if require_llm_pipeline:
+        async def ingest(
+            item: dict[str, Any],
+            *,
+            allowed_pipelines: frozenset[str] | None = None,
+        ) -> None:
+            if allowed_pipelines is not None:
                 pipeline = item.get("pipeline_tag")
-                if (
-                    not isinstance(pipeline, str)
-                    or pipeline.strip().lower() not in LLM_PIPELINE_TAGS
-                ):
+                # Untagged repos (common for GGUF mirrors) are kept for Turkish
+                # org scrapes so instruct/GGUF variants are not silently dropped.
+                if isinstance(pipeline, str) and pipeline.strip():
+                    if pipeline.strip().lower() not in allowed_pipelines:
+                        return
+                elif allowed_pipelines is LLM_PIPELINE_TAGS:
                     return
             try:
                 converted = self._to_event(item, collected_at)
@@ -196,6 +358,13 @@ class HuggingFaceCollector(BaseCollector):
             event, payload = converted
             if event.entity_key in seen:
                 return
+            organization = str(payload.get("organization") or "")
+            if not payload.get("datasets") and organization in TURKISH_HF_ORGS:
+                await self._fill_datasets_from_readme(
+                    str(payload.get("external_id") or ""), payload
+                )
+                # EventEnvelope validates a copy of payload; keep both in sync.
+                event.payload["datasets"] = payload.get("datasets")
             seen.add(event.entity_key)
             raw.append(payload)
             events.append(event)
@@ -214,8 +383,11 @@ class HuggingFaceCollector(BaseCollector):
                 headers=_headers(),
             )
             response.raise_for_status()
+            allowed = (
+                TURKISH_PIPELINE_TAGS if org in TURKISH_HF_ORGS else LLM_PIPELINE_TAGS
+            )
             for item in response.json():
-                await ingest(item, require_llm_pipeline=True)
+                await ingest(item, allowed_pipelines=allowed)
 
         for task in HF_HUB_TASKS:
             response = await self.client.get(
@@ -249,7 +421,7 @@ class HuggingFaceCollector(BaseCollector):
             )
             response.raise_for_status()
             for item in response.json():
-                await ingest(item, require_llm_pipeline=True)
+                await ingest(item, allowed_pipelines=TURKISH_PIPELINE_TAGS)
 
         for model_id in PINNED_HF_MODELS:
             entity_key = model_id.lower()
