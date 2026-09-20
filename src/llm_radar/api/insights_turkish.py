@@ -294,7 +294,11 @@ def list_turkish_models(
                     else None
                 ),
                 "last_updated": (
-                    (snapshot.data.get("last_modified") if snapshot and isinstance(snapshot.data, dict) else None)
+                    (
+                        snapshot.data.get("last_modified")
+                        if snapshot and isinstance(snapshot.data, dict)
+                        else None
+                    )
                     or (profile.observed_at if profile else model.updated_at)
                 ),
             }
