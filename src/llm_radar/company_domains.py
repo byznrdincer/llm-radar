@@ -117,6 +117,8 @@ COMPANY_DOMAINS: dict[str, str] = {
     "thothai": "thoth.ai",
     "thudm": "thudm.cn",
     "turkcell": "turkcell.com.tr",
+    "ytu-ce-cosmos": "cosmos.yildiz.edu.tr",
+    "dbmdz": "digitale-sammlungen.de",
     "unsloth": "unsloth.ai",
     "upstage": "upstage.ai",
     "venice": "venice.ai",

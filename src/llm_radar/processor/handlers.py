@@ -313,16 +313,20 @@ def _handle_model(session: Session, event: EventEnvelope, source: Source) -> lis
     )
     company_slug = _company_slug(event.entity_key)
     company = session.scalar(select(Company).where(Company.slug == company_slug))
+    preferred_name = company_display_name(company_slug)
     if company is None:
         company = Company(
-            name=company_display_name(company_slug),
+            name=preferred_name,
             slug=company_slug,
             website_url=company_website_url(company_slug),
         )
         session.add(company)
         session.flush()
-    elif not company.website_url:
-        company.website_url = company_website_url(company_slug)
+    else:
+        if preferred_name != company_slug.replace("-", " ").title():
+            company.name = preferred_name
+        if not company.website_url:
+            company.website_url = company_website_url(company_slug)
 
     model = session.scalar(select(Model).where(Model.slug == event.entity_key)) or session.scalar(
         select(Model).where(Model.slug == resolution.canonical_key)

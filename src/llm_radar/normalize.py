@@ -40,15 +40,22 @@ _COMPANY_ALIASES = {
 
 _COMPANY_DISPLAY_NAMES = {
     "ai21": "AI21",
+    "dbmdz": "MDZ Digital Library",
     "deepseek": "DeepSeek",
+    "kartalbt": "KartalBT",
     "meta": "Meta",
     "minimax": "MiniMax",
     "mistral": "Mistral AI",
     "moonshot": "Moonshot AI",
     "nvidia": "NVIDIA",
+    "odmdata": "ODMDATA",
     "openai": "OpenAI",
     "qwen": "Qwen",
+    "tubitak": "TÜBİTAK",
+    "turkcell": "Turkcell",
+    "vngrs-ai": "VNGRS",
     "xai": "xAI",
+    "ytu-ce-cosmos": "YTÜ Cosmos",
     "zai": "Z.ai",
 }
 
