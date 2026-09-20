@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage, type Language } from "../lib/i18n";
+import { toResearchOpenUrl } from "../lib/researchUrl";
 
 export type ResearchItem = {
   id: string;
@@ -114,16 +115,6 @@ function importanceLabel(level: "high" | "medium" | "low", language: Language): 
   return language === "tr" ? "Düşük" : "Low";
 }
 
-function canOpenUrl(url: string | null | undefined): boolean {
-  if (!url) return false;
-  try {
-    const value = url.toLowerCase();
-    return value.startsWith("http://") || value.startsWith("https://");
-  } catch {
-    return false;
-  }
-}
-
 function authorLine(authors: string[], language: Language): string {
   const list = (authors || []).filter(Boolean);
   if (!list.length) return language === "tr" ? "Yazar belirtilmedi" : "No authors listed";
@@ -171,16 +162,28 @@ function StatIcon({ kind }: { kind: "today" | "source" | "verified" }) {
 function PaperCard({ item }: { item: ResearchItem }) {
   const { language, locale } = useLanguage();
   const level = importanceLevel(item);
+  const href = toResearchOpenUrl(item.url);
 
   return (
     <article className="rs-card">
       <p className="rs-card-kicker">{language === "tr" ? "Araştırma" : "Research"}</p>
-      <h3>{item.title}</h3>
+      <h3>
+        {href ? (
+          <a href={href} target="_blank" rel="noreferrer">{item.title}</a>
+        ) : (
+          item.title
+        )}
+      </h3>
       <p className="rs-authors">{authorLine(item.authors, language)}</p>
       <footer>
         <span className="rs-card-source">{paperSource(item, language)}</span>
         <time dateTime={item.published_at ?? undefined}>{formatDate(item.published_at, locale)}</time>
         <ImportancePill level={level} />
+        {href ? (
+          <a className="rs-card-open" href={href} target="_blank" rel="noreferrer">
+            {language === "tr" ? "Aç ↗" : "Open ↗"}
+          </a>
+        ) : null}
       </footer>
     </article>
   );
@@ -189,13 +192,19 @@ function PaperCard({ item }: { item: ResearchItem }) {
 function FeaturedPaper({ item }: { item: ResearchItem }) {
   const { language, locale } = useLanguage();
   const level = importanceLevel(item);
-  const href = canOpenUrl(item.url) ? item.url : null;
+  const href = toResearchOpenUrl(item.url);
 
   return (
     <article className="rs-featured">
       <div className="rs-featured-body">
         <p className="rs-featured-kicker">{language === "tr" ? "Öne çıkan araştırma" : "Featured research"}</p>
-        <h3>{item.title}</h3>
+        <h3>
+          {href ? (
+            <a href={href} target="_blank" rel="noreferrer">{item.title}</a>
+          ) : (
+            item.title
+          )}
+        </h3>
         {item.abstract && <p className="rs-featured-abstract">{truncate(item.abstract, 260)}</p>}
         <p className="rs-authors">
           <span className="rs-author-icon" aria-hidden="true">

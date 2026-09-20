@@ -86,6 +86,16 @@ export const SIDEBAR_GROUPS: Record<Language, { label: string; items: { id: stri
         { label: "Contact", items: [{ id: "feedback", label: "Feedback", icon: "✉" }] },
     ],
 };
+/** Bottom tab bar on mobile: these sections get a tab, everything else lives in the "More" sheet. */
+export const MOBILE_PRIMARY_SECTIONS = ["overview", "leaderboard", "models", "events"];
+export const MOBILE_TAB_LABELS: Record<Language, Record<string, string>> = {
+    tr: { overview: "Genel", leaderboard: "Benchmark", models: "Katalog", events: "Gelişmeler", more: "Daha fazla" },
+    en: { overview: "Overview", leaderboard: "Benchmarks", models: "Catalog", events: "Events", more: "More" },
+};
+export const MOBILE_NAV_COPY: Record<Language, { tabs: string; moreTitle: string; moreLead: string; close: string; home: string }> = {
+    tr: { tabs: "Ana bölümler", moreTitle: "Tüm bölümler", moreLead: "Analiz ve istihbarat görünümleri", close: "Kapat", home: "Genel bakışa dön" },
+    en: { tabs: "Primary sections", moreTitle: "All sections", moreLead: "Analysis and intelligence views", close: "Close", home: "Back to overview" },
+};
 export const SECTION_META: Record<Language, Record<string, { group: string; title: string }>> = {
     tr: {
         overview: { group: "Keşfet", title: "Genel bakış" },

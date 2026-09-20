@@ -13,6 +13,7 @@ import SourcesPage from "./components/SourcesPage";
 import ModelDetailDrawer from "./components/ModelDetailDrawer";
 import OverviewIntelligence from "./components/OverviewIntelligence";
 import LanguageToggle from "./components/LanguageToggle";
+import MobileNav from "./components/MobileNav";
 import { useLanguage } from "./lib/i18n";
 import type { TurkishModel } from "./components/TurkishLLMPage";
 import { useLeaderboardData } from "./lib/useLeaderboardData";
@@ -55,7 +56,7 @@ export default function Home() {
     const [eventCategory, setEventCategory] = useState("any");
     const [eventDays, setEventDays] = useState("1");
 
-    const { activeSection, sidebarOpen, setSidebarOpen, navigateToSection } = useSectionNav("overview");
+    const { activeSection, navigateToSection } = useSectionNav("overview");
     const leaderboard = useLeaderboardData();
     const serverFiltering = activeSection === "models";
     const catalog = useModelCatalog({ enabled: serverFiltering, models, setError });
@@ -115,10 +116,9 @@ export default function Home() {
     }
 
     return <div className={`app-shell${activeSection === "leaderboard" ? " leaderboard-shell" : ""}`}>
+    <MobileNav activeSection={activeSection} onNavigate={navigateToSection} />
     {(activeSection === "research" || activeSection === "radar" || activeSection === "sources") && <LanguageToggle />}
-    <aside className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label={language === "tr" ? "Ana navigasyon" : "Main navigation"}><button type="button" className="sidebar-brand" onClick={() => navigateToSection("overview")}><span className="brand-mark brand-radar" aria-hidden="true"><i /><b /><em /><em /><em /></span><span><strong>LLM RADAR</strong><small>MODEL INTELLIGENCE</small></span></button><nav className="sidebar-nav">{sidebarGroups.map(group => <div className="sidebar-group" key={group.label}><p>{group.label}</p>{group.items.map(item => <button type="button" key={item.id} className={activeSection === item.id ? "active" : ""} aria-current={activeSection === item.id ? "page" : undefined} onClick={() => navigateToSection(item.id)}><i aria-hidden="true">{item.icon}</i><span>{item.label}</span></button>)}</div>)}</nav><div className="sidebar-status"><span /><div><strong>{language === "tr" ? "Veri akışı aktif" : "Data feed active"}</strong><small>{stats.models || "—"} {language === "tr" ? "model izleniyor" : "models tracked"}</small></div></div></aside>
-    {sidebarOpen && <button className="sidebar-scrim" type="button" aria-label={language === "tr" ? "Menüyü kapat" : "Close menu"} onClick={() => setSidebarOpen(false)}/>}
-    {!sidebarOpen && <button className="sidebar-toast" type="button" aria-label={language === "tr" ? "Menüyü aç" : "Open menu"} onClick={() => setSidebarOpen(true)}><span className="sidebar-toast-mark brand-radar" aria-hidden="true"><i /><b /><em /><em /><em /></span><span className="sidebar-toast-label">{language === "tr" ? "Menü" : "Menu"}</span></button>}
+    <aside className="sidebar" aria-label={language === "tr" ? "Ana navigasyon" : "Main navigation"}><button type="button" className="sidebar-brand" onClick={() => navigateToSection("overview")}><span className="brand-mark brand-radar" aria-hidden="true"><i /><b /><em /><em /><em /></span><span><strong>LLM RADAR</strong><small>MODEL INTELLIGENCE</small></span></button><nav className="sidebar-nav">{sidebarGroups.map(group => <div className="sidebar-group" key={group.label}><p>{group.label}</p>{group.items.map(item => <button type="button" key={item.id} className={activeSection === item.id ? "active" : ""} aria-current={activeSection === item.id ? "page" : undefined} onClick={() => navigateToSection(item.id)}><i aria-hidden="true">{item.icon}</i><span>{item.label}</span></button>)}</div>)}</nav><div className="sidebar-status"><span /><div><strong>{language === "tr" ? "Veri akışı aktif" : "Data feed active"}</strong><small>{stats.models || "—"} {language === "tr" ? "model izleniyor" : "models tracked"}</small></div></div></aside>
     <main className={`main-content${activeSection === "leaderboard" ? " leaderboard-layout" : activeSection === "models" ? " catalog-layout" : activeSection === "turkish" ? " turkish-layout" : activeSection === "research" ? " rs-layout" : activeSection === "radar" ? " tr-layout" : activeSection === "sources" ? " sources-layout" : ""}`} id="top">
     {activeSection !== "research" && activeSection !== "radar" && activeSection !== "sources" && (
     <header className="topbar"><div className="topbar-context"><span>{sectionMeta[activeSection]?.group ?? "LLM Radar"}</span><strong>{sectionMeta[activeSection]?.title ?? (language === "tr" ? "Model ve benchmark görünümü" : "Model & benchmark view")}</strong></div><div className="topbar-right"><LanguageToggle inline /><div className="live-pill"><span /> {language === "tr" ? "CANLI" : "LIVE"}</div></div></header>
