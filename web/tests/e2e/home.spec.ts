@@ -60,7 +60,9 @@ test.describe("Home dashboard", () => {
     await expect(page.getByText("nabzını tut.")).toBeVisible();
 
     await clickSidebarItem(page, "Model kataloğu");
-    await expect(page.getByText("Model kataloğu").first()).toBeVisible();
+    // Prefer the desktop topbar title: MobileNav also renders the same label
+    // inside a display:none chrome that getByText().first() would hit first.
+    await expect(page.locator(".topbar-context strong")).toHaveText("Model kataloğu");
     await expect(page.locator(".catalog-model").first()).toBeVisible();
 
     await clickSidebarItem(page, "Genel bakış");
