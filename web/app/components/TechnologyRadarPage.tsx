@@ -16,6 +16,7 @@ import {
   type TechnologySlug,
 } from "../lib/technologyContent";
 import { toPublicSourceUrl } from "../lib/publicSourceUrl";
+import { toResearchOpenUrl } from "../lib/researchUrl";
 import { useLanguage, type Language } from "../lib/i18n";
 
 const STRINGS: Record<Language, {
@@ -37,6 +38,8 @@ const STRINGS: Record<Language, {
   back: string;
   openDetail: (title: string) => string;
   whatIsTitle: (title: string) => string;
+  howItWorksTitle: string;
+  examplesTitle: string;
   whyTrackTitle: string;
   recentDevelopments: string;
   allDevelopments: string;
@@ -67,6 +70,8 @@ const STRINGS: Record<Language, {
     back: "← Teknoloji Radarı",
     openDetail: title => `${title} detayını aç`,
     whatIsTitle: title => `${title} nedir?`,
+    howItWorksTitle: "Nasıl çalışır?",
+    examplesTitle: "Örnekler",
     whyTrackTitle: "Neden takip ediyoruz?",
     recentDevelopments: "Son gelişmeler",
     allDevelopments: "Tüm gelişmeler →",
@@ -97,6 +102,8 @@ const STRINGS: Record<Language, {
     back: "← Technology Radar",
     openDetail: title => `Open ${title} details`,
     whatIsTitle: title => `What is ${title}?`,
+    howItWorksTitle: "How it works",
+    examplesTitle: "Examples",
     whyTrackTitle: "Why we track it",
     recentDevelopments: "Recent developments",
     allDevelopments: "All developments →",
@@ -488,14 +495,26 @@ function TechnologyDetail({
       </header>
 
       <div className="tr-detail-grid">
-        <article className="tr-detail-block">
+        <article className="tr-detail-block tr-detail-wide">
           <h3>{t.whatIsTitle(copy.title)}</h3>
-          <p>{copy.whatIs}</p>
+          {copy.whatIs.map((paragraph, index) => (
+            <p key={index} className={index > 0 ? "tr-detail-para" : undefined}>{paragraph}</p>
+          ))}
+        </article>
+
+        <article className="tr-detail-block">
+          <h3>{t.howItWorksTitle}</h3>
+          <p>{copy.howItWorks}</p>
         </article>
 
         <article className="tr-detail-block">
           <h3>{t.whyTrackTitle}</h3>
           <p>{copy.whyTrack}</p>
+        </article>
+
+        <article className="tr-detail-block tr-detail-wide">
+          <h3>{t.examplesTitle}</h3>
+          <p>{copy.examples}</p>
         </article>
 
         <article className="tr-detail-block tr-detail-wide">
@@ -544,12 +563,15 @@ function TechnologyDetail({
             <p className="tr-muted">{t.loading}</p>
           ) : papers.length ? (
             <ul className="tr-paper-list">
-              {papers.map(paper => (
-                <li key={paper.id}>
-                  <a href={paper.url} target="_blank" rel="noreferrer">{paper.title}</a>
-                  <time>{formatDate(paper.published_at, locale)}</time>
-                </li>
-              ))}
+              {papers.map(paper => {
+                const href = toResearchOpenUrl(paper.url) ?? paper.url;
+                return (
+                  <li key={paper.id}>
+                    <a href={href} target="_blank" rel="noreferrer">{paper.title}</a>
+                    <time>{formatDate(paper.published_at, locale)}</time>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="tr-muted">{t.noMatchingPapers}</p>
