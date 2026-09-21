@@ -99,7 +99,8 @@ def backfill_hf_first_commits(
                 skipped += 1
                 continue
 
-            created = data.get("published_at") if isinstance(data.get("published_at"), str) else None
+            published = data.get("published_at")
+            created = published if isinstance(published, str) else None
             if only_migration and not (
                 created and created.startswith(_HF_CREATED_AT_MIGRATION_PREFIX)
             ):
