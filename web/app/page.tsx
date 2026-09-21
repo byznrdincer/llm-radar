@@ -88,7 +88,7 @@ export default function Home() {
             })
             .catch(() => { /* optional */ });
 
-        fetch(`${API}/api/v1/models/turkish?limit=200`)
+        fetch(`${API}/api/v1/models/turkish?limit=500`)
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (data?.items) setTurkishBootstrap(data.items as TurkishModel[]);

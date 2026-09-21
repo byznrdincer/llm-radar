@@ -56,6 +56,10 @@ _COMPANY_DISPLAY_NAMES = {
     "vngrs-ai": "VNGRS",
     "xai": "xAI",
     "ytu-ce-cosmos": "YTÜ Cosmos",
+    "savasy": "Savas Yildirim",
+    "loodos": "Loodos",
+    "akdeniz27": "Akdeniz27",
+    "emrecan": "Emrecan",
     "zai": "Z.ai",
 }
 

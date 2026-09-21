@@ -71,8 +71,42 @@ TURKISH_PIPELINE_TAGS = frozenset(
         "text-classification",
         "token-classification",
         "text-ranking",
+        "question-answering",
+        "summarization",
+        "zero-shot-classification",
     }
 )
+
+_HF_CREATED_AT_MIGRATION_PREFIX = "2022-03-02"
+_TURKISH_NAME_TOKENS = ("turkish", "turkce", "berturk", "turkcell", "kumru")
+
+
+def _earliest_iso(*values: Any) -> str | None:
+    stamps = [value.strip() for value in values if isinstance(value, str) and value.strip()]
+    return min(stamps) if stamps else None
+
+
+def _turkish_name_hint(*parts: Any) -> bool:
+    haystack = " ".join(str(part).lower() for part in parts if part)
+    return any(token in haystack for token in _TURKISH_NAME_TOKENS)
+
+
+def _needs_first_commit(
+    organization: str,
+    created_at: str | None,
+    *,
+    model_name: str | None = None,
+) -> bool:
+    """Resolve first-commit for Turkish catalogs, or migration-dated Turkish names.
+
+    Do not apply the 2022-03-02 hub migration heuristic to every HF repo — that
+    would re-date unrelated classics (GPT-2, CTRL, …) on every collect.
+    """
+    if organization in TURKISH_HF_ORGS:
+        return True
+    if not (created_at and created_at.startswith(_HF_CREATED_AT_MIGRATION_PREFIX)):
+        return False
+    return _turkish_name_hint(model_name)
 
 
 def _weight_files(item: dict[str, Any]) -> list[str]:
@@ -188,7 +222,13 @@ def _technique(item: dict[str, Any], card_data: dict[str, Any], tags: list[str])
         return "Embedding"
     if pipeline in {"fill-mask"}:
         return "Pretrained"
-    if pipeline in {"text-classification", "token-classification"}:
+    if pipeline in {
+        "text-classification",
+        "token-classification",
+        "question-answering",
+        "summarization",
+        "zero-shot-classification",
+    }:
         return "Encoder"
     if pipeline in {"text-ranking"}:
         return "Reranker"
@@ -260,6 +300,49 @@ class HuggingFaceCollector(BaseCollector):
         found = _datasets_from_readme(response.text)
         if found:
             payload["datasets"] = found
+
+    async def _first_commit_at(self, model_id: str) -> str | None:
+        if not model_id:
+            return None
+        try:
+            response = await self.client.get(
+                f"https://huggingface.co/api/models/{model_id}/commits/main",
+                headers=_headers(),
+            )
+        except Exception:
+            logger.debug(
+                "huggingface: commits fetch failed for %s", model_id, exc_info=True
+            )
+            return None
+        if response.status_code >= 400:
+            return None
+        try:
+            payload = response.json()
+        except Exception:
+            return None
+        if not isinstance(payload, list):
+            return None
+        dates = [
+            str(entry.get("date"))
+            for entry in payload
+            if isinstance(entry, dict) and entry.get("date")
+        ]
+        return min(dates) if dates else None
+
+    async def _enrich_published_at(self, model_id: str, payload: dict[str, Any]) -> None:
+        organization = str(payload.get("organization") or "")
+        created_at = payload.get("published_at")
+        created = created_at if isinstance(created_at, str) else None
+        model_name = str(payload.get("name") or model_id.split("/")[-1] or "")
+        if not _needs_first_commit(organization, created, model_name=model_name):
+            return
+        first_commit = await self._first_commit_at(model_id)
+        if not first_commit:
+            return
+        payload["first_commit_at"] = first_commit
+        if created:
+            payload["hub_created_at"] = created
+        payload["published_at"] = _earliest_iso(created, first_commit)
 
     @staticmethod
     def _to_event(
@@ -359,12 +442,15 @@ class HuggingFaceCollector(BaseCollector):
             if event.entity_key in seen:
                 return
             organization = str(payload.get("organization") or "")
+            model_id = str(payload.get("external_id") or "")
             if not payload.get("datasets") and organization in TURKISH_HF_ORGS:
-                await self._fill_datasets_from_readme(
-                    str(payload.get("external_id") or ""), payload
-                )
+                await self._fill_datasets_from_readme(model_id, payload)
                 # EventEnvelope validates a copy of payload; keep both in sync.
                 event.payload["datasets"] = payload.get("datasets")
+            await self._enrich_published_at(model_id, payload)
+            for key in ("published_at", "first_commit_at", "hub_created_at"):
+                if key in payload:
+                    event.payload[key] = payload.get(key)
             seen.add(event.entity_key)
             raw.append(payload)
             events.append(event)

@@ -180,6 +180,11 @@ async def test_huggingface_turkish_org_keeps_embeddings_and_technique(
 
     async def handler(request: httpx.Request) -> httpx.Response:
         path = request.url.path
+        if "/commits/" in path:
+            created = "2024-05-23T13:54:27.000Z"
+            if "turkish-e5-large" in path:
+                created = "2025-04-11T07:50:37.000Z"
+            return httpx.Response(200, json=[{"date": created}])
         if path.endswith("/README.md"):
             if "turkish-e5-large" in path:
                 return httpx.Response(
@@ -217,6 +222,53 @@ async def test_huggingface_turkish_org_keeps_embeddings_and_technique(
     assert embed.payload["technique"] == "Embedding"
     assert embed.payload["base_model"] == "intfloat/multilingual-e5-large-instruct"
     assert embed.payload["datasets"] == ["Turkish datasets"]
+
+
+@pytest.mark.asyncio
+async def test_huggingface_uses_first_commit_when_hub_created_at_was_migrated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Classic BERTurk cards share a fake 2022-03-02 createdAt from the HF
+    hub migration; the first git commit is the real publish date."""
+    monkeypatch.setattr("llm_radar.collectors.huggingface.WATCHED_HF_ORGS", ("dbmdz",))
+    monkeypatch.setattr(
+        "llm_radar.collectors.huggingface.TURKISH_HF_ORGS",
+        frozenset({"dbmdz"}),
+    )
+    monkeypatch.setattr("llm_radar.collectors.huggingface.HF_HUB_TASKS", ())
+    monkeypatch.setattr("llm_radar.collectors.huggingface.TURKISH_HF_SEARCH_QUERIES", ())
+    monkeypatch.setattr("llm_radar.collectors.huggingface.PINNED_HF_MODELS", ())
+    payload = [
+        {
+            "id": "dbmdz/bert-base-turkish-cased",
+            "cardData": {"license": "mit"},
+            "pipeline_tag": "fill-mask",
+            "createdAt": "2022-03-02T23:29:05.000Z",
+            "siblings": [{"rfilename": "pytorch_model.bin"}],
+        },
+    ]
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if "/commits/" in request.url.path:
+            return httpx.Response(
+                200,
+                json=[
+                    {"date": "2025-06-12T13:11:08.000Z"},
+                    {"date": "2020-02-16T22:21:58.000Z"},
+                ],
+            )
+        if request.url.path.endswith("/README.md"):
+            return httpx.Response(404)
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await HuggingFaceCollector(client).collect()
+
+    assert len(result.events) == 1
+    event = result.events[0]
+    assert event.payload["hub_created_at"] == "2022-03-02T23:29:05.000Z"
+    assert event.payload["first_commit_at"] == "2020-02-16T22:21:58.000Z"
+    assert event.payload["published_at"] == "2020-02-16T22:21:58.000Z"
 
 
 @pytest.mark.asyncio
