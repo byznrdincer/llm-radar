@@ -267,6 +267,11 @@ WATCHED_HF_ORGS = (
     "dbmdz",
     "ODMDATA",
     "KartalBT",
+    # Classic Turkish BERT / NER / sentiment publishers (2020–2021).
+    "savasy",
+    "loodos",
+    "akdeniz27",
+    "emrecan",
 )
 
 # Orgs whose catalogs include Turkish embeddings / BERT-style models that
@@ -280,6 +285,10 @@ TURKISH_HF_ORGS = frozenset(
         "dbmdz",
         "ODMDATA",
         "KartalBT",
+        "savasy",
+        "loodos",
+        "akdeniz27",
+        "emrecan",
     }
 )
 
@@ -290,6 +299,7 @@ TURKISH_HF_SEARCH_QUERIES = (
     "turkish language",
     "turkish embedding",
     "berturk",
+    "bert-base-turkish",
 )
 
 # High-value repositories whose weight evidence must remain attached even when
@@ -306,6 +316,27 @@ PINNED_HF_MODELS = (
     "ytu-ce-cosmos/Turkish-Gemma-9b-v0.1",
     "dbmdz/bert-base-turkish-cased",
     "dbmdz/electra-base-turkish-cased-discriminator",
+    # Early Turkish NLP cards missing from org scrape / search sampling.
+    "savasy/bert-base-turkish-ner-cased",
+    "savasy/bert-base-turkish-sentiment-cased",
+    "savasy/bert-turkish-uncased-qnli",
+    "savasy/bert-base-turkish-squad",
+    "savasy/bert-turkish-text-classification",
+    "loodos/bert-base-turkish-uncased",
+    "loodos/bert-base-turkish-cased",
+    "akdeniz27/bert-turkish-text-classification",
+    "akdeniz27/bert-base-turkish-cased-ner",
+    "emrecan/bert-base-turkish-cased-allnli_tr",
+    "emrecan/bert-base-turkish-cased-multinli_tr",
+    "emrecan/bert-base-turkish-cased-snli_tr",
+    "lserinol/bert-turkish-question-answering",
+    "beyhan/bert-base-turkish-ner-cased-pretrained",
+    "ibahadiraltun/berturk-social",
+    "gurkan08/bert-turkish-text-classification",
+    "yigitbekir/turkish-bert-uncased-sentiment",
+    "mrm8488/bert2bert_shared-turkish-summarization",
+    "ahmetbagci/bert2bert-turkish-paraphrase-generation",
+    "mys/bert-base-turkish-cased-nli-mean-faq-mnr",
 )
 
 SOURCE_CATALOG: tuple[SourceSpec, ...] = (

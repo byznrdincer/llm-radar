@@ -80,7 +80,7 @@ def _is_turkish_model(
 @router.get("/models/turkish", tags=["models"])
 def turkish_models(
     session: DatabaseSession,
-    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 500,
 ) -> dict[str, Any]:
     return list_turkish_models(session, limit)
 
@@ -159,7 +159,13 @@ def _infer_technique(snapshot: ModelSnapshot | None) -> str | None:
         return "Embedding"
     if pipeline == "fill-mask":
         return "Pretrained"
-    if pipeline in {"text-classification", "token-classification"}:
+    if pipeline in {
+        "text-classification",
+        "token-classification",
+        "question-answering",
+        "summarization",
+        "zero-shot-classification",
+    }:
         return "Encoder"
     if pipeline == "text-ranking":
         return "Reranker"
@@ -242,7 +248,7 @@ def _turkish_model_ids(session: Session) -> set[str]:
 
 def list_turkish_models(
     session: DatabaseSession,
-    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 500,
 ) -> dict[str, Any]:
     benchmark_index = selection_matches(session, "general")
     candidates: list[tuple[Model, Company, ModelProfile | None, ModelSnapshot | None, int]] = []
@@ -294,7 +300,11 @@ def list_turkish_models(
                     else None
                 ),
                 "last_updated": (
-                    (snapshot.data.get("last_modified") if snapshot and isinstance(snapshot.data, dict) else None)
+                    (
+                        snapshot.data.get("last_modified")
+                        if snapshot and isinstance(snapshot.data, dict)
+                        else None
+                    )
                     or (profile.observed_at if profile else model.updated_at)
                 ),
             }
