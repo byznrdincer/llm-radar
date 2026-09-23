@@ -1,0 +1,34 @@
+# Sunucuya: git reset sonrası `bash scripts/prod-after-git-reset.sh`
+# (override + minio 9100 + /data prod web bloğu).
+#
+# NOT: Compose `ports` merge eder, REPLACE etmez. Minio host portları
+# docker-compose.yml içinde 9100/9101 olmalı; buradaki ports yedek.
+
+services:
+  minio:
+    ports:
+      - "127.0.0.1:9100:9000"
+      - "127.0.0.1:9101:9001"
+
+  api:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.llm-radar-api.rule=Host(`llmradar.planetai9.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.llm-radar-api.entrypoints=websecure"
+      - "traefik.http.routers.llm-radar-api.tls=true"
+      - "traefik.http.routers.llm-radar-api.tls.certresolver=le"
+      - "traefik.http.routers.llm-radar-api.priority=100"
+      - "traefik.http.services.llm-radar-api.loadbalancer.server.port=8080"
+    networks:
+      - default
+      - web
+
+  web:
+    networks:
+      - default
+      - web
+
+networks:
+  web:
+    external: true
