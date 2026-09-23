@@ -13,9 +13,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://llmradar.planetai9.com";
+const siteUrl = "https://llmradar.planetai9.com";
 const siteDescription =
   "Büyük dil modellerini keşfedin, karşılaştırın ve güncel yapay zekâ modellerini tek bir platformdan takip edin.";
+// LinkedIn mobile often hides og:description; title always shows.
+const shareTitle = `LLM Radar — ${siteDescription}`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -30,16 +32,17 @@ export const metadata: Metadata = {
     shortcut: "/favicon.svg",
   },
   openGraph: {
-    title: "LLM Radar",
+    title: shareTitle,
     description: siteDescription,
     url: siteUrl,
     siteName: "LLM Radar",
     images: [
       {
-        url: "/og.png",
+        // Absolute HTTPS + cache-bust — LinkedIn/Cloudflare may keep old assets.
+        url: `${siteUrl}/og.png?v=3`,
         width: 1200,
         height: 630,
-        alt: "LLM Radar — kaynaklı LLM sıralamaları",
+        alt: shareTitle,
       },
     ],
     locale: "tr_TR",
@@ -47,9 +50,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "LLM Radar",
+    title: shareTitle,
     description: siteDescription,
-    images: ["/og.png"],
+    images: [`${siteUrl}/og.png?v=3`],
   },
 };
 
