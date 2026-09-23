@@ -70,6 +70,7 @@ function cachedLeaderboard(
         sweLiveCategory: string;
         tauCategory: string;
     },
+    failedBoards: Set<BoardKey>,
 ): Leaderboard | null {
     let board: Leaderboard | null = null;
     if (boardKey === "general") board = boards.arena;
@@ -83,7 +84,19 @@ function cachedLeaderboard(
     else if (boardKey === "livecodebench") board = boards.livecodebench;
     else board = boards.livebench;
 
-    if (!board?.items?.length) return null;
+    if (!board?.items?.length && !failedBoards.has(boardKey)) return null;
+    if (!board?.items?.length && failedBoards.has(boardKey)) {
+        return {
+            source: {
+                name: "Artificial Analysis",
+                url: "https://artificialanalysis.ai/",
+                benchmark: boardKey,
+            },
+            category: boardKey === "aa-coding" ? "coding" : boardKey,
+            published_at: null,
+            items: [],
+        };
+    }
     if (boardKey === "livebench" && board.category !== categories.livebenchCategory) return null;
     if (boardKey === "mmlu-pro" && board.category !== categories.mmluCategory) return null;
     if (boardKey === "swe-live" && board.category !== categories.sweLiveCategory) return null;
@@ -136,6 +149,7 @@ export function useLeaderboardData() {
     const [aaIntelligence, setAaIntelligence] = useState<Leaderboard | null>(null);
     const [aaCoding, setAaCoding] = useState<Leaderboard | null>(null);
     const [aaAgentic, setAaAgentic] = useState<Leaderboard | null>(null);
+    const [failedBoards, setFailedBoards] = useState<Set<BoardKey>>(() => new Set());
     const [livebench, setLivebench] = useState<Leaderboard | null>(null);
     const [mmluPro, setMmluPro] = useState<Leaderboard | null>(null);
     const [livecodebench, setLivecodebench] = useState<Leaderboard | null>(null);
@@ -182,12 +196,18 @@ export function useLeaderboardData() {
             livecodebench,
         };
         const categories = { livebenchCategory, mmluCategory, sweLiveCategory, tauCategory };
-        if (cachedLeaderboard(boardKey, boards, categories))
+        if (cachedLeaderboard(boardKey, boards, categories, failedBoards))
             return;
 
         const controller = new AbortController();
         fetch(leaderboardUrl(boardKey, livebenchCategory, mmluCategory, sweLiveCategory, tauCategory), { signal: controller.signal })
-            .then(r => r.ok ? r.json() : null)
+            .then(async r => {
+                if (!r.ok) {
+                    setFailedBoards(current => new Set(current).add(boardKey));
+                    return null;
+                }
+                return r.json();
+            })
             .then(data => {
                 if (!data) return;
                 applyLeaderboardData(boardKey, data as Leaderboard, {
@@ -206,7 +226,7 @@ export function useLeaderboardData() {
             .catch(() => { /* keep previous board */ });
 
         return () => controller.abort();
-    }, [leaderboardView, livebenchCategory, mmluCategory, sweLiveCategory, tauCategory, arena, swebench, swebenchLive, tauBench, aaIntelligence, aaCoding, aaAgentic, livebench, mmluPro, livecodebench]);
+    }, [leaderboardView, livebenchCategory, mmluCategory, sweLiveCategory, tauCategory, arena, swebench, swebenchLive, tauBench, aaIntelligence, aaCoding, aaAgentic, livebench, mmluPro, livecodebench, failedBoards]);
 
     function selectLeaderboardView(view: LeaderboardView) {
         setLeaderboardView(view);

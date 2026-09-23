@@ -106,7 +106,7 @@ services:
       CLOUDFLARE_ACCOUNT_ID: ${CLOUDFLARE_ACCOUNT_ID:-}
       CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
       API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
-      API_ALLOWED_HOSTS: ${API_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      API_ALLOWED_HOSTS: ${API_ALLOWED_HOSTS:-localhost,127.0.0.1,llmradar.planetai9.com}
     ports:
       - "8080:8080"
     healthcheck:
@@ -126,6 +126,18 @@ services:
         condition: service_healthy
       redpanda:
         condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.llm-radar-api.rule=Host(`llmradar.planetai9.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.llm-radar-api.entrypoints=websecure"
+      - "traefik.http.routers.llm-radar-api.tls=true"
+      - "traefik.http.routers.llm-radar-api.tls.certresolver=le"
+      - "traefik.http.routers.llm-radar-api.priority=100"
+      - "traefik.http.services.llm-radar-api.loadbalancer.server.port=8080"
+    networks:
+      - default
+      - web
 
   processor:
     build: .
@@ -230,24 +242,33 @@ services:
     image: grafana/grafana:11.3.0
     profiles: ["observability"]
     ports:
-      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:3003:3002"
     depends_on:
       - prometheus
 
   web:
     image: node:22-bookworm-slim
     working_dir: /app
-    command: ["sh", "-c", "rm -f /app/.vinext/dev/lock.json 2>/dev/null; npm ci && npm run dev -- --host 0.0.0.0"]
+    command: ["sh", "-c", "npm ci && npm run build && npm run start -- --host 0.0.0.0 --port 3002"]
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
-    ports:
-      - "3000:3000"
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://llmradar.planetai9.com}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.llm-radar.rule=Host(`llmradar.planetai9.com`)"
+      - "traefik.http.routers.llm-radar.entrypoints=websecure"
+      - "traefik.http.routers.llm-radar.tls=true"
+      - "traefik.http.routers.llm-radar.tls.certresolver=le"
+      - "traefik.http.routers.llm-radar.priority=10"
+      - "traefik.http.services.llm-radar.loadbalancer.server.port=3002"
     volumes:
       - ./web:/app
       - web-node-modules:/app/node_modules
     depends_on:
       api:
         condition: service_healthy
+    networks:
+      - web
 
 volumes:
   postgres-data:
@@ -256,3 +277,8 @@ volumes:
   redis-data:
   web-node-modules:
   postgres-backups:
+
+networks:
+  default:
+  web:
+    external: true
