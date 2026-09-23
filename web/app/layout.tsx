@@ -13,25 +13,42 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://llmradar.planetai9.com";
+const siteDescription =
+  "Büyük dil modellerini keşfedin, karşılaştırın ve güncel yapay zekâ modellerini tek bir platformdan takip edin.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: "LLM Radar",
-  description: "Resmî ve akademik kaynaklardan güncel LLM sıralamaları, karşılaştırmalar ve teknoloji değişimleri.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "LLM Radar",
+    template: "%s · LLM Radar",
+  },
+  description: siteDescription,
+  applicationName: "LLM Radar",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
   },
   openGraph: {
     title: "LLM Radar",
-    description: "Kaynaklı yapay zekâ sıralamaları",
-    images: [{ url: "/og.png", width: 1732, height: 909, alt: "LLM Radar" }],
+    description: siteDescription,
+    url: siteUrl,
+    siteName: "LLM Radar",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "LLM Radar — kaynaklı LLM sıralamaları",
+      },
+    ],
     locale: "tr_TR",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "LLM Radar",
-    description: "Kaynaklı yapay zekâ sıralamaları",
+    description: siteDescription,
     images: ["/og.png"],
   },
 };

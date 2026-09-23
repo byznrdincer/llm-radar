@@ -1,0 +1,21 @@
+---
+description: LLM Radar PlanetAI prod deploy — Mac/sunucu ayrımı, ~/llm-radar-deploy, port ve restore tuzakları
+alwaysApply: true
+---
+
+# Prod deploy (llm-radar)
+
+When helping with production deploy to `212.58.12.163` / `llmradar.planetai9.com`:
+
+## Hard rules
+
+1. **Never run server `docker`/`git`/`pg_restore` commands on the Mac.** Prompt must be `bdincer@Dbrain-2`, not `MacBook`. Mac only does `scp` of dumps.
+2. Work in **`~/llm-radar-deploy`**, not `/data/dbrain-websites/llm-radar` (no write permission for `bdincer`).
+3. Always use:
+   `export COMPOSE='docker compose --env-file .env -f docker-compose.yml -f docker-compose.override.yml'`
+4. After `git reset --hard`, **always** run `bash scripts/prod-after-git-reset.sh` before `up --build`. It restores override, forces minio `9100/9101`, and copies prod web (Traefik/`3002`) from `/data/.../docker-compose.yml`. Do **not** paste fragile heredocs for override. Compose **merges** `ports` (does not replace) — fixing only the override is why `9001` kept failing. Checklist: `docs/prod-deploy.md`.
+5. Order: dump on Mac → scp `/tmp` → server move to `sql/` → **stop → DROP/CREATE → pg_restore → verify models count → then** after-reset script → `up -d --build`. Never `up --build` before restore when a dump was uploaded.
+6. Ports: web Traefik **3002** (not 3000); minio **9100/9101** (not 9000/9001 — 9001 conflict). Base `docker-compose.yml` must use 9100/9101.
+7. After code that needs HF data:  
+   `$COMPOSE run --rm --no-deps scheduler python -m llm_radar.collectors.run_huggingface`
+8. If `ps` has no `web` → site 404; run after-reset script + `$COMPOSE up -d web`.

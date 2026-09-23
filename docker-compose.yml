@@ -65,9 +65,11 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-llm-radar}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-change-me-in-production}
+    # Host 9100/9101: prod'da 9001 ticket-minio ile çakışır.
+    # Compose override ports'u REPLACE etmez (merge); bu yüzden base doğru olmalı.
     ports:
-      - "127.0.0.1:9100:9100"
-      - "127.0.0.1:9101:9101"
+      - "127.0.0.1:9100:9000"
+      - "127.0.0.1:9101:9001"
     volumes:
       - minio-data:/data
 
